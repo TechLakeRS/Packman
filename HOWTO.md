@@ -1,0 +1,74 @@
+# PACKMAN — Quick start
+
+Installer file to published Intune app, in the shortest path that works. Every step links to the
+full explanation in **[README.md](README.md)**.
+
+> **Before you start:** Windows, the .NET 10 Desktop Runtime, a PSADT v4 template folder
+> **including the runtime**, `IntuneWinAppUtil.exe`, and an Intune account with the required Graph
+> permissions — see [Requirements](README.md#requirements).
+
+---
+
+## 1. Set it up once
+
+Open **Settings** and complete two sections, then press **Save**:
+
+1. **Authentication** — press **Sign in** (interactive needs no app registration), then
+   **Test connection** to confirm every Graph scope is consented.
+2. **Network Paths** — **Intune Applications Path** (where packages are written), **PSADT Template
+   Path**, and **IntuneWinAppUtil Path**.
+
+Code signing, group-assignment defaults, Intune defaults and the theme are optional.
+→ [First-run setup](README.md#first-run-setup--the-settings-page)
+
+## 2. Generate the package
+
+**Create Package** → drag your **MSI or EXE** onto the Sources Path field. Name, manufacturer,
+version and icon are filled from the installer; correct anything you disagree with, pick
+**x64/x86** and **SYSTEM/USER**, then **GENERATE PACKAGE**.
+
+→ [Creating a package](README.md#creating-a-package) — including exactly what an MSI fills in
+versus an EXE, and where the package lands on disk.
+
+## 3. Fix the script (EXE packages only)
+
+An MSI package usually runs as generated. An **EXE** package is written with `<silent flags>` and
+`<uninstall flags>` placeholders — open **Edit script** and replace them with the installer's real
+switches, then Ctrl+S.
+
+→ [Editing the deploy script](README.md#editing-the-deploy-script)
+
+## 4. Test it on a real machine (recommended)
+
+**Remote test** → enter a computer name, **CHECK**, leave the context on **SYSTEM** (what Intune
+uses), **RUN INSTALL**. After a successful install, **USE FOR PUBLISH** carries the discovered
+detection rule into the publish step.
+
+→ [Remote testing](README.md#remote-testing)
+
+## 5. Publish
+
+**CONTINUE TO UPLOAD**, then:
+
+1. Check the **Name in Intune**.
+2. Confirm the **detection method** — MSI packages default to the product code; anything else needs
+   a path.
+3. Pick a **deploy mode** if *Auto* is not what you want.
+4. Add **assignment** groups, each with its own intent (Required / Available / Uninstall).
+5. **CONTINUE TO REVIEW**, check the summary, **BUILD & UPLOAD**.
+
+→ [Publishing to Intune](README.md#publishing-to-intune)
+
+---
+
+## Where to go next
+
+| I want to… | See |
+|---|---|
+| Roll out a new version of an existing package | [Upgrading a package](README.md#upgrading-a-package-to-a-new-version) |
+| Publish a package I already built | [Upload to Intune (standalone)](README.md#upload-to-intune-standalone) |
+| Browse, filter, edit or retire tenant apps | [Applications](README.md#applications--browsing-your-tenant) |
+| Bulk-add PCs to a group, or see what targets a group | [Advanced](README.md#advanced--directory-tools) |
+| Know what Packman deliberately does not do | [Limits](README.md#what-packman-cannot-do) |
+| Fix an error message | [Troubleshooting](README.md#troubleshooting) |
+| Find the logs | [Where things live on disk](README.md#where-things-live-on-disk) |

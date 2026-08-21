@@ -1,0 +1,3 @@
+# Vendored packages must never get line-ending translation - a mangled
+# .nupkg fails restore on the offline machine with a checksum error.
+*.nupkg binary

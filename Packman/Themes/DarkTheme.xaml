@@ -1,0 +1,146 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+
+    <!-- Fluent dark. The window is Mica, so surfaces above it are translucent
+         white layers rather than opaque colours — that is what lets the desktop
+         tint bleed through. Only the wells (code, editor) stay solid. Amber
+         remains the accent. -->
+    <Color x:Key="BgColor">#1B1B1B</Color>
+    <Color x:Key="ShellColor">#202020</Color>
+    <!-- Content surface: nearly opaque so text on it stays readable over Mica. -->
+    <Color x:Key="SurfaceColor">#D9202020</Color>
+    <Color x:Key="PaneColor">#00000000</Color>
+    <!-- Flyouts float over arbitrary content, so this one stays opaque. -->
+    <Color x:Key="FlyoutColor">#2C2C2C</Color>
+    <Color x:Key="CardColor">#0FFFFFFF</Color>
+    <Color x:Key="Card2Color">#0AFFFFFF</Color>
+    <Color x:Key="RailColor">#0AFFFFFF</Color>
+    <Color x:Key="LineColor">#15FFFFFF</Color>
+    <Color x:Key="Line2Color">#0FFFFFFF</Color>
+    <Color x:Key="Line3Color">#12FFFFFF</Color>
+    <Color x:Key="EdgeColor">#1FFFFFFF</Color>
+    <Color x:Key="Edge2Color">#8CFFFFFF</Color>
+        <!-- Boundary of anything you can type in or click. Alpha chosen so the
+         composite clears 3:1 against both the card and the surface, which the
+         old hairline missed by a factor of two. -->
+    <Color x:Key="ControlStrokeColor">#66FFFFFF</Color>
+<Color x:Key="FieldColor">#0FFFFFFF</Color>
+    <!-- Resting / hover surface for outlined controls. -->
+    <Color x:Key="ControlColor">#0FFFFFFF</Color>
+    <Color x:Key="ControlHoverColor">#17FFFFFF</Color>
+
+    <Color x:Key="InkColor">#FFFFFFFF</Color>
+    <Color x:Key="TextColor">#F0FFFFFF</Color>
+    <Color x:Key="Text2Color">#C8FFFFFF</Color>
+    <!-- De-emphasis ramp, on the Fluent text alphas. Every step here carries
+         text, so each one clears WCAG AA (4.5:1) once composited over the
+         surface; MarkColor is the only value below that and is reserved for
+         non-text marks — it still clears the 3:1 those need. -->
+    <Color x:Key="MutedColor">#C8FFFFFF</Color>
+    <Color x:Key="Muted2Color">#B4FFFFFF</Color>
+    <Color x:Key="Muted3Color">#A0FFFFFF</Color>
+    <Color x:Key="DimColor">#8BFFFFFF</Color>
+    <Color x:Key="Dim2Color">#8BFFFFFF</Color>
+    <Color x:Key="FaintColor">#8BFFFFFF</Color>
+    <Color x:Key="MarkColor">#73FFFFFF</Color>
+
+    <!-- Success / caution / critical. Caution sits at hue 50 and critical at
+         355, both held clear of the amber accent at 33 so a state can never be
+         read as the brand. -->
+    <Color x:Key="OkColor">#6CCB5F</Color>
+    <Color x:Key="WarnColor">#E8CE4A</Color>
+    <Color x:Key="BadColor">#FF6470</Color>
+    <Color x:Key="DangerColor">#FF6470</Color>
+    <Color x:Key="OkSoftColor">#1F6CCB5F</Color>
+    <Color x:Key="OkLineColor">#6B6CCB5F</Color>
+    <Color x:Key="WarnSoftColor">#1FE8CE4A</Color>
+    <Color x:Key="WarnLineColor">#6BE8CE4A</Color>
+    <Color x:Key="BadSoftColor">#1CFF6470</Color>
+    <Color x:Key="BadLineColor">#6BFF6470</Color>
+
+    <!-- Accent. PrimaryFgColor is what sits on top of a filled accent block. -->
+    <Color x:Key="PrimaryColor">#E0A050</Color>
+    <Color x:Key="Primary2Color">#C98A3C</Color>
+    <Color x:Key="PrimaryFgColor">#1B1B1B</Color>
+    <Color x:Key="PrimaryFaintColor">#12E0A050</Color>
+    <Color x:Key="PrimarySoftColor">#16E0A050</Color>
+    <Color x:Key="PrimaryDimColor">#28E0A050</Color>
+    <Color x:Key="PrimaryLineColor">#66E0A050</Color>
+    <Color x:Key="PrimaryGlowColor">#75E0A050</Color>
+    <!-- Amber as text, an icon or a hairline rather than a fill. Same value as
+         the fill here; the light theme has to darken it to stay legible. -->
+    <Color x:Key="AccentTextColor">#E0A050</Color>
+
+    <Color x:Key="CodeBgColor">#1B1B1B</Color>
+    <Color x:Key="CodeTxtColor">#F0FFFFFF</Color>
+    <Color x:Key="CodeBarTxtColor">#C8FFFFFF</Color>
+    <Color x:Key="CodeCommentColor">#8BFFFFFF</Color>
+    <Color x:Key="CodeKeywordColor">#E0A050</Color>
+    <Color x:Key="CodeStringColor">#6CCB5F</Color>
+
+    <!-- Brushes -->
+    <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}"/>
+    <SolidColorBrush x:Key="ShellBrush" Color="{StaticResource ShellColor}"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
+    <SolidColorBrush x:Key="PaneBrush" Color="{StaticResource PaneColor}"/>
+    <SolidColorBrush x:Key="FlyoutBrush" Color="{StaticResource FlyoutColor}"/>
+    <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}"/>
+    <SolidColorBrush x:Key="Card2Brush" Color="{StaticResource Card2Color}"/>
+    <SolidColorBrush x:Key="RailBrush" Color="{StaticResource RailColor}"/>
+    <SolidColorBrush x:Key="LineBrush" Color="{StaticResource LineColor}"/>
+    <SolidColorBrush x:Key="Line2Brush" Color="{StaticResource Line2Color}"/>
+    <SolidColorBrush x:Key="Line3Brush" Color="{StaticResource Line3Color}"/>
+    <SolidColorBrush x:Key="EdgeBrush" Color="{StaticResource EdgeColor}"/>
+    <SolidColorBrush x:Key="Edge2Brush" Color="{StaticResource Edge2Color}"/>
+    <SolidColorBrush x:Key="ControlStrokeBrush" Color="{StaticResource ControlStrokeColor}"/>
+    <SolidColorBrush x:Key="FieldBrush" Color="{StaticResource FieldColor}"/>
+    <SolidColorBrush x:Key="ControlBrush" Color="{StaticResource ControlColor}"/>
+    <SolidColorBrush x:Key="ControlHoverBrush" Color="{StaticResource ControlHoverColor}"/>
+
+    <SolidColorBrush x:Key="InkBrush" Color="{StaticResource InkColor}"/>
+    <SolidColorBrush x:Key="TextBrush" Color="{StaticResource TextColor}"/>
+    <SolidColorBrush x:Key="Text2Brush" Color="{StaticResource Text2Color}"/>
+    <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}"/>
+    <SolidColorBrush x:Key="Muted2Brush" Color="{StaticResource Muted2Color}"/>
+    <SolidColorBrush x:Key="Muted3Brush" Color="{StaticResource Muted3Color}"/>
+    <SolidColorBrush x:Key="DimBrush" Color="{StaticResource DimColor}"/>
+    <SolidColorBrush x:Key="Dim2Brush" Color="{StaticResource Dim2Color}"/>
+    <SolidColorBrush x:Key="FaintBrush" Color="{StaticResource FaintColor}"/>
+    <!-- Dots, chevrons and state marks. Not text, but they carry meaning,
+         so they hold 3:1. -->
+    <SolidColorBrush x:Key="MarkBrush" Color="{StaticResource MarkColor}"/>
+
+    <SolidColorBrush x:Key="OkBrush" Color="{StaticResource OkColor}"/>
+    <SolidColorBrush x:Key="OkSoftBrush" Color="{StaticResource OkSoftColor}"/>
+    <SolidColorBrush x:Key="OkLineBrush" Color="{StaticResource OkLineColor}"/>
+    <SolidColorBrush x:Key="WarnBrush" Color="{StaticResource WarnColor}"/>
+    <SolidColorBrush x:Key="WarnSoftBrush" Color="{StaticResource WarnSoftColor}"/>
+    <SolidColorBrush x:Key="WarnLineBrush" Color="{StaticResource WarnLineColor}"/>
+    <SolidColorBrush x:Key="BadBrush" Color="{StaticResource BadColor}"/>
+    <SolidColorBrush x:Key="BadSoftBrush" Color="{StaticResource BadSoftColor}"/>
+    <SolidColorBrush x:Key="BadLineBrush" Color="{StaticResource BadLineColor}"/>
+    <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}"/>
+
+    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+    <SolidColorBrush x:Key="Primary2Brush" Color="{StaticResource Primary2Color}"/>
+    <SolidColorBrush x:Key="PrimaryFgBrush" Color="{StaticResource PrimaryFgColor}"/>
+    <SolidColorBrush x:Key="PrimaryFaintBrush" Color="{StaticResource PrimaryFaintColor}"/>
+    <SolidColorBrush x:Key="PrimarySoftBrush" Color="{StaticResource PrimarySoftColor}"/>
+    <SolidColorBrush x:Key="PrimaryDimBrush" Color="{StaticResource PrimaryDimColor}"/>
+    <SolidColorBrush x:Key="PrimaryLineBrush" Color="{StaticResource PrimaryLineColor}"/>
+    <SolidColorBrush x:Key="PrimaryGlowBrush" Color="{StaticResource PrimaryGlowColor}"/>
+    <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource AccentTextColor}"/>
+
+    <SolidColorBrush x:Key="CodeBgBrush" Color="{StaticResource CodeBgColor}"/>
+    <SolidColorBrush x:Key="CodeTxtBrush" Color="{StaticResource CodeTxtColor}"/>
+    <SolidColorBrush x:Key="CodeBarTxtBrush" Color="{StaticResource CodeBarTxtColor}"/>
+    <SolidColorBrush x:Key="CodeCommentBrush" Color="{StaticResource CodeCommentColor}"/>
+    <SolidColorBrush x:Key="CodeKeywordBrush" Color="{StaticResource CodeKeywordColor}"/>
+    <SolidColorBrush x:Key="CodeStringBrush" Color="{StaticResource CodeStringColor}"/>
+
+    <!-- The logo mark is a flat block. -->
+    <SolidColorBrush x:Key="LogoGradientBrush" Color="{StaticResource PrimaryColor}"/>
+
+    <sys:Boolean x:Key="IsDarkTheme">True</sys:Boolean>
+</ResourceDictionary>

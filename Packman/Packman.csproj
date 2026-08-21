@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Packman</RootNamespace>
+    <AssemblyName>Packman</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.67.2" />
+    <PackageReference Include="Microsoft.Identity.Client.Broker" Version="4.67.2" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <!-- PowerShell remoting for the Remote Test tool. Pinned to the 7.5.x line: it is
+         the last one that ships a net9.0 build (7.6.x is net10.0 only). -->
+    <PackageReference Include="System.Management.Automation" Version="7.5.10" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Console UI fonts, embedded so they render without machine installation -->
+    <Resource Include="Fonts\*.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundled PSADT v4 template, copied next to the executable -->
+    <None Include="PSADT\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Monaco editor assets for the in-app script editor -->
+    <None Include="MonacoEditor\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- PSADT v4 function catalog used by the Configure PSADT dialog -->
+    <None Include="PSADT_v4_Functions*.csv" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

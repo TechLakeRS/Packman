@@ -1,0 +1,416 @@
+<UserControl x:Class="Packman.Views.StepUpload"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:Packman"
+             mc:Ignorable="d"
+             FontFamily="{StaticResource UIFontFamily}">
+
+    <!-- Everything the Intune app needs before it is published; nothing is sent from here. -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="28"/>
+            <ColumnDefinition Width="380"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ═══════════ CONFIGURE UPLOAD ═══════════ -->
+        <StackPanel Grid.Column="0" VerticalAlignment="Top">
+            <DockPanel Margin="0,0,0,14">
+                <TextBlock DockPanel.Dock="Left" Text="CONFIGURE UPLOAD" Style="{StaticResource SectionLabel}"/>
+                <TextBlock DockPanel.Dock="Right" Text="how the app lands in Intune" Style="{StaticResource Caption}"/>
+                <Border Style="{StaticResource Rule}"/>
+            </DockPanel>
+
+            <!-- App summary strip -->
+            <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Padding="0" CornerRadius="4">
+                <Grid>
+                    <Border Width="3" HorizontalAlignment="Left" CornerRadius="4,0,0,4" Background="{DynamicResource PrimaryBrush}"/>
+                    <DockPanel Margin="16,14">
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Upload.ReviewSize}" VerticalAlignment="Center"
+                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="11" Foreground="{DynamicResource DimBrush}"/>
+                        <TextBlock Text="{Binding Upload.AppSummaryName}" VerticalAlignment="Center" MaxWidth="360"
+                                   FontSize="15" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Upload.AppSummaryName}"/>
+                        <TextBlock Text="{Binding Upload.AppSummaryDetail}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="11"
+                                   Foreground="{DynamicResource Muted2Brush}" TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                </Grid>
+            </Border>
+
+            <!-- Name in Intune -->
+            <StackPanel Margin="0,20,0,0">
+                <TextBlock Text="Name in Intune" Style="{StaticResource FieldLabel}"/>
+                <TextBox AutomationProperties.Name="Name in Intune" Style="{StaticResource TextField}" Margin="0,6,0,0"
+                         Text="{Binding Upload.IntuneDisplayName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+
+            <!-- Detection -->
+            <StackPanel Margin="0,20,0,0">
+                <TextBlock Text="Detection method" Style="{StaticResource FieldLabel}"/>
+                <ComboBox AutomationProperties.Name="Detection method" Margin="0,6,0,0" Height="34"
+                          ItemsSource="{Binding Upload.DetectionMethods}"
+                          SelectedItem="{Binding Upload.SelectedDetectionMethod, Mode=TwoWay}"/>
+
+                <!-- File exists / File version -->
+                <Grid Margin="0,12,0,0" Visibility="{Binding Upload.IsFileDetection, Converter={StaticResource BoolToVis}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Folder path" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="Folder path" Style="{StaticResource MonoField}" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="%ProgramFiles%\Contoso"
+                                 Text="{Binding Upload.DetectionPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="File or folder name" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="File or folder name" Style="{StaticResource MonoField}" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="app.exe"
+                                 Text="{Binding Upload.DetectionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4" Visibility="{Binding Upload.IsFileVersionDetection, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="Minimum version" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="Minimum version" Style="{StaticResource MonoField}" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="1.2.3"
+                                 Text="{Binding Upload.DetectionValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Registry key exists -->
+                <Grid Margin="0,12,0,0" Visibility="{Binding Upload.IsRegistryDetection, Converter={StaticResource BoolToVis}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Hive" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox AutomationProperties.Name="Hive" Margin="0,6,0,0" Height="34" VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding Upload.RegistryHives}"
+                                  SelectedItem="{Binding Upload.SelectedRegistryHive, Mode=TwoWay}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Key path" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="Key path" Style="{StaticResource MonoField}" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="SOFTWARE\Contoso\App"
+                                 Text="{Binding Upload.RegistryKeyPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Value name (optional)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="Value name (optional)" Style="{StaticResource MonoField}" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="blank checks the key itself"
+                                 Text="{Binding Upload.RegistryValueName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- MSI product code -->
+                <StackPanel Margin="0,12,0,0" Visibility="{Binding Upload.IsMsiDetection, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="MSI product code" Style="{StaticResource FieldLabel}"/>
+                    <TextBox AutomationProperties.Name="MSI product code" Style="{StaticResource MonoField}" Margin="0,6,0,0"
+                             local:PlaceholderText.Text="{}{00000000-0000-0000-0000-000000000000}"
+                             Text="{Binding Upload.DetectionProductCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                               FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5" LineHeight="16"
+                               Foreground="{DynamicResource WarnBrush}"
+                               Visibility="{Binding Upload.HasNoMsiProductCode, Converter={StaticResource BoolToVis}}"
+                               Text="No MSI found in the package — enter the product code manually."/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Border BorderBrush="{DynamicResource PrimaryLineBrush}" BorderThickness="1" Padding="7,4" VerticalAlignment="Top" CornerRadius="4">
+                        <TextBlock Text="RULE" FontFamily="{StaticResource LabelFontFamily}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentTextBrush}"/>
+                    </Border>
+                    <TextBlock Text="{Binding Upload.DetectionSummary}" Margin="9,0,0,0" MaxWidth="520"
+                               FontFamily="{StaticResource MonoFontFamily}" FontSize="11" LineHeight="18"
+                               Foreground="{DynamicResource Muted2Brush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Deploy mode -->
+            <StackPanel Margin="0,20,0,0">
+                <TextBlock Text="PSADT deploy mode" Style="{StaticResource FieldLabel}"/>
+                <ComboBox AutomationProperties.Name="PSADT deploy mode" Margin="0,6,0,0" Height="34" HorizontalAlignment="Left" MinWidth="220"
+                          ItemsSource="{Binding Upload.DeployModes}"
+                          SelectedItem="{Binding Upload.SelectedDeployMode, Mode=TwoWay}"/>
+                <TextBlock Text="{Binding Upload.DeployModeHint}" Margin="0,7,0,0" TextWrapping="Wrap"
+                           FontSize="11.5" Foreground="{DynamicResource DimBrush}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Border BorderBrush="{DynamicResource PrimaryLineBrush}" BorderThickness="1" Padding="7,4" VerticalAlignment="Top" CornerRadius="4">
+                        <TextBlock Text="INSTALL" FontFamily="{StaticResource LabelFontFamily}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentTextBrush}"/>
+                    </Border>
+                    <TextBlock Text="{Binding Upload.InstallCommandPreview}" Margin="9,0,0,0" MaxWidth="520"
+                               FontFamily="{StaticResource MonoFontFamily}" FontSize="11" LineHeight="18"
+                               Foreground="{DynamicResource Muted2Brush}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Requirements -->
+            <Border Height="1" Background="{DynamicResource Line3Brush}" Margin="0,22,0,0"/>
+            <!-- Style="{x:Null}": as with the ComboBox toggle in Styles.xaml, WPF UI's
+                 implicit ToggleButton style would eat the click. -->
+            <ToggleButton x:Name="RequirementsToggle" Style="{x:Null}" Cursor="Hand" HorizontalAlignment="Left"
+                          Background="Transparent" BorderThickness="0" Margin="0,14,0,0">
+                <ToggleButton.Template>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                            <TextBlock VerticalAlignment="Center" FontFamily="{StaticResource MonoFontFamily}"
+                                       FontSize="10" Foreground="{DynamicResource Muted2Brush}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="&#x25B8;"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsChecked, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Value="True">
+                                                <Setter Property="Text" Value="&#x25BE;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <TextBlock Text="REQUIREMENTS &amp; RETURN CODES" Margin="10,0,0,0" VerticalAlignment="Center"
+                                       FontFamily="{StaticResource LabelFontFamily}" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Text2Brush}"/>
+                            <TextBlock Text="pre-filled from Settings ▸ Intune Defaults" Margin="10,0,0,0" VerticalAlignment="Center"
+                                       FontSize="11.5" Foreground="{DynamicResource DimBrush}"/>
+                        </StackPanel>
+                    </ControlTemplate>
+                </ToggleButton.Template>
+            </ToggleButton>
+
+            <StackPanel Margin="0,14,0,0"
+                        Visibility="{Binding IsChecked, ElementName=RequirementsToggle, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="110"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Minimum OS" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox AutomationProperties.Name="Minimum OS" Margin="0,6,0,0"
+                                  ItemsSource="{Binding Upload.OperatingSystems}"
+                                  SelectedItem="{Binding Upload.SelectedOperatingSystem, Mode=TwoWay}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Disk (MB)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="Disk (MB)" Style="{StaticResource MonoField}" Height="32" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="any"
+                                 Text="{Binding Upload.MinFreeDiskSpaceMB, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Memory (MB)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="Memory (MB)" Style="{StaticResource MonoField}" Height="32" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="any"
+                                 Text="{Binding Upload.MinMemoryMB, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="6">
+                        <TextBlock Text="CPU (MHz)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox AutomationProperties.Name="CPU (MHz)" Style="{StaticResource MonoField}" Height="32" Margin="0,6,0,0"
+                                 local:PlaceholderText.Text="any"
+                                 Text="{Binding Upload.MinCpuSpeedMHz, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Margin="0,14,0,0" HorizontalAlignment="Left" Orientation="Horizontal">
+                    <TextBlock Text="Processors" Style="{StaticResource FieldLabel}" VerticalAlignment="Center"/>
+                    <TextBox AutomationProperties.Name="Processors" Style="{StaticResource MonoField}" Width="110" Height="32" Margin="12,0,0,0"
+                             local:PlaceholderText.Text="any"
+                             Text="{Binding Upload.MinProcessors, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+
+                <!-- Return codes -->
+                <DockPanel Margin="0,20,0,0">
+                    <TextBlock DockPanel.Dock="Left" Text="RETURN CODES" Style="{StaticResource SectionLabel}"/>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Content="RESET TO DEFAULTS"
+                            Padding="9,5" Command="{Binding Upload.RestoreDefaultsCommand}"
+                            ToolTip="Reload the values from Settings ▸ Intune Defaults"/>
+                    <Border Style="{StaticResource Rule}"/>
+                </DockPanel>
+
+                <Grid Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="10"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" Style="{StaticResource MonoField}"
+                             local:PlaceholderText.Text="Exit code, e.g. 1707"
+                             Text="{Binding Upload.NewReturnCodeInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="ADD"
+                            Command="{Binding Upload.AddReturnCodeCommand}"/>
+                </Grid>
+
+                <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Margin="0,12,0,0" CornerRadius="4">
+                    <ItemsControl ItemsSource="{Binding Upload.ReturnCodes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource Line2Brush}"
+                                        BorderThickness="0,0,0,1" Padding="13,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="56"/>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Code}" VerticalAlignment="Center"
+                                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                   Foreground="{DynamicResource TextBrush}"/>
+                                        <TextBox Grid.Column="1" Style="{StaticResource TextField}" Height="28" FontSize="11.5"
+                                                 Margin="0,0,10,0" VerticalAlignment="Center"
+                                                 local:PlaceholderText.Text="Description"
+                                                 Text="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <Border Grid.Column="2" Style="{StaticResource SegmentGroup}" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton Style="{StaticResource ContextToggle}" Padding="9,6" Content="SUCCESS" IsChecked="{Binding IsSuccess}"/>
+                                                <RadioButton Style="{StaticResource ContextToggle}" Padding="9,6" Content="SOFT REBOOT" IsChecked="{Binding IsSoftReboot}"/>
+                                                <RadioButton Style="{StaticResource ContextToggle}" Padding="9,6" Content="HARD REBOOT" IsChecked="{Binding IsHardReboot}"/>
+                                                <RadioButton Style="{StaticResource ContextToggle}" Padding="9,6" Content="RETRY" IsChecked="{Binding IsRetry}"/>
+                                                <RadioButton Style="{StaticResource ContextToggle}" Padding="9,6" Content="FAILED" IsChecked="{Binding IsFailed}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Button Grid.Column="3" Style="{StaticResource RowIconButton}" Command="{Binding RemoveCommand}"
+                                                VerticalAlignment="Center" ToolTip="Remove" Content="✕" FontSize="11"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </StackPanel>
+
+            <TextBlock Text="{Binding Upload.StatusText}" Margin="0,18,0,0" TextWrapping="Wrap"
+                       FontFamily="{StaticResource MonoFontFamily}" FontSize="11" LineHeight="17"
+                       Foreground="{DynamicResource DimBrush}"/>
+        </StackPanel>
+
+        <!-- ═══════════ ASSIGNMENT ═══════════ -->
+        <StackPanel Grid.Column="2" VerticalAlignment="Top">
+            <DockPanel Margin="0,0,0,14">
+                <TextBlock DockPanel.Dock="Left" Text="ASSIGNMENT" Style="{StaticResource SectionLabel}"/>
+                <TextBlock DockPanel.Dock="Right" Text="who receives this app" Style="{StaticResource Caption}"/>
+                <Border Style="{StaticResource Rule}"/>
+            </DockPanel>
+
+            <TextBlock Text="Pre-filled from Settings ▸ Group Assignment." Margin="0,0,0,14" TextWrapping="Wrap"
+                       FontSize="11.5" Foreground="{DynamicResource DimBrush}"/>
+
+            <!-- Intent applied to the next group added -->
+            <TextBlock Text="Assignment type" Style="{StaticResource FieldLabel}" Margin="0,0,0,7"/>
+            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                    Padding="4" HorizontalAlignment="Left" CornerRadius="4">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource ContextToggle}" GroupName="WizardIntent" Content="Required"
+                                 IsChecked="{Binding Upload.GroupPicker.Intent, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=required}"/>
+                    <RadioButton Style="{StaticResource ContextToggle}" GroupName="WizardIntent" Content="Available" Margin="3,0,0,0"
+                                 IsChecked="{Binding Upload.GroupPicker.Intent, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=available}"/>
+                    <RadioButton Style="{StaticResource ContextToggle}" GroupName="WizardIntent" Content="Uninstall" Margin="3,0,0,0"
+                                 IsChecked="{Binding Upload.GroupPicker.Intent, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=uninstall}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Group search -->
+            <TextBlock Text="Assignment groups" Style="{StaticResource FieldLabel}" Margin="0,16,0,7"/>
+            <Grid>
+                <TextBox AutomationProperties.Name="Assignment groups" x:Name="GroupSearchBox" Style="{StaticResource TextField}" Padding="11,0,92,0"
+                         local:PlaceholderText.Text="Search Entra groups…"
+                         Text="{Binding Upload.GroupPicker.GroupQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         KeyDown="GroupSearch_KeyDown"/>
+                <Button Style="{StaticResource BrowseButton}" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                        Margin="0,6,6,6" Command="{Binding Upload.GroupPicker.SearchGroupsCommand}">
+                    <TextBlock Text="Search" VerticalAlignment="Center"/>
+                </Button>
+            </Grid>
+
+            <TextBlock Text="{Binding Upload.GroupPicker.GroupSearchHint}" FontSize="12" Foreground="{DynamicResource MutedBrush}"
+                       Margin="0,7,0,0" TextWrapping="Wrap">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Upload.GroupPicker.GroupSearchHint}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- Search results -->
+            <ItemsControl ItemsSource="{Binding Upload.GroupPicker.GroupResults}" Margin="0,8,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button HorizontalContentAlignment="Stretch" Margin="0,0,0,6" Cursor="Hand"
+                                Command="{Binding DataContext.Upload.GroupPicker.AddGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Padding="12,9" CornerRadius="4">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="14" Height="14" Margin="0,0,9,0">
+                                                <Path Data="{StaticResource IconGroup}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                            </Viewbox>
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Selected chips -->
+            <ItemsControl ItemsSource="{Binding Upload.GroupPicker.SelectedGroups}" Margin="0,4,0,0">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="{DynamicResource PrimaryDimBrush}" BorderBrush="{DynamicResource AccentTextBrush}" BorderThickness="1"
+                                Padding="11,6" Margin="0,0,8,8" CornerRadius="4">
+                            <StackPanel Orientation="Horizontal">
+                                <Viewbox Width="13" Height="13" Margin="0,0,7,0">
+                                    <Path Data="{StaticResource IconGroup}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                </Viewbox>
+                                <TextBlock Text="{Binding ChipText}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <Button Margin="9,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0" Padding="0"
+                                        Command="{Binding DataContext.Upload.GroupPicker.RemoveGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <Viewbox Width="11" Height="11">
+                                        <Path Data="{StaticResource IconX}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    </Viewbox>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Sign-in state -->
+            <Border BorderBrush="{DynamicResource WarnLineBrush}" BorderThickness="2,0,0,0" Background="{DynamicResource CardBrush}"
+                    Padding="13,10" Margin="0,14,0,0"
+                    Visibility="{Binding Upload.IsNotSignedIn, Converter={StaticResource BoolToVis}}" CornerRadius="4">
+                <TextBlock FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" Foreground="{DynamicResource WarnBrush}" TextWrapping="Wrap"
+                           Text="Not signed in to Intune. Sign in on the Settings page to search groups."/>
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>

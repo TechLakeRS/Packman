@@ -1,0 +1,29 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.cache
+*.log
+
+## Build output
+[Dd]ebug/
+[Rr]elease/
+[Xx]64/
+[Xx]86/
+*.swp
+*.swo
+
+## Rider
+.idea/
+
+## VS Code
+.vscode/
+
+## OS
+.DS_Store
+Thumbs.db
+
+# Reference material, not part of the build
+*.zip

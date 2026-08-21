@@ -1,0 +1,25 @@
+<Application x:Class="Packman.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:helpers="clr-namespace:Packman.Helpers"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- WPF UI first: it supplies the Fluent control templates and the
+                     theme tokens. Packman's own dictionaries merge after it so the
+                     app palette and the keyed styles keep winning. -->
+                <ui:ThemesDictionary Theme="Dark"/>
+                <ui:ControlsDictionary/>
+                <ResourceDictionary Source="Themes/DarkTheme.xaml"/>
+                <ResourceDictionary Source="Themes/Icons.xaml"/>
+                <ResourceDictionary Source="Themes/Styles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <helpers:HexToBrushConverter x:Key="HexToBrush"/>
+            <helpers:StringMatchConverter x:Key="StringMatch"/>
+            <helpers:CountToStarConverter x:Key="CountToStar"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

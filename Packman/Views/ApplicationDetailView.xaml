@@ -1,0 +1,878 @@
+<UserControl x:Class="Packman.Views.ApplicationDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:Packman.ViewModels"
+             xmlns:local="clr-namespace:Packman"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:ApplicationDetailViewModel}"
+             FontFamily="{StaticResource UIFontFamily}">
+
+    <Grid>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="26,20,26,26">
+
+            <!-- Breadcrumb: Applications / {category} -->
+            <Button Style="{StaticResource Breadcrumb}" Click="Back_Click" Margin="0,0,0,14">
+                <StackPanel Orientation="Horizontal">
+                    <Viewbox Width="14" Height="14" Margin="0,0,5,0">
+                        <Path Data="{StaticResource IconChevL}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    </Viewbox>
+                    <TextBlock Text="Applications" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Detail.Category, StringFormat=' / {0}'}" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Muted2Brush}" FontWeight="SemiBold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Detail.Category}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </Button>
+
+            <!-- Header -->
+            <Grid Margin="0,0,0,20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="58" Height="58" CornerRadius="4" VerticalAlignment="Center"
+                        Background="{Binding Detail.TileColor, Converter={StaticResource HexToBrush}}">
+                    <TextBlock Text="{Binding Detail.Initial}" Foreground="White" FontWeight="Bold" FontSize="26"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Detail.DisplayName}" Style="{StaticResource H1}" FontSize="24" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Detail.DisplayName}"/>
+                    <TextBlock Text="{Binding Detail.SubLine}" FontSize="13" Foreground="{DynamicResource MutedBrush}" Margin="0,5,0,0"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource GhostButton}" Margin="0,0,9,0" Click="Update_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                            <TextBlock Text="Update version" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource GhostButton}" Click="EditScript_Click"
+                            IsEnabled="{Binding HasSource}" ToolTip="Open the PSADT script from the source share">
+                        <StackPanel Orientation="Horizontal">
+                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconCode}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                            <TextBlock Text="Edit script" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- Tabs: Overview / Package / Deployment -->
+            <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Overview"
+                                 IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=overview}"/>
+                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Package"
+                                 IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=package}"/>
+                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Deployment"
+                                 IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=deployment}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Body grid -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="22"/>
+                    <ColumnDefinition Width="300"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Main column -->
+                <StackPanel Grid.Column="0">
+
+                    <!-- ═══════ OVERVIEW: identity → audience → location ═══════ -->
+                    <StackPanel Visibility="{Binding IsOverview, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Application information" Style="{StaticResource H2}" Margin="0,0,0,16"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="28"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <ContentControl Content="{Binding Detail.Publisher}" Tag="Publisher" Style="{StaticResource DlRow}"/>
+                                        <ContentControl Content="{Binding Detail.Version}" Tag="Version" Style="{StaticResource DlRowMono}"/>
+                                        <ContentControl Content="{Binding Detail.Category}" Tag="Category" Style="{StaticResource DlRow}"/>
+                                        <ContentControl Content="{Binding Detail.Owner}" Tag="Owner" Style="{StaticResource DlRow}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <ContentControl Content="Win32 (.intunewin)" Tag="Package type" Style="{StaticResource DlRow}"/>
+                                        <ContentControl Content="{Binding Detail.SizeFormatted}" Tag="File size" Style="{StaticResource DlRow}"/>
+                                        <ContentControl Content="{Binding Detail.InstallContext}" Tag="Install context" Style="{StaticResource DlRow}"/>
+                                        <ContentControl Content="{Binding Detail.LastModifiedFormatted}" Tag="Last modified" Style="{StaticResource DlRow}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="{Binding Detail.Description}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
+                                           TextWrapping="Wrap" Margin="0,12,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Detail.Description}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Assignments at a glance: read-only chips; managed on the Deployment tab -->
+                        <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,12">
+                                    <TextBlock Text="Assignments" Style="{StaticResource H2}" HorizontalAlignment="Left"/>
+                                    <Button Style="{StaticResource Breadcrumb}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                            Click="ManageAssignments_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Manage in Deployment" VerticalAlignment="Center"/>
+                                            <Viewbox Width="13" Height="13" Margin="5,0,0,0">
+                                                <Path Data="{StaticResource IconChevR}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                            </Viewbox>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding Detail.AssignedGroups}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                                    CornerRadius="4" Padding="12,6" Margin="0,0,8,8">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" VerticalAlignment="Center">
+                                                        <Rectangle.Style>
+                                                            <Style TargetType="Rectangle">
+                                                                <Setter Property="Fill" Value="{DynamicResource Muted2Brush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding StatusKind}" Value="ok">
+                                                                        <Setter Property="Fill" Value="{DynamicResource OkBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding StatusKind}" Value="bad">
+                                                                        <Setter Property="Fill" Value="{DynamicResource BadBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Rectangle.Style>
+                                                    </Rectangle>
+                                                    <TextBlock Text="{Binding ChipText}" FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource InkBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="No assignments yet." FontSize="12.5" Foreground="{DynamicResource Muted2Brush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasAssignments}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Source path only; everything actionable lives on the Package tab -->
+                        <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Package source" Style="{StaticResource H2}" Margin="0,0,0,12"/>
+                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
+                                                   FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Height="28" Padding="10,0" Margin="10,0,0,0"
+                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="11.5"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ═══════ PACKAGE: source + integrity ═══════ -->
+                    <StackPanel Visibility="{Binding IsPackage, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Package source" Style="{StaticResource H2}"/>
+                                <TextBlock Text="Network share location" Style="{StaticResource FieldLabel}" Margin="0,14,0,6"/>
+                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
+                                                   FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Height="28" Padding="10,0" Margin="10,0,0,0"
+                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="11.5"/>
+                                    </Grid>
+                                </Border>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Style="{StaticResource GhostButton}" Click="OpenFolder_Click" IsEnabled="{Binding HasSource}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                            <TextBlock Text="Open folder" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+                                        <Viewbox Width="13" Height="13">
+                                            <Viewbox.Style>
+                                                <Style TargetType="Viewbox">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SourceHintOk}" Value="False">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Viewbox.Style>
+                                            <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.4" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        </Viewbox>
+                                        <TextBlock Text="{Binding SourceHintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource OkBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SourceHintOk}" Value="False">
+                                                            <Setter Property="Foreground" Value="{DynamicResource WarnBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Integrity: key files on the share, checked against the Intune record -->
+                        <Border Style="{StaticResource Card}" Margin="0,18,0,0"
+                                Visibility="{Binding HasSource, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Package integrity" Style="{StaticResource H2}"/>
+                                <TextBlock Text="Key files on the share, checked against the Intune record"
+                                           FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,12"/>
+                                <ItemsControl ItemsSource="{Binding SourceChecks}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{DynamicResource Line2Brush}" BorderThickness="0,0,0,1" Padding="0,9">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Width="19" Height="19" CornerRadius="4" VerticalAlignment="Center">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="{DynamicResource WarnBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsOk}" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource OkBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <Viewbox Width="10" Height="10">
+                                                            <Path Stroke="White" StrokeThickness="2.6" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                                                <Path.Style>
+                                                                    <Style TargetType="Path">
+                                                                        <Setter Property="Data" Value="{StaticResource IconX}"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsOk}" Value="True">
+                                                                                <Setter Property="Data" Value="{StaticResource IconCheck}"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Path.Style>
+                                                            </Path>
+                                                        </Viewbox>
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1" Text="{Binding File}" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                               FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="2" Text="{Binding Note}" FontSize="12" Foreground="{DynamicResource MutedBrush}"
+                                                               Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ═══════ DEPLOYMENT: how the app lands on a device ═══════ -->
+                    <StackPanel Visibility="{Binding IsDeployment, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <TextBlock Text="Command lines" Style="{StaticResource H2}" Margin="0,0,0,16"/>
+                                <TextBlock Text="Install command" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
+                                <Border Background="{DynamicResource CodeBgBrush}" CornerRadius="4" Padding="13,9">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Detail.InstallCommand}" Foreground="{DynamicResource CodeTxtBrush}"
+                                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Style="{StaticResource MiniButton}" Content="Copy" Click="CopyInstall_Click"
+                                                Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                                <TextBlock Text="Uninstall command" Style="{StaticResource FieldLabel}" Margin="0,14,0,6"/>
+                                <Border Background="{DynamicResource CodeBgBrush}" CornerRadius="4" Padding="13,9">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Detail.UninstallCommand}" Foreground="{DynamicResource CodeTxtBrush}"
+                                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Style="{StaticResource MiniButton}" Content="Copy" Click="CopyUninstall_Click"
+                                                Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Detection rules: type tag + summary per rule, editable in place -->
+                        <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,4">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <TextBlock Text="Detection rules" Style="{StaticResource H2}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DetectionRulesHint}" FontSize="12" Foreground="{DynamicResource MutedBrush}"
+                                                   Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <ComboBox AutomationProperties.Name="Uninstall command" x:Name="NewRuleType" Width="110" Height="34" SelectedIndex="0">
+                                            <ComboBoxItem Content="MSI"/>
+                                            <ComboBoxItem Content="File"/>
+                                            <ComboBoxItem Content="Registry"/>
+                                        </ComboBox>
+                                        <Button Style="{StaticResource GhostButton}" Margin="8,0,0,0" Click="AddRule_Click">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconPlus}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.3" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                <TextBlock Text="Add rule" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                                <ItemsControl ItemsSource="{Binding DetectionDisplays}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="4" Padding="12,10" Margin="0,10,0,0" Background="{DynamicResource FieldBrush}" BorderThickness="1">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentTextBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel>
+                                                    <!-- Read row -->
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Grid.Column="0" Background="{DynamicResource PrimaryDimBrush}" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding TypeTag}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                        </Border>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Summary}" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                                   Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                                        <Button Grid.Column="2" Click="EditRule_Click" ToolTip="Edit rule">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource RowIconButton}">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding CanEdit}" Value="False">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconPencil}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                        </Button>
+                                                        <Button Grid.Column="3" Click="DeleteRule_Click" ToolTip="Delete rule">
+                                                            <Button.Style>
+                                                                <Style TargetType="Button" BasedOn="{StaticResource RowIconButton}">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Button.Style>
+                                                            <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                        </Button>
+                                                    </Grid>
+
+                                                    <!-- Inline editor -->
+                                                    <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVis}}" Margin="0,12,0,0">
+                                                        <!-- MSI fields -->
+                                                        <StackPanel Visibility="{Binding IsMsi, Converter={StaticResource BoolToVis}}">
+                                                            <TextBlock Text="Product code" Style="{StaticResource FieldLabel}" Margin="0,0,0,5"/>
+                                                            <TextBox AutomationProperties.Name="Product code" Style="{StaticResource TextField}" Height="34" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                                     Text="{Binding EditPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            <CheckBox Content="Check product version" IsChecked="{Binding EditCheckVersion, Mode=TwoWay}"
+                                                                      Foreground="{DynamicResource TextBrush}" FontSize="12.5" Margin="0,10,0,0"/>
+                                                        </StackPanel>
+
+                                                        <!-- File fields -->
+                                                        <StackPanel Visibility="{Binding IsFile, Converter={StaticResource BoolToVis}}">
+                                                            <TextBlock Text="Path" Style="{StaticResource FieldLabel}" Margin="0,0,0,5"/>
+                                                            <TextBox AutomationProperties.Name="Path" Style="{StaticResource TextField}" Height="34" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                                     Text="{Binding EditPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            <TextBlock Text="File or folder" Style="{StaticResource FieldLabel}" Margin="0,10,0,5"/>
+                                                            <TextBox AutomationProperties.Name="File or folder" Style="{StaticResource TextField}" Height="34" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                                     Text="{Binding EditName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+
+                                                        <!-- Registry fields -->
+                                                        <StackPanel Visibility="{Binding IsRegistry, Converter={StaticResource BoolToVis}}">
+                                                            <TextBlock Text="Key path" Style="{StaticResource FieldLabel}" Margin="0,0,0,5"/>
+                                                            <TextBox AutomationProperties.Name="Key path" Style="{StaticResource TextField}" Height="34" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                                     Text="{Binding EditPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                            <TextBlock Text="Value name (empty = key itself)" Style="{StaticResource FieldLabel}" Margin="0,10,0,5"/>
+                                                            <TextBox AutomationProperties.Name="Value name (empty = key itself)" Style="{StaticResource TextField}" Height="34" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                                     Text="{Binding EditName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+
+                                                        <!-- Detection type (file/registry only) -->
+                                                        <StackPanel Visibility="{Binding IsFileOrRegistry, Converter={StaticResource BoolToVis}}">
+                                                            <TextBlock Text="Detection" Style="{StaticResource FieldLabel}" Margin="0,10,0,5"/>
+                                                            <ComboBox AutomationProperties.Name="Detection" Width="200" Height="34" HorizontalAlignment="Left"
+                                                                      ItemsSource="{Binding DetectionTypeChoices}" DisplayMemberPath="Label"
+                                                                      SelectedValuePath="Value" SelectedValue="{Binding EditDetectionType, Mode=TwoWay}"/>
+                                                        </StackPanel>
+
+                                                        <!-- Operator + value -->
+                                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
+                                                                    Visibility="{Binding EditNeedsValue, Converter={StaticResource BoolToVis}}">
+                                                            <ComboBox Width="70" Height="34" ItemsSource="{Binding OperatorChoices}" DisplayMemberPath="Label"
+                                                                      SelectedValuePath="Value" SelectedValue="{Binding EditOperator, Mode=TwoWay}"/>
+                                                            <TextBox Style="{StaticResource TextField}" Height="34" Width="200" Margin="8,0,0,0"
+                                                                     FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
+                                                                     Text="{Binding EditValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                        </StackPanel>
+
+                                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                                                            <Button Style="{StaticResource GhostButton}" Content="Cancel" Click="CancelRule_Click" Margin="0,0,8,0"/>
+                                                            <Button Style="{StaticResource PrimaryButton}" Content="Save rule" Click="SaveRule_Click"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="No detection rules found for this app." FontSize="12.5" Foreground="{DynamicResource Muted2Brush}" Margin="0,10,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasDetectionRules}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="Saving patches the app in Intune; devices re-evaluate detection at their next check-in."
+                                           FontSize="11.5" Foreground="{DynamicResource Muted2Brush}" Margin="0,12,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Requirements: four short facts in one sweep -->
+                        <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Requirements" Style="{StaticResource H2}" Margin="0,0,0,12"/>
+                                <UniformGrid Columns="4">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                        <StackPanel>
+                                            <TextBlock Text="INSTALL CONTEXT" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.InstallContext}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                        <StackPanel>
+                                            <TextBlock Text="RESTART BEHAVIOR" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.RestartBehaviorText}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                        <StackPanel>
+                                            <TextBlock Text="MAX INSTALL TIME" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.MaxRunTimeText}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
+                                        <StackPanel>
+                                            <TextBlock Text="DISK SPACE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.MinDiskSpaceText}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Assignment groups: click a row for members, ✕ removes, add inline -->
+                        <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Assignment groups" Style="{StaticResource H2}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="click a group to manage members" FontSize="12" Foreground="{DynamicResource Muted2Brush}"
+                                               Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <ItemsControl ItemsSource="{Binding Detail.AssignedGroups}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Click="GroupRow_Click" Cursor="Hand" HorizontalContentAlignment="Stretch" ToolTip="View members">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="rb" Background="Transparent" BorderBrush="{DynamicResource Line2Brush}" BorderThickness="0,0,0,1">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="rb" Property="Background" Value="{DynamicResource PrimarySoftBrush}"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                                <Grid Margin="6,11">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Width="36" Height="36" CornerRadius="4" Background="{DynamicResource PrimaryDimBrush}" VerticalAlignment="Center">
+                                                        <Viewbox Width="17" Height="17">
+                                                            <Path Data="{StaticResource IconGroup}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                                        </Viewbox>
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1" Text="{Binding GroupName}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                                                               Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                                    <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource StatusBadgeTemplate}"
+                                                                    VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                                    <Button Grid.Column="3" Style="{StaticResource RowIconButton}" Margin="6,0,0,0"
+                                                            Click="RemoveAssignment_Click" ToolTip="Remove this assignment">
+                                                        <Viewbox Width="12" Height="12"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                    </Button>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="No assignments yet." FontSize="12.5" Foreground="{DynamicResource Muted2Brush}" Margin="0,10,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasAssignments}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- Inline add: search Entra groups, pick intent, add -->
+                                <Border BorderBrush="{DynamicResource Line2Brush}" BorderThickness="0,1,0,0" Margin="0,12,0,0" Padding="0,14,0,0">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" Style="{StaticResource TextField}" Height="38"
+                                                     local:PlaceholderText.Text="Search Entra groups…"
+                                                     Text="{Binding GroupSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <ComboBox Grid.Column="1" Width="120" Height="38" Margin="10,0,0,0"
+                                                      ItemsSource="{Binding IntentChoices}" SelectedItem="{Binding SelectedIntent, Mode=TwoWay}"/>
+                                            <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Content="Add group"
+                                                    Click="AddAssignment_Click" IsEnabled="{Binding CanAddAssignment}"/>
+                                        </Grid>
+                                        <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                                CornerRadius="4" Margin="0,8,0,0" MaxHeight="180"
+                                                Visibility="{Binding HasGroupResults, Converter={StaticResource BoolToVis}}">
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                                <ItemsControl ItemsSource="{Binding GroupResults}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Click="GroupResult_Click" Cursor="Hand" HorizontalContentAlignment="Stretch">
+                                                                <Button.Template>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border x:Name="rb" Background="Transparent">
+                                                                            <ContentPresenter/>
+                                                                        </Border>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="rb" Property="Background" Value="{DynamicResource PrimarySoftBrush}"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Button.Template>
+                                                                <TextBlock Text="{Binding DisplayName}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" Margin="12,8"/>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource DangerBrush}" FontSize="12.5" Margin="2,12,0,0"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <!-- Sidebar: status, publishing, danger zone. Visible on every tab. -->
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Deployment status" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,10"/>
+
+                            <StackPanel Visibility="{Binding HasSummary, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Targeted devices" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="{Binding TargetedDevicesText}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,1,0,12"/>
+                                <Border Height="9" CornerRadius="4" Background="{DynamicResource Line2Brush}" Margin="0,0,0,14" ClipToBounds="True">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border Width="{Binding BarInstalled}" Background="{DynamicResource OkBrush}"/>
+                                        <Border Width="{Binding BarPending}" Background="{DynamicResource WarnBrush}"/>
+                                        <Border Width="{Binding BarFailed}" Background="{DynamicResource BadBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                                <ContentControl Content="{Binding SumInstalled}" Tag="Installed" Style="{StaticResource StatRow}"/>
+                                <ContentControl Content="{Binding SumPending}" Tag="Pending" Style="{StaticResource StatRowWarn}"/>
+                                <ContentControl Content="{Binding SumFailed}" Tag="Failed" Style="{StaticResource StatRowBad}"/>
+                                <ContentControl Content="{Binding SumNotInstalled}" Tag="Not installed" Style="{StaticResource StatRowMut}"/>
+                                <ContentControl Content="{Binding SumNotApplicable}" Tag="Not applicable" Style="{StaticResource StatRowMut}"/>
+                            </StackPanel>
+
+                            <TextBlock Text="No deployment data yet." Foreground="{DynamicResource MutedBrush}" FontSize="12.5">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSummary}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Intune publishing" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,4"/>
+                            <ContentControl Tag="State" Style="{StaticResource DlRow}">
+                                <ContentControl Content="{Binding Detail}" ContentTemplate="{StaticResource StatusBadgeTemplate}"/>
+                            </ContentControl>
+                            <ContentControl Tag="App ID" Style="{StaticResource DlRowMono}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Detail.IdShort}" VerticalAlignment="Center"
+                                               FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" Foreground="{DynamicResource InkBrush}"/>
+                                    <Button Style="{StaticResource RowIconButton}" Width="24" Height="24" Margin="5,0,0,0"
+                                            Click="CopyAppId_Click" ToolTip="Copy full App ID">
+                                        <Viewbox Width="12" Height="12">
+                                            <Path Data="{StaticResource IconFile}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        </Viewbox>
+                                    </Button>
+                                </StackPanel>
+                            </ContentControl>
+                            <ContentControl Content="{Binding Detail.CreatedFormatted}" Tag="Created" Style="{StaticResource DlRow}"/>
+                            <ContentControl Content="{Binding Detail.LastModifiedFormatted}" Tag="Published" Style="{StaticResource DlRow}"/>
+                            <Button Style="{StaticResource PrimaryButton}" Click="ViewInIntune_Click" Margin="0,12,0,0" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal">
+                                    <Viewbox Width="15" Height="15" Margin="0,0,7,0"><Path Data="{StaticResource IconExternal}" Stroke="White" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                    <TextBlock Text="View in Intune" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Danger zone -->
+                    <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Retire application" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
+                            <TextBlock Text="Removes the app and its assignments from Intune. Devices keep their installed copy."
+                                       FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,10"/>
+                            <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
+                                    Foreground="{DynamicResource DangerBrush}" Click="Retire_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <Viewbox Width="15" Height="15" Margin="0,0,8,0"><Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource DangerBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                    <TextBlock Text="Retire from Intune" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+
+    <!-- ═══════ Group members slide-over ═══════
+         A group is a different object with blast radius beyond this app, so it gets
+         its own surface; the app stays visible (dimmed) behind it. -->
+    <Border Background="#66000000" Visibility="{Binding IsFlyoutOpen, Converter={StaticResource BoolToVis}}"
+            MouseLeftButtonDown="FlyoutBackdrop_MouseDown"/>
+    <Border HorizontalAlignment="Right" Width="360" Background="{DynamicResource CardBrush}"
+            BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0"
+            Visibility="{Binding IsFlyoutOpen, Converter={StaticResource BoolToVis}}" CornerRadius="4">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding FlyoutGroup.GroupName}" FontSize="15" FontWeight="Bold"
+                               Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                    <ContentControl Content="{Binding FlyoutGroup}" ContentTemplate="{StaticResource StatusBadgeTemplate}"
+                                    HorizontalAlignment="Left" Margin="0,6,0,0"/>
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource RowIconButton}" Click="FlyoutClose_Click" ToolTip="Close" VerticalAlignment="Top">
+                    <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                </Button>
+            </Grid>
+
+            <!-- Blast-radius warning -->
+            <Border Grid.Row="1" Background="{DynamicResource WarnSoftBrush}" CornerRadius="4" Padding="11,9" Margin="0,0,0,12"
+                    Visibility="{Binding FlyoutHasGroup, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Membership changes affect every app assigned to this group — not just this one."
+                           FontSize="11.5" Foreground="{DynamicResource WarnBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- Add member -->
+            <StackPanel Grid.Row="2" Margin="0,0,0,8" Visibility="{Binding FlyoutHasGroup, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Add member" Style="{StaticResource FieldLabel}" Margin="0,0,0,5"/>
+                <TextBox AutomationProperties.Name="Add member" Style="{StaticResource TextField}" Height="36"
+                         local:PlaceholderText.Text="Search devices or users…"
+                         Text="{Binding MemberSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            </StackPanel>
+
+            <!-- Search results -->
+            <Border Grid.Row="3" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                    CornerRadius="4" Margin="0,0,0,8" MaxHeight="160"
+                    Visibility="{Binding HasMemberResults, Converter={StaticResource BoolToVis}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding MemberSearchResults}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Click="MemberResult_Click" Cursor="Hand" HorizontalContentAlignment="Stretch" ToolTip="Add to group">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="rb" Background="Transparent">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="rb" Property="Background" Value="{DynamicResource PrimarySoftBrush}"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <Grid Margin="12,7">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource Muted2Brush}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Members -->
+            <Border Grid.Row="4" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4"
+                    Visibility="{Binding FlyoutHasGroup, Converter={StaticResource BoolToVis}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Members}" Margin="10,4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{DynamicResource Line2Brush}" BorderThickness="0,0,0,1" Padding="2,7">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="10.5" FontWeight="Bold"
+                                                   Foreground="{DynamicResource Muted2Brush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="2" Style="{StaticResource RowIconButton}" Width="24" Height="24" Margin="4,0,0,0"
+                                                Click="RemoveMember_Click" ToolTip="Remove from group">
+                                            <Viewbox Width="11" Height="11"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Status line -->
+            <TextBlock Grid.Row="5" Text="{Binding MembersStatus}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"
+                       TextWrapping="Wrap" Margin="0,10,0,0"/>
+        </Grid>
+    </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body, #editor { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #0C1322; }
+</style>
+</head>
+<body>
+<div id="editor"></div>
+<script src="vs/loader.js"></script>
+<script>
+  // Hosted by StepEdit via WebView2. One model per open file, so switching tabs
+  // keeps unsaved edits, undo history and scroll position.
+  //
+  // Messages from C#:
+  //   { type: 'init', catalog: [...], background }
+  //   { type: 'open', path, content, language, readOnly, eol, activate }
+  //   { type: 'activate', path } | { type: 'close', path }
+  //   { type: 'markSaved', path } | { type: 'reveal', line }
+  //   { type: 'theme', background } | { type: 'markers', path, markers: [...] }
+  // Messages to C#:
+  //   { type: 'ready' } | { type: 'dirty', path, dirty } | { type: 'save' }
+  //   { type: 'cursor', line, column, selected }
+  //   { type: 'validate', path, content }
+  // C# reads buffers directly through packmanContent(path) / packmanDirty().
+  let editor = null;
+  let catalog = [];
+  let byName = new Map();
+  let activePath = null;
+  const files = new Map(); // path -> { model, savedVersionId, viewState, dirty }
+  const validateTimers = new Map(); // path -> pending debounce timer
+
+  const post = msg => window.chrome.webview.postMessage(msg);
+
+  require.config({ paths: { vs: 'vs' } });
+  require(['vs/editor/editor.main'], function () {
+    editor = monaco.editor.create(document.getElementById('editor'), {
+      value: '',
+      language: 'powershell',
+      theme: 'packman-code',
+      fontSize: 13,
+      fontFamily: "'Cascadia Code', Consolas, 'Courier New', monospace",
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      automaticLayout: true,
+      renderWhitespace: 'none',
+      tabSize: 4
+    });
+    applyTheme('#0C1322');
+
+    const keyS = monaco.KeyCode.KeyS !== undefined ? monaco.KeyCode.KeyS : 49;
+    editor.addCommand(monaco.KeyMod.CtrlCmd | keyS, () => post({ type: 'save' }));
+
+    editor.onDidChangeCursorPosition(reportCursor);
+    editor.onDidChangeCursorSelection(reportCursor);
+
+    registerPsadtProviders();
+    post({ type: 'ready' });
+  });
+
+  function applyTheme(background) {
+    monaco.editor.defineTheme('packman-code', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: { 'editor.background': background }
+    });
+    monaco.editor.setTheme('packman-code');
+    document.body.style.background = background;
+  }
+
+  function reportCursor() {
+    const pos = editor.getPosition();
+    const sel = editor.getSelection();
+    if (!pos) return;
+    const model = editor.getModel();
+    const selected = model && sel ? model.getValueInRange(sel).length : 0;
+    post({ type: 'cursor', line: pos.lineNumber, column: pos.column, selected });
+  }
+
+  function refreshDirty(path) {
+    const f = files.get(path);
+    if (!f) return;
+    const dirty = f.model.getAlternativeVersionId() !== f.savedVersionId;
+    if (dirty !== f.dirty) { f.dirty = dirty; post({ type: 'dirty', path, dirty }); }
+  }
+
+  /// The PowerShell parser runs in C#; the debounce lives here so typing stays cheap.
+  function scheduleValidate(path, delay) {
+    clearTimeout(validateTimers.get(path));
+    validateTimers.set(path, setTimeout(() => {
+      validateTimers.delete(path);
+      const f = files.get(path);
+      if (f && f.model.getLanguageId() === 'powershell')
+        post({ type: 'validate', path, content: f.model.getValue() });
+    }, delay));
+  }
+
+  function openFile(msg) {
+    let f = files.get(msg.path);
+    if (f) {
+      // Reload of a file we already hold: replace the text in place.
+      f.model.setValue(msg.content);
+    } else {
+      const model = monaco.editor.createModel(msg.content, msg.language, monaco.Uri.file(msg.path));
+      f = { model, savedVersionId: 0, viewState: null, dirty: false };
+      files.set(msg.path, f);
+      model.onDidChangeContent(() => { refreshDirty(msg.path); scheduleValidate(msg.path, 500); });
+    }
+    monaco.editor.setModelLanguage(f.model, msg.language || 'plaintext');
+    f.model.setEOL(msg.eol === 'lf'
+      ? monaco.editor.EndOfLineSequence.LF
+      : monaco.editor.EndOfLineSequence.CRLF);
+    f.savedVersionId = f.model.getAlternativeVersionId();
+    f.dirty = false;
+    f.readOnly = !!msg.readOnly;
+    post({ type: 'dirty', path: msg.path, dirty: false });
+    scheduleValidate(msg.path, 0);
+    if (msg.activate !== false) activate(msg.path);
+  }
+
+  function activate(path) {
+    const f = files.get(path);
+    if (!f) return;
+    if (activePath && files.has(activePath) && activePath !== path)
+      files.get(activePath).viewState = editor.saveViewState();
+    activePath = path;
+    editor.setModel(f.model);
+    editor.updateOptions({ readOnly: f.readOnly });
+    if (f.viewState) editor.restoreViewState(f.viewState);
+    editor.focus();
+    reportCursor();
+  }
+
+  // Called from C# via ExecuteScriptAsync.
+  window.packmanContent = path => {
+    const f = files.get(path);
+    return f ? f.model.getValue() : null;
+  };
+  window.packmanDirty = () => [...files.entries()].filter(([, f]) => f.dirty).map(([p]) => p);
+
+  // <PLACEHOLDER> tokens from the catalog become snippet tab-stops.
+  function toSnippet(call) {
+    let i = 0;
+    return call.replace(/<([A-Z_]+)>/g, (_, name) => '${' + (++i) + ':' + name + '}');
+  }
+
+  function signatureLabel(fn) {
+    return fn.name + ' ' + fn.params.map(p => {
+      const part = '-' + p.name + (p.isSwitch ? '' : ' <' + p.type + '>');
+      return p.mandatory ? part : '[' + part + ']';
+    }).join(' ');
+  }
+
+  function docFor(fn) {
+    return { value: '**' + fn.name + '**  \n_' + fn.category + '_\n\n' + fn.synopsis };
+  }
+
+  /// Walks the text before the cursor to see whether we sit in a comment or string,
+  /// where completions would only get in the way.
+  function inCommentOrString(model, position) {
+    const before = model.getValueInRange({
+      startLineNumber: 1, startColumn: 1,
+      endLineNumber: position.lineNumber, endColumn: position.column
+    });
+    const openBlock = before.lastIndexOf('<#');
+    if (openBlock >= 0 && before.lastIndexOf('#>') < openBlock) return true;
+
+    const line = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+    let quote = null;
+    for (const ch of line) {
+      if (quote) { if (ch === quote) quote = null; }
+      else if (ch === "'" || ch === '"') quote = ch;
+      else if (ch === '#') return true;
+    }
+    return quote !== null;
+  }
+
+  /// The catalog function whose call the cursor sits in, plus the text typed after it.
+  /// Takes the LAST match on the line so piped and nested calls resolve correctly.
+  function callAt(model, position) {
+    const line = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
+    const re = /([A-Za-z][A-Za-z0-9]*-[A-Za-z0-9]+)/g;
+    let m, fn = null, end = -1;
+    while ((m = re.exec(line)) !== null) {
+      const hit = byName.get(m[1].toLowerCase());
+      if (hit) { fn = hit; end = m.index + m[0].length; }
+    }
+    return fn ? { fn, tail: line.slice(end) } : null;
+  }
+
+  /// Index of the parameter currently being typed, for signature help highlighting.
+  function activeParameter(fn, tail) {
+    const typed = [...tail.matchAll(/-([A-Za-z0-9]+)/g)];
+    if (typed.length === 0) return 0;
+    const last = typed[typed.length - 1][1].toLowerCase();
+    const i = fn.params.findIndex(p => p.name.toLowerCase() === last);
+    return i >= 0 ? i : 0;
+  }
+
+  function registerPsadtProviders() {
+    // ADT functions and their parameters come from the catalog; Monaco's own
+    // word-based suggestions still contribute identifiers from the open file.
+    monaco.languages.registerCompletionItemProvider('powershell', {
+      triggerCharacters: ['-'],
+      provideCompletionItems(model, position) {
+        if (inCommentOrString(model, position)) return { suggestions: [] };
+
+        const word = model.getWordUntilPosition(position);
+        const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
+        const line = model.getLineContent(position.lineNumber);
+        const typingParameter = word.startColumn > 1 && line[word.startColumn - 2] === '-';
+
+        if (typingParameter) {
+          const call = callAt(model, position);
+          if (!call) return { suggestions: [] };
+          const used = new Set([...call.tail.matchAll(/-([A-Za-z0-9]+)/g)]
+            .slice(0, -1).map(m => m[1].toLowerCase()));
+          return {
+            suggestions: call.fn.params
+              .filter(p => !used.has(p.name.toLowerCase()))
+              .map(p => ({
+                label: '-' + p.name,
+                kind: monaco.languages.CompletionItemKind.Property,
+                detail: (p.mandatory ? 'required ' : '') + (p.isSwitch ? 'switch' : p.type),
+                documentation: p.description,
+                insertText: p.name,
+                sortText: (p.mandatory ? '0' : '1') + p.name,
+                range
+              }))
+          };
+        }
+
+        return {
+          suggestions: catalog.map(fn => ({
+            label: fn.name,
+            kind: monaco.languages.CompletionItemKind.Function,
+            documentation: docFor(fn),
+            detail: fn.category,
+            insertText: toSnippet(fn.snippet),
+            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range
+          }))
+        };
+      }
+    });
+
+    monaco.languages.registerHoverProvider('powershell', {
+      provideHover(model, position) {
+        const word = model.getWordAtPosition(position);
+        if (!word) return null;
+        const fn = byName.get(word.word.toLowerCase());
+        if (!fn) return null;
+        return { contents: [docFor(fn), { value: '`' + signatureLabel(fn) + '`' }] };
+      }
+    });
+
+    monaco.languages.registerSignatureHelpProvider('powershell', {
+      signatureHelpTriggerCharacters: [' ', '-'],
+      provideSignatureHelp(model, position) {
+        const call = callAt(model, position);
+        if (!call) return null;
+        return {
+          value: {
+            signatures: [{
+              label: signatureLabel(call.fn),
+              documentation: call.fn.synopsis,
+              parameters: call.fn.params.map(p => ({ label: '-' + p.name, documentation: p.description }))
+            }],
+            activeSignature: 0,
+            activeParameter: activeParameter(call.fn, call.tail)
+          },
+          dispose() {}
+        };
+      }
+    });
+  }
+
+  window.chrome.webview.addEventListener('message', e => {
+    const msg = e.data;
+    if (!editor) return;
+    switch (msg.type) {
+      case 'init':
+        catalog = msg.catalog || [];
+        byName = new Map(catalog.map(f => [f.name.toLowerCase(), f]));
+        if (msg.background) applyTheme(msg.background);
+        break;
+      case 'theme':
+        applyTheme(msg.background);
+        break;
+      case 'markers': {
+        const f = files.get(msg.path);
+        if (!f) break;
+        monaco.editor.setModelMarkers(f.model, 'psadt', (msg.markers || []).map(m => ({
+          severity: monaco.MarkerSeverity.Error,
+          message: m.message,
+          startLineNumber: m.line,
+          startColumn: m.column,
+          endLineNumber: m.endLine,
+          endColumn: m.endColumn
+        })));
+        break;
+      }
+      case 'open':
+        openFile(msg);
+        break;
+      case 'activate':
+        activate(msg.path);
+        break;
+      case 'close': {
+        const f = files.get(msg.path);
+        clearTimeout(validateTimers.get(msg.path));
+        validateTimers.delete(msg.path);
+        if (f) { f.model.dispose(); files.delete(msg.path); }
+        if (activePath === msg.path) activePath = null;
+        break;
+      }
+      case 'markSaved': {
+        const f = files.get(msg.path);
+        if (f) {
+          f.savedVersionId = f.model.getAlternativeVersionId();
+          f.dirty = false;
+          post({ type: 'dirty', path: msg.path, dirty: false });
+        }
+        break;
+      }
+      case 'reveal':
+        editor.revealLineInCenter(msg.line);
+        editor.setPosition({ lineNumber: msg.line, column: 1 });
+        editor.focus();
+        break;
+    }
+  });
+</script>
+</body>
+</html>
