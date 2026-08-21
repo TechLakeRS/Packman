@@ -57,10 +57,12 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource GhostButton}" Margin="0,0,9,0" Click="Update_Click">
+                    <Button Style="{StaticResource GhostButton}" Margin="0,0,9,0" Click="Update_Click"
+                            IsEnabled="{Binding CanUpdatePackage}"
+                            ToolTip="Rebuild the .intunewin from the source share and publish it as new content for this app. All other settings stay as they are.">
                         <StackPanel Orientation="Horizontal">
                             <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
-                            <TextBlock Text="Update version" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Update package" Margin="7,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource GhostButton}" Click="EditScript_Click"
@@ -752,6 +754,25 @@
             </Grid>
         </StackPanel>
     </ScrollViewer>
+
+    <!-- ═══════ Package update overlay ═══════
+         The rebuild + upload runs for minutes and must not race edits made on the
+         page behind it, so it blocks the whole surface until it finishes. -->
+    <Border Background="#88000000" Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}}">
+        <Border Style="{StaticResource Card}" Width="420" Padding="24" VerticalAlignment="Center"
+                HorizontalAlignment="Center" Background="{DynamicResource CardBrush}">
+            <StackPanel>
+                <TextBlock Text="Updating package content" Style="{StaticResource H2}"/>
+                <TextBlock Text="{Binding Detail.DisplayName}" FontSize="12" Margin="0,4,0,0"
+                           Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                <ProgressBar Value="{Binding UpdatePercent, Mode=OneWay}" Maximum="100" Margin="0,18,0,0"/>
+                <TextBlock Text="{Binding UpdateStatus}" FontFamily="{StaticResource MonoFontFamily}" FontSize="11"
+                           Foreground="{DynamicResource Muted2Brush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                <Button Style="{StaticResource GhostButton}" Content="CANCEL" HorizontalAlignment="Right"
+                        Margin="0,18,0,0" Click="CancelUpdate_Click"/>
+            </StackPanel>
+        </Border>
+    </Border>
 
     <!-- ═══════ Group members slide-over ═══════
          A group is a different object with blast radius beyond this app, so it gets

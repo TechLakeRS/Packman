@@ -24,7 +24,9 @@ public partial class MainWindow : FluentWindow
             ShowOnly(ApplicationsPage, "Applications");
             ErrorReporter.FireAndForget(() => ApplicationsPage.ViewModel.LoadAsync(force: true));
         };
-        AppDetailPage.UpdateRequested += _ => CreatePackageNavBtn.IsChecked = true;
+        // The detail page stays open on the refreshed app; the list behind it is now stale.
+        AppDetailPage.Updated += () =>
+            ErrorReporter.FireAndForget(() => ApplicationsPage.ViewModel.LoadAsync(force: true));
 
         AdvancedPage.ConnectRequested += () => SettingsNavBtn.IsChecked = true;
     }
