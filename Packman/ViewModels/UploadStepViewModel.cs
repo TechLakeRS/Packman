@@ -41,6 +41,7 @@ public class UploadStepViewModel : ObservableObject
     private string _minCpuSpeedMHz = "";
     private string _newReturnCodeInput = "";
     private string _defaultsAppliedFor = "";
+    private string _groupsSeededFor = "";
 
     /// <summary>In-flight group seeding. Awaited before publishing.</summary>
     private Task? _seeding;
@@ -360,8 +361,12 @@ public class UploadStepViewModel : ObservableObject
             ApplyIntuneDefaults();
             SelectedDeployMode = DeployModeDefault;
             _defaultsAppliedFor = _create.CurrentPackagePath;
-            _seeding = GroupPicker.SeedFromSettingsAsync(_settingsService.Settings.GroupAssignment);
         }
+
+        // Seeding needs a sign-in; when the user arrives signed out and signs in later,
+        // the defaults are still owed to this package.
+        if (_groupsSeededFor != _create.CurrentPackagePath && (isNewPackage || _auth.IsSignedIn))
+            _seeding = SeedGroupsAsync(_create.CurrentPackagePath);
 
         var appInfo = _create.BuildApplicationInfo();
         if (isNewPackage)
@@ -388,6 +393,12 @@ public class UploadStepViewModel : ObservableObject
         ReviewSize = FormatSize(GetSourceSizeBytes(_create.CurrentPackagePath));
         OnPropertyChanged(nameof(InstallCommandPreview));
         OnPropertyChanged(nameof(UninstallCommandPreview));
+    }
+
+    private async Task SeedGroupsAsync(string packagePath)
+    {
+        if (await GroupPicker.SeedFromSettingsAsync(_settingsService.Settings.GroupAssignment))
+            _groupsSeededFor = packagePath;
     }
 
     /// <summary>Refreshes the Review step without touching the edited fields.</summary>
@@ -483,12 +494,7 @@ public class UploadStepViewModel : ObservableObject
 
     private static long GetSourceSizeBytes(string packagePath)
     {
-        try
-        {
-            var filesFolder = Path.Combine(packagePath, "Application", "Files");
-            if (!Directory.Exists(filesFolder)) return 0;
-            return Directory.GetFiles(filesFolder, "*", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length);
-        }
+        try { return DirectoryCopy.TotalSize(Path.Combine(packagePath, "Application", "Files")); }
         catch { return 0; }
     }
 
@@ -659,22 +665,43 @@ public class UploadStepViewModel : ObservableObject
     /// </summary>
     private void SeedDetectionFromPackage(ApplicationInfo appInfo)
     {
-        var productCode = FindMsiProductCode();
+        // Everything from the previous package goes; otherwise an EXE that follows an MSI
+        // would be published with the MSI's product code.
+        _detectionPath = "";
+        _detectionName = "";
+        _detectionValue = "";
+        _registryKeyPath = "";
+        _registryValueName = "";
+        _selectedRegistryHive = RegistryHiveNames.LocalMachine;
+        _detectionProductCode = "";
 
+        var productCode = FindMsiProductCode();
         if (!string.IsNullOrEmpty(productCode))
         {
             _detectionProductCode = productCode;
-            SelectedDetectionMethod = DetectionMethod.MsiProductCode;
-            OnPropertyChanged(nameof(DetectionProductCode));
-            return;
+            _selectedDetectionMethod = DetectionMethod.MsiProductCode;
+        }
+        else
+        {
+            _detectionValue = appInfo.Version;
+            _selectedDetectionMethod = string.IsNullOrWhiteSpace(appInfo.Version)
+                ? DetectionMethod.FileExists
+                : DetectionMethod.FileVersion;
         }
 
-        _detectionPath = "";
-        _detectionName = "";
-        _detectionValue = appInfo.Version;
+        OnPropertyChanged(nameof(SelectedDetectionMethod));
+        OnPropertyChanged(nameof(IsFileDetection));
+        OnPropertyChanged(nameof(IsFileVersionDetection));
+        OnPropertyChanged(nameof(IsRegistryDetection));
+        OnPropertyChanged(nameof(IsMsiDetection));
+        OnPropertyChanged(nameof(HasNoMsiProductCode));
         OnPropertyChanged(nameof(DetectionPath));
         OnPropertyChanged(nameof(DetectionName));
         OnPropertyChanged(nameof(DetectionValue));
+        OnPropertyChanged(nameof(RegistryKeyPath));
+        OnPropertyChanged(nameof(RegistryValueName));
+        OnPropertyChanged(nameof(SelectedRegistryHive));
+        OnPropertyChanged(nameof(DetectionProductCode));
     }
 
     private static string DescribeDetection(List<DetectionRule> rules)

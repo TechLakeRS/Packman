@@ -15,9 +15,11 @@ public class IntuneAuthService
     [
         "User.Read",
         "DeviceManagementApps.ReadWrite.All",
-        "Group.Read.All",
-        // Advanced screen: PC lookup and group membership.
+        // Group search plus "create a group per package" (POST /groups needs ReadWrite).
+        "Group.ReadWrite.All",
+        // Advanced screen: PC lookup, user lookup and group membership.
         "Device.Read.All",
+        "User.ReadBasic.All",
         "GroupMember.ReadWrite.All",
     ];
 
@@ -141,7 +143,21 @@ public class IntuneAuthService
         if (_pca == null || _account == null)
             throw new InvalidOperationException("Not signed in. Sign in on the Settings page before uploading.");
 
-        var result = await _pca.AcquireTokenSilent(InteractiveScopes, _account).ExecuteAsync();
-        return result.AccessToken;
+        try
+        {
+            var result = await _pca.AcquireTokenSilent(InteractiveScopes, _account).ExecuteAsync();
+            return result.AccessToken;
+        }
+        catch (MsalUiRequiredException ex)
+        {
+            // Refresh token revoked, password changed, or a Conditional Access policy kicked
+            // in. The session is over; say so instead of surfacing a raw MSAL error while the
+            // footer still reads "Connected".
+            _account = null;
+            SignedInUser = null;
+            StateChanged?.Invoke();
+            throw new InvalidOperationException(
+                "The Intune sign-in has expired. Sign in again on the Settings page.", ex);
+        }
     }
 }

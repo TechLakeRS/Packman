@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Media;
 using Microsoft.Win32;
 using Packman.Models;
@@ -22,6 +22,12 @@ public static class ThemeService
     private const string Dark = "pack://application:,,,/Themes/DarkTheme.xaml";
     private const string Light = "pack://application:,,,/Themes/LightTheme.xaml";
 
+    /// <summary>True while the dark palette is loaded. Read by hosts that theme non-WPF surfaces.</summary>
+    public static bool IsDark { get; private set; } = true;
+
+    /// <summary>Raised after the palette swapped, so surfaces outside WPF (Monaco) can follow.</summary>
+    public static event Action? Changed;
+
     public static void Apply(AppTheme theme)
     {
         var light = theme switch
@@ -31,6 +37,8 @@ public static class ThemeService
             _ => SystemPrefersLight(),
         };
         var wanted = light ? Light : Dark;
+        var wasDark = IsDark;
+        IsDark = !light;
 
         // WPF UI first: applying its theme resets the accent, so amber goes back after.
         var uiTheme = light ? ApplicationTheme.Light : ApplicationTheme.Dark;
@@ -52,8 +60,10 @@ public static class ThemeService
             if (source.EndsWith(wantedFile, StringComparison.OrdinalIgnoreCase)) return;
 
             merged[i] = new ResourceDictionary { Source = new Uri(wanted, UriKind.Absolute) };
-            return;
+            break;
         }
+
+        if (wasDark != IsDark) Changed?.Invoke();
     }
 
     /// <summary>Windows stores the app-theme preference as a DWORD; unreadable means dark.</summary>

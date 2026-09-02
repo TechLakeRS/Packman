@@ -9,3 +9,5 @@ public class PackageValidationResult
     public string Version { get; set; } = "";
 }
 
+/// <summary>Where the package landed, plus anything the packager should look at by hand.</summary>
+public sealed record PackageCreationResult(string PackagePath, IReadOnlyList<string> Warnings);

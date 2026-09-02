@@ -27,8 +27,10 @@ public static class PackageSourceLocator
                     return versionFolder;
             }
 
+            // Numeric order, so 1.10 beats 1.9; anything unparsable sorts last, by name.
             return Directory.GetDirectories(appFolder)
-                .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(d => System.Version.TryParse(Path.GetFileName(d), out var v) ? v : new Version(0, 0))
+                .ThenByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
                 .FirstOrDefault();
         }
         catch

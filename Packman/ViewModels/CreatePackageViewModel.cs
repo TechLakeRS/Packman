@@ -48,8 +48,13 @@ public class CreatePackageViewModel : ObservableObject
     public bool UserInstall
     {
         get => _userInstall;
-        set => Set(ref _userInstall, value);
+        set { if (Set(ref _userInstall, value)) OnPropertyChanged(nameof(InstallContextHelp)); }
     }
+
+    /// <summary>One line under the SYSTEM / USER toggle.</summary>
+    public string InstallContextHelp => _userInstall
+        ? "Installs only for the current user, without requiring elevation."
+        : "Installs for all users with elevated privileges (most common for managed apps).";
 
     /// <summary>Written to the script's AppArch field.</summary>
     public string Architecture
@@ -199,13 +204,16 @@ public class CreatePackageViewModel : ObservableObject
             var appInfo = BuildApplicationInfo();
 
             var generator = new PSADTGenerator(outputPath, templatePath);
-            var packagePath = await generator.CreatePackageAsync(appInfo, overwriteExisting);
+            var result = await generator.CreatePackageAsync(appInfo, overwriteExisting);
+            var packagePath = result.PackagePath;
 
-            if (!string.IsNullOrEmpty(packagePath) && !string.IsNullOrEmpty(ExtractedIconPath))
+            if (!string.IsNullOrEmpty(ExtractedIconPath))
                 IconExtractor.CopyIconToPackage(ExtractedIconPath, packagePath, appInfo.Name);
 
             CurrentPackagePath = packagePath;
-            StatusText = $"Package created · {DateTime.Now:HH:mm:ss}";
+            StatusText = result.Warnings.Count == 0
+                ? $"Package created · {DateTime.Now:HH:mm:ss}"
+                : $"Package created · {DateTime.Now:HH:mm:ss} · check the script: {string.Join(" ", result.Warnings)}";
             Debug.WriteLine($"Package created: {packagePath}");
             return packagePath;
         }

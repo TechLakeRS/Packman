@@ -31,6 +31,7 @@ public partial class StepEdit : UserControl
 
     private bool _editorReady;
     private bool _editorFailed;
+    private Task? _editorInit;          // one initialisation, shared by Loaded and IsVisibleChanged
     private OpenFile? _active;
     private string? _pendingOpenPath;   // file waiting for the editor to become ready
     private string? _loadedPackagePath; // package the tree currently shows
@@ -44,6 +45,8 @@ public partial class StepEdit : UserControl
         FileTabs.ItemsSource = _openFiles;
         _watchTimer.Tick += (_, _) => { _watchTimer.Stop(); ErrorReporter.FireAndForget(OnPackageChangedOnDiskAsync); };
         _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); ErrorReporter.FireAndForget(() => RunSearchAsync(SearchBox.Text)); };
+        // The editor lives for the whole window, so the subscription needs no unhook.
+        ThemeService.Changed += ApplyEditorTheme;
     }
 
     private MainViewModel? VM => DataContext as MainViewModel;
@@ -74,7 +77,11 @@ public partial class StepEdit : UserControl
 
     // ═══════════ WebView2 / Monaco host ═══════════
 
-    private async Task InitializeEditorAsync()
+    // Loaded and IsVisibleChanged both call this; a second EnsureCoreWebView2Async with a
+    // fresh environment while the first is still running throws, so the task is shared.
+    private Task InitializeEditorAsync() => _editorInit ??= InitializeEditorCoreAsync();
+
+    private async Task InitializeEditorCoreAsync()
     {
         if (_editorReady || _editorFailed || EditorWebView.CoreWebView2 != null) return;
 
@@ -95,17 +102,54 @@ public partial class StepEdit : UserControl
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.AreDevToolsEnabled = false;
             core.WebMessageReceived += Editor_WebMessageReceived;
+            core.ProcessFailed += Editor_ProcessFailed;
+            core.NavigationCompleted += Editor_NavigationCompleted;
             ApplyEditorTheme();
             core.Navigate("https://packman-editor/index.html");
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"WebView2 init failed: {ex.Message}");
-            _editorFailed = true;
-            EditorWebView.Visibility = Visibility.Collapsed;
-            EditorFallbackText.Visibility = Visibility.Visible;
+            ShowEditorFallback();
         }
     }
+
+    private void ShowEditorFallback()
+    {
+        _editorFailed = true;
+        _editorReady = false;
+        EditorWebView.Visibility = Visibility.Collapsed;
+        EditorFallbackText.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>A failed load of index.html never sends "ready"; fall back instead of waiting forever.</summary>
+    private void Editor_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        if (e.IsSuccess) return;
+        Debug.WriteLine($"Monaco failed to load: {e.WebErrorStatus}");
+        ShowEditorFallback();
+    }
+
+    /// <summary>
+    /// The renderer died: Monaco's buffers are gone. Reload and reopen the files from disk
+    /// (unsaved edits in the crashed renderer cannot be recovered).
+    /// </summary>
+    private void Editor_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+    {
+        Debug.WriteLine($"WebView2 process failed: {e.ProcessFailedKind}");
+        if (e.ProcessFailedKind is CoreWebView2ProcessFailedKind.BrowserProcessExited) { ShowEditorFallback(); return; }
+
+        _editorReady = false;
+        var reopen = _openFiles.Select(f => f.Path).ToList();
+        var active = _active?.Path;
+        _openFiles.Clear();
+        _active = null;
+        _pendingOpenPath = active ?? reopen.FirstOrDefault();
+        _reopenAfterReload = reopen;
+        EditorWebView.CoreWebView2?.Reload();
+    }
+
+    private List<string>? _reopenAfterReload;
 
     private void Editor_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
@@ -118,7 +162,13 @@ public partial class StepEdit : UserControl
         {
             case "ready":
                 _editorReady = true;
-                PostToEditor(new { type = "init", catalog = BuildCatalogPayload(), background = CodeBackgroundHex() });
+                PostToEditor(new { type = "init", catalog = BuildCatalogPayload(), background = CodeBackgroundHex(), dark = ThemeService.IsDark });
+                if (_reopenAfterReload != null)
+                {
+                    var files = _reopenAfterReload;
+                    _reopenAfterReload = null;
+                    foreach (var path in files.Where(File.Exists)) OpenFileInEditor(path);
+                }
                 if (_pendingOpenPath != null)
                 {
                     var path = _pendingOpenPath;
@@ -172,18 +222,22 @@ public partial class StepEdit : UserControl
         return json is null or "null" ? null : JsonSerializer.Deserialize<string>(json);
     }
 
+    private Color CodeBackground()
+        => (TryFindResource("CodeBgBrush") as SolidColorBrush)?.Color
+           ?? (ThemeService.IsDark ? Color.FromRgb(0x07, 0x08, 0x0B) : Color.FromRgb(0xF9, 0xF9, 0xF9));
+
     private string CodeBackgroundHex()
     {
-        var color = (TryFindResource("CodeBgBrush") as SolidColorBrush)?.Color ?? Color.FromRgb(0x07, 0x08, 0x0B);
+        var color = CodeBackground();
         return $"#{color.R:X2}{color.G:X2}{color.B:X2}";
     }
 
-    /// <summary>Keeps Monaco's canvas on the card colour.</summary>
+    /// <summary>Keeps Monaco's canvas and syntax colours on the current palette.</summary>
     private void ApplyEditorTheme()
     {
-        var color = (TryFindResource("CodeBgBrush") as SolidColorBrush)?.Color ?? Color.FromRgb(0x07, 0x08, 0x0B);
+        var color = CodeBackground();
         EditorWebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(color.R, color.G, color.B);
-        if (_editorReady) PostToEditor(new { type = "theme", background = CodeBackgroundHex() });
+        if (_editorReady) PostToEditor(new { type = "theme", background = CodeBackgroundHex(), dark = ThemeService.IsDark });
     }
 
     /// <summary>
@@ -545,7 +599,7 @@ public partial class StepEdit : UserControl
             : $"{errors} problems";
         // Clearing hands the colour back to the DynamicResource on a theme change.
         if (errors > 0)
-            StatusProblems.Foreground = new SolidColorBrush(Color.FromRgb(0xF4, 0x7A, 0x7A));
+            StatusProblems.SetResourceReference(ForegroundProperty, "BadBrush");
         else
             StatusProblems.ClearValue(TextBlock.ForegroundProperty);
     }

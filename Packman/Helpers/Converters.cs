@@ -49,3 +49,23 @@ public sealed class CountToStarConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => Binding.DoNothing;
 }
+
+/// <summary>true ⇄ false, for a second RadioButton bound to the same flag.</summary>
+public sealed class InverseBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is not true;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is not true;
+}
+
+/// <summary>Visible when false, collapsed when true.</summary>
+public sealed class InverseBoolToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is true ? Visibility.Collapsed : Visibility.Visible;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is Visibility.Collapsed;
+}

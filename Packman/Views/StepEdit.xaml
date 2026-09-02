@@ -50,7 +50,7 @@
             </Border>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsActive}" Value="True">
-                    <Setter TargetName="TabBorder" Property="Background" Value="#1FFFFFFF"/>
+                    <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -163,7 +163,7 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <!-- Tab strip + file actions -->
-                        <Border Grid.Row="0" BorderBrush="#1AFFFFFF" BorderThickness="0,0,0,1" Padding="8,6">
+                        <Border Grid.Row="0" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="8,6">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -198,7 +198,7 @@
 
                         <!-- Monaco editor. -->
                         <Grid Grid.Row="1" MinHeight="300">
-                            <wv2:WebView2 x:Name="EditorWebView" DefaultBackgroundColor="#0C1322" Margin="1,0,1,0"/>
+                            <wv2:WebView2 x:Name="EditorWebView" Margin="1,0,1,0"/>
                             <TextBlock x:Name="EditorFallbackText" Visibility="Collapsed" Margin="16,14" TextWrapping="Wrap"
                                        FontFamily="{StaticResource MonoFontFamily}" FontSize="12.5" Foreground="{DynamicResource CodeBarTxtBrush}">
                                 <Run Text="The in-app editor needs the Microsoft Edge WebView2 Runtime, which was not found on this machine."/>
@@ -212,7 +212,7 @@
 
                         <!-- Status bar. The bottom padding also keeps the WebView2 HWND clear of
                              the border's rounded corners, which it cannot be clipped to. -->
-                        <Border Grid.Row="2" BorderBrush="#1AFFFFFF" BorderThickness="0,1,0,0" Padding="14,5,14,7">
+                        <Border Grid.Row="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,5,14,7">
                             <Grid>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock x:Name="StatusPosition" Text="Ln 1, Col 1" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
@@ -223,8 +223,8 @@
                                     <TextBlock x:Name="StatusEol" Text="CRLF" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
                                     <TextBlock x:Name="StatusEncoding" Text="UTF-8" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
                                     <TextBlock x:Name="StatusLanguage" Text="PowerShell" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <Border Background="#2E3B67F5" BorderBrush="#733B67F5" BorderThickness="1" CornerRadius="4" Padding="7,1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="PSADT INTELLISENSE" FontSize="10" FontWeight="Bold" Foreground="#8FA9F9"/>
+                                    <Border Background="{DynamicResource PrimaryDimBrush}" BorderBrush="{DynamicResource PrimaryLineBrush}" BorderThickness="1" CornerRadius="4" Padding="7,1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="PSADT INTELLISENSE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
                                     </Border>
                                 </StackPanel>
                             </Grid>

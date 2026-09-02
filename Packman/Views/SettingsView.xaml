@@ -219,7 +219,7 @@
                                                 Visibility="{Binding IsNotSignedIn, Converter={StaticResource BoolToVis}}">
                                             <StackPanel Orientation="Horizontal">
                                                 <Viewbox Width="14" Height="14" Margin="0,0,7,0">
-                                                    <Path Data="{StaticResource IconChevR}" Stroke="White" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                                    <Path Data="{StaticResource IconChevR}" Stroke="{DynamicResource PrimaryFgBrush}" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                                                 </Viewbox>
                                                 <TextBlock Text="Sign in" VerticalAlignment="Center"/>
                                             </StackPanel>

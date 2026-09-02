@@ -295,8 +295,10 @@ public sealed class AdvancedViewModel : ObservableObject
 
     private async Task LoadDeviceGroupsAsync()
     {
+        // No "already loading" guard: the ReferenceEquals check below drops the stale result,
+        // and a guard here would drop the newer selection instead.
         var device = _selectedDevice;
-        if (device == null || IsDeviceLoading) return;
+        if (device == null) return;
 
         IsDeviceLoading = true;
         DeviceGroups.Clear();
@@ -317,7 +319,7 @@ public sealed class AdvancedViewModel : ObservableObject
         }
         finally
         {
-            IsDeviceLoading = false;
+            if (ReferenceEquals(_selectedDevice, device)) IsDeviceLoading = false;
             OnPropertyChanged(nameof(HasDeviceGroups));
         }
     }
@@ -368,7 +370,7 @@ public sealed class AdvancedViewModel : ObservableObject
     private async Task LoadGroupAppsAsync()
     {
         var group = _selectedAppGroup;
-        if (group == null || IsAppScanLoading) return;
+        if (group == null) return;
 
         IsAppScanLoading = true;
         GroupApps.Clear();
@@ -390,7 +392,7 @@ public sealed class AdvancedViewModel : ObservableObject
         }
         finally
         {
-            IsAppScanLoading = false;
+            if (ReferenceEquals(_selectedAppGroup, group)) IsAppScanLoading = false;
             OnPropertyChanged(nameof(HasGroupApps));
         }
     }
