@@ -36,10 +36,6 @@
   --pm-caption-color:  var(--pm-dim-2);                /* Caption.Foreground */
   --pm-caption-size:   11px;                           /* Caption.FontSize */
 
-  --pm-mono-value-family: var(--pm-font-mono);            /* MonoValue.FontFamily */
-  --pm-mono-value-color:  var(--pm-text);                 /* MonoValue.Foreground */
-  --pm-mono-value-size:   12px;                           /* MonoValue.FontSize */
-
   --pm-field-label-family: var(--pm-font-ui);              /* FieldLabel.FontFamily */
   --pm-field-label-color:  var(--pm-muted);                /* FieldLabel.Foreground */
   --pm-field-label-size:   11.5px;                         /* FieldLabel.FontSize */

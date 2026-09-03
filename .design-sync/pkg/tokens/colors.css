@@ -15,7 +15,6 @@
   --pm-bg:             #1B1B1B;                    /* BgColor */
   --pm-shell:          #202020;                    /* ShellColor */
   --pm-surface:        rgb(32 32 32 / 0.851);      /* SurfaceColor */
-  --pm-pane:           transparent;                /* PaneColor */
   --pm-flyout:         #2C2C2C;                    /* FlyoutColor */
   --pm-card:           rgb(255 255 255 / 0.059);   /* CardColor */
   --pm-card-2:         rgb(255 255 255 / 0.039);   /* Card2Color */
@@ -56,15 +55,12 @@
   --pm-primary-soft:   rgb(224 160 80 / 0.086);    /* PrimarySoftColor */
   --pm-primary-dim:    rgb(224 160 80 / 0.157);    /* PrimaryDimColor */
   --pm-primary-line:   rgb(224 160 80 / 0.4);      /* PrimaryLineColor */
-  --pm-primary-glow:   rgb(224 160 80 / 0.459);    /* PrimaryGlowColor */
   --pm-accent-text:    #E0A050;                    /* AccentTextColor */
   --pm-code-bg:        #1B1B1B;                    /* CodeBgColor */
   --pm-code-txt:       rgb(255 255 255 / 0.941);   /* CodeTxtColor */
   --pm-code-bar-txt:   rgb(255 255 255 / 0.784);   /* CodeBarTxtColor */
   --pm-code-comment:   rgb(255 255 255 / 0.545);   /* CodeCommentColor */
-  --pm-code-keyword:   #E0A050;                    /* CodeKeywordColor */
-  --pm-code-string:    #6CCB5F;                    /* CodeStringColor */
-  --pm-logo-gradient:  var(--pm-primary);          /* LogoGradientBrush */
+
 }
 
 /* Light - LightTheme.xaml */
@@ -73,7 +69,6 @@
   --pm-bg:             #F9F9F9;                    /* BgColor */
   --pm-shell:          #F3F3F3;                    /* ShellColor */
   --pm-surface:        rgb(249 249 249 / 0.851);   /* SurfaceColor */
-  --pm-pane:           transparent;                /* PaneColor */
   --pm-flyout:         #F9F9F9;                    /* FlyoutColor */
   --pm-card:           rgb(255 255 255 / 0.702);   /* CardColor */
   --pm-card-2:         rgb(255 255 255 / 0.502);   /* Card2Color */
@@ -114,13 +109,10 @@
   --pm-primary-soft:   rgb(192 124 46 / 0.122);    /* PrimarySoftColor */
   --pm-primary-dim:    rgb(192 124 46 / 0.2);      /* PrimaryDimColor */
   --pm-primary-line:   rgb(192 124 46 / 0.502);    /* PrimaryLineColor */
-  --pm-primary-glow:   rgb(192 124 46 / 0.4);      /* PrimaryGlowColor */
   --pm-accent-text:    #8F5608;                    /* AccentTextColor */
   --pm-code-bg:        #F9F9F9;                    /* CodeBgColor */
   --pm-code-txt:       rgb(0 0 0 / 0.871);         /* CodeTxtColor */
   --pm-code-bar-txt:   rgb(0 0 0 / 0.651);         /* CodeBarTxtColor */
   --pm-code-comment:   rgb(0 0 0 / 0.541);         /* CodeCommentColor */
-  --pm-code-keyword:   #8F5608;                    /* CodeKeywordColor */
-  --pm-code-string:    #0F7B0F;                    /* CodeStringColor */
-  --pm-logo-gradient:  var(--pm-primary);          /* LogoGradientBrush */
+
 }
