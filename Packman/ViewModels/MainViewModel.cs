@@ -3,7 +3,6 @@ using Packman.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Windows;
 
 namespace Packman.ViewModels;
 
@@ -22,6 +21,19 @@ public sealed class MainViewModel : ObservableObject
     public UpgradePackageViewModel Upgrade { get; } = new();
     public UploadStepViewModel Upload { get; }
     public RemoteTestViewModel RemoteTest { get; }
+
+    /// <summary>State of the in-app script editor (tabs, dirty files, search).</summary>
+    public EditorSessionViewModel Editor { get; }
+
+    private readonly IDialogService _dialogs = AppServices.Dialogs;
+
+    private string _screenTitle = "Create Package";
+    /// <summary>The page shown in the header and the window title.</summary>
+    public string ScreenTitle { get => _screenTitle; set => Set(ref _screenTitle, value); }
+
+    /// <summary>Footer stamps: the runtime the app is running on and its own version.</summary>
+    public string RuntimeStamp => System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+    public string AppVersion => "v" + (typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.0.0");
 
     private const int GenerateStep = 0;
     private const int UploadStep = 1;
@@ -42,6 +54,9 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand CloseToolCommand { get; }
     public RelayCommand ContinueToUploadCommand { get; }
     public RelayCommand OpenPackageFolderCommand { get; }
+
+    /// <summary>Clears the wizard so a second package can be built without restarting.</summary>
+    public RelayCommand NewPackageCommand { get; }
 
     private int _currentStepIndex;
     public int CurrentStepIndex
@@ -136,8 +151,6 @@ public sealed class MainViewModel : ObservableObject
                 return IsUpgradeMode ? "UPGRADE PACKAGE" : "GENERATE PACKAGE";
             }
             if (CurrentStepIndex == UploadStep) return "CONTINUE TO REVIEW";
-            if (Upload.IsFailed) return "RETRY UPLOAD";
-            if (Upload.IsSucceeded) return "DONE";
             return "BUILD & UPLOAD";
         }
     }
@@ -145,10 +158,10 @@ public sealed class MainViewModel : ObservableObject
     public bool IsLastStep => CurrentStepIndex == Steps.Count - 1;
 
     /// <summary>The ↵ hint hides while an upload is in flight.</summary>
-    public bool ShowPrimaryKeyHint => !Upload.IsRunning;
+    public bool ShowPrimaryKeyHint => !Upload.Publish.IsRunning;
 
     /// <summary>Swaps the primary action for a status line while an upload runs.</summary>
-    public bool IsUploadRunning => Upload.IsRunning;
+    public bool IsUploadRunning => Upload.Publish.IsRunning;
 
     public string StepPosition => $"step {CurrentStepIndex + 1} of {Steps.Count}";
 
@@ -161,7 +174,9 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel()
     {
         Upload = new UploadStepViewModel(CreatePackage, _settingsService, _auth);
-        RemoteTest = new RemoteTestViewModel(_settingsService, CreatePackage, Upload);
+        RemoteTest = new RemoteTestViewModel(_settingsService, CreatePackage, hasPublishStep: true);
+        Editor = new EditorSessionViewModel(CreatePackage, _dialogs);
+        RemoteTest.ApplyDetectionRequested += Upload.ApplyDiscoveredRule;
 
         Steps = new ObservableCollection<StepViewModel>
         {
@@ -171,13 +186,14 @@ public sealed class MainViewModel : ObservableObject
         };
 
         BackCommand     = new RelayCommand(() => CurrentStepIndex--, () => CurrentStepIndex > 0);
-        PrimaryCommand  = new AsyncRelayCommand(OnPrimaryAsync, () => !CreatePackage.IsGenerating && !Upgrade.IsBusy && !Upload.IsPublishing);
+        PrimaryCommand  = new AsyncRelayCommand(OnPrimaryAsync, () => !CreatePackage.IsGenerating && !Upgrade.IsBusy && !Upload.Publish.IsPublishing);
         GoToStepCommand = new RelayCommand<int>(i => CurrentStepIndex = i);
 
         OpenEditToolCommand      = new RelayCommand(() => ActiveTool = PackageTool.EditScript, () => HasPackage);
         OpenTestToolCommand      = new RelayCommand(() => ActiveTool = PackageTool.RemoteTest, () => HasPackage);
         CloseToolCommand         = new RelayCommand(() => ActiveTool = PackageTool.None);
         OpenPackageFolderCommand = new RelayCommand(OpenPackageFolder, () => HasPackage);
+        NewPackageCommand        = new RelayCommand(StartNewPackage, () => HasPackage && !Upload.Publish.IsRunning);
 
         ContinueToUploadCommand = new RelayCommand(() =>
         {
@@ -205,19 +221,15 @@ public sealed class MainViewModel : ObservableObject
             if (e.PropertyName == nameof(UpgradePackageViewModel.IsBusy))
                 PrimaryCommand.RaiseCanExecuteChanged();
         };
-        Upload.PropertyChanged += (_, e) =>
+        Upload.Publish.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(UploadStepViewModel.IsPublishing))
-                PrimaryCommand.RaiseCanExecuteChanged();
-
-            // The publish button's label comes from the upload state.
-            if (e.PropertyName is nameof(UploadStepViewModel.IsPublishing)
-                              or nameof(UploadStepViewModel.IsRunning)
-                              or nameof(UploadStepViewModel.IsComplete))
+            if (e.PropertyName is nameof(PublishRunViewModel.IsPublishing)
+                              or nameof(PublishRunViewModel.IsRunning)
+                              or nameof(PublishRunViewModel.IsComplete))
             {
-                OnPropertyChanged(nameof(PrimaryLabel));
-                OnPropertyChanged(nameof(ShowPrimaryKeyHint));
-                OnPropertyChanged(nameof(IsUploadRunning));
+                PrimaryCommand.RaiseCanExecuteChanged();
+                NewPackageCommand.RaiseCanExecuteChanged();
+                RaiseAll(nameof(ShowPrimaryKeyHint), nameof(IsUploadRunning));
             }
         };
     }
@@ -231,6 +243,16 @@ public sealed class MainViewModel : ObservableObject
         OpenEditToolCommand.RaiseCanExecuteChanged();
         OpenTestToolCommand.RaiseCanExecuteChanged();
         OpenPackageFolderCommand.RaiseCanExecuteChanged();
+        NewPackageCommand.RaiseCanExecuteChanged();
+    }
+
+    private void StartNewPackage()
+    {
+        ActiveTool = PackageTool.None;
+        CreatePackage.Reset();
+        Upgrade.Reset();
+        CurrentStepIndex = GenerateStep;
+        RaisePackageDependents();
     }
 
     private async Task OnPrimaryAsync()
@@ -267,10 +289,8 @@ public sealed class MainViewModel : ObservableObject
         var overwrite = false;
         if (existing != null)
         {
-            var answer = MessageBox.Show(
-                $"A package for this version already exists:\n\n{existing}\n\nReplace it?",
-                "Package already exists", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (answer != MessageBoxResult.Yes) return;
+            if (!_dialogs.Confirm($"A package for this version already exists:\n\n{existing}\n\nReplace it?", "Package already exists"))
+                return;
             overwrite = true;
         }
 
@@ -278,7 +298,7 @@ public sealed class MainViewModel : ObservableObject
         if (!string.IsNullOrEmpty(packagePath))
             RaisePackageDependents();
         else if (!string.IsNullOrEmpty(CreatePackage.StatusText))
-            MessageBox.Show(CreatePackage.StatusText, "Package Generation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _dialogs.Warn(CreatePackage.StatusText, "Package Generation");
     }
 
     private async Task RunUpgradeAsync()
@@ -287,7 +307,7 @@ public sealed class MainViewModel : ObservableObject
         if (string.IsNullOrEmpty(newPackagePath))
         {
             if (!string.IsNullOrEmpty(Upgrade.StatusText))
-                MessageBox.Show(Upgrade.StatusText, "Package Upgrade", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogs.Warn(Upgrade.StatusText, "Package Upgrade");
             return;
         }
 

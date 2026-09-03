@@ -1,4 +1,4 @@
-﻿using Microsoft.Identity.Client;
+using Microsoft.Identity.Client;
 using Packman.Helpers;
 using Packman.Models;
 using Packman.Services;
@@ -187,14 +187,29 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     // ── Network Paths ──────────────────────────────────────────────────
+    private static readonly string[] PathDependents = [nameof(IsConfigured), nameof(ShowFirstRunBanner)];
+
     private string _intuneApplicationsPath = "";
-    public string IntuneApplicationsPath { get => _intuneApplicationsPath; set => Set(ref _intuneApplicationsPath, value); }
+    public string IntuneApplicationsPath { get => _intuneApplicationsPath; set => Set(ref _intuneApplicationsPath, value, PathDependents); }
 
     private string _psadtTemplatePath = "";
-    public string PSADTTemplatePath { get => _psadtTemplatePath; set => Set(ref _psadtTemplatePath, value); }
+    public string PSADTTemplatePath { get => _psadtTemplatePath; set => Set(ref _psadtTemplatePath, value, PathDependents); }
 
     private string _intuneWinAppUtilPath = "";
-    public string IntuneWinAppUtilPath { get => _intuneWinAppUtilPath; set => Set(ref _intuneWinAppUtilPath, value); }
+    public string IntuneWinAppUtilPath { get => _intuneWinAppUtilPath; set => Set(ref _intuneWinAppUtilPath, value, PathDependents); }
+
+    /// <summary>Where the settings file lives; shown under the page title.</summary>
+    public string SettingsPath => _svc.SettingsPath;
+
+    /// <summary>The three paths every flow needs are filled in.</summary>
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(_intuneApplicationsPath) &&
+        !string.IsNullOrWhiteSpace(_psadtTemplatePath) &&
+        !string.IsNullOrWhiteSpace(_intuneWinAppUtilPath);
+
+    private bool _firstRunDismissed;
+    public bool ShowFirstRunBanner => !_firstRunDismissed && !IsConfigured;
+    public RelayCommand DismissFirstRunCommand { get; }
 
     // ── Group Assignment ───────────────────────────────────────────────
     private bool _createGroupPerPackage;
@@ -320,6 +335,7 @@ public sealed class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(SettingsService svc, IntuneAuthService auth)
     {
+        DismissFirstRunCommand = new RelayCommand(() => { _firstRunDismissed = true; OnPropertyChanged(nameof(ShowFirstRunBanner)); });
         _svc = svc;
         _auth = auth;
         SaveCommand = new RelayCommand(Save);
@@ -514,11 +530,15 @@ public sealed class SettingsViewModel : ObservableObject
     private static string Fallback(string text, string fallback) =>
         string.IsNullOrWhiteSpace(text) ? fallback : text.Trim();
 
-    private static int? ParseOptional(string text) =>
-        int.TryParse(text, out var value) && value > 0 ? value : null;
-
     private void Save()
     {
+        var invalidCode = ReturnCodes.FirstOrDefault(r => r.ToInfo() == null);
+        if (invalidCode != null)
+        {
+            SaveStatus = $"Return code '{invalidCode.Code}' is not a number. Nothing was saved.";
+            return;
+        }
+
         var s = _svc.Settings;
         s.AuthMode = IsInteractive ? AuthMode.Interactive : AuthMode.AppRegistration;
         s.Authentication.TenantId = TenantId;
@@ -548,12 +568,8 @@ public sealed class SettingsViewModel : ObservableObject
             })
             .ToList();
 
-        var req = s.IntuneDefaults.Requirements;
-        req.MinimumOperatingSystem = DefaultOperatingSystem;
-        req.MinimumFreeDiskSpaceMB = ParseOptional(DefaultMinFreeDiskSpaceMB);
-        req.MinimumMemoryMB = ParseOptional(DefaultMinMemoryMB);
-        req.MinimumNumberOfProcessors = ParseOptional(DefaultMinProcessors);
-        req.MinimumCpuSpeedMHz = ParseOptional(DefaultMinCpuSpeedMHz);
+        s.IntuneDefaults.Requirements = RequirementInfo.Parse(
+            DefaultOperatingSystem, DefaultMinFreeDiskSpaceMB, DefaultMinMemoryMB, DefaultMinProcessors, DefaultMinCpuSpeedMHz);
         s.IntuneDefaults.ReturnCodes = ReturnCodes.Select(r => r.ToInfo()).OfType<ReturnCodeInfo>().ToList();
 
         s.IntuneDefaults.InstallCommand = Fallback(DefaultInstallCommand, AppSettings.IntuneDefaultsConfig.DefaultInstallCommand);

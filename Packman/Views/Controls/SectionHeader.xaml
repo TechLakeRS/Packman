@@ -1,0 +1,23 @@
+<UserControl x:Class="Packman.Views.Controls.SectionHeader"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root">
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Left" Text="{Binding Title, ElementName=Root}" Style="{StaticResource SectionLabel}"/>
+        <TextBlock DockPanel.Dock="Right" Text="{Binding Caption, ElementName=Root}" Style="{StaticResource Caption}">
+            <TextBlock.Resources>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Caption, ElementName=Root}" Value="">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Caption, ElementName=Root}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Resources>
+        </TextBlock>
+        <Border Style="{StaticResource Rule}"/>
+    </DockPanel>
+</UserControl>

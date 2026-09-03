@@ -14,11 +14,11 @@
   // keeps unsaved edits, undo history and scroll position.
   //
   // Messages from C#:
-  //   { type: 'init', catalog: [...], background }
+  //   { type: 'init', catalog: [...], background, dark }
   //   { type: 'open', path, content, language, readOnly, eol, activate }
   //   { type: 'activate', path } | { type: 'close', path }
   //   { type: 'markSaved', path } | { type: 'reveal', line }
-  //   { type: 'theme', background } | { type: 'markers', path, markers: [...] }
+  //   { type: 'theme', background, dark } | { type: 'markers', path, markers: [...] }
   // Messages to C#:
   //   { type: 'ready' } | { type: 'dirty', path, dirty } | { type: 'save' }
   //   { type: 'cursor', line, column, selected }
@@ -59,9 +59,9 @@
     post({ type: 'ready' });
   });
 
-  function applyTheme(background) {
+  function applyTheme(background, dark) {
     monaco.editor.defineTheme('packman-code', {
-      base: 'vs-dark',
+      base: dark === false ? 'vs' : 'vs-dark',
       inherit: true,
       rules: [],
       colors: { 'editor.background': background }
@@ -284,10 +284,10 @@
       case 'init':
         catalog = msg.catalog || [];
         byName = new Map(catalog.map(f => [f.name.toLowerCase(), f]));
-        if (msg.background) applyTheme(msg.background);
+        if (msg.background) applyTheme(msg.background, msg.dark);
         break;
       case 'theme':
-        applyTheme(msg.background);
+        applyTheme(msg.background, msg.dark);
         break;
       case 'markers': {
         const f = files.get(msg.path);

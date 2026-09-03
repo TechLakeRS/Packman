@@ -4,50 +4,36 @@ using System.Text;
 
 namespace Packman.Services;
 
-public enum LogOperationType
-{
-    Upload,
-    Update
-}
-
 /// <summary>
-/// Per-package upload log, written to
-/// %LocalAppData%\Packman\Logs\{Upload|Update}\{App}-{date}.log.
+/// Per-package upload log, written to %LocalAppData%\Packman\Logs\Upload\{App}-{date}.log.
+/// Tokens and SAS URIs never go through here.
 /// </summary>
-public class UploadLogger : IDisposable
+public sealed class UploadLogger : IDisposable
 {
-    private readonly string _logFilePath;
-    private readonly object _lockObject = new();
-    private StreamWriter? _logWriter;
+    private readonly object _lock = new();
+    private StreamWriter? _writer;
     private bool _disposed;
-    private readonly LogOperationType _operationType;
 
-    public UploadLogger(string applicationName) : this(applicationName, LogOperationType.Upload) { }
+    public string LogFilePath { get; }
 
-    public UploadLogger(string applicationName, LogOperationType operationType)
+    public UploadLogger(string applicationName)
     {
-        _operationType = operationType;
-
         var logDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Packman", "Logs", operationType.ToString());
-
-        if (!Directory.Exists(logDirectory))
-            Directory.CreateDirectory(logDirectory);
+            "Packman", "Logs", "Upload");
+        Directory.CreateDirectory(logDirectory);
 
         var safeAppName = string.Join("_", applicationName.Split(Path.GetInvalidFileNameChars()));
-        var fileName = $"{safeAppName}-{DateTime.Now:yyyy-MM-dd}.log";
-        _logFilePath = Path.Combine(logDirectory, fileName);
+        LogFilePath = Path.Combine(logDirectory, $"{safeAppName}-{DateTime.Now:yyyy-MM-dd}.log");
 
-        InitializeLogFile();
-    }
-
-    private void InitializeLogFile()
-    {
         try
         {
-            _logWriter = new StreamWriter(_logFilePath, append: true, Encoding.UTF8) { AutoFlush = true };
-            LogSessionStart();
+            _writer = new StreamWriter(LogFilePath, append: true, Encoding.UTF8) { AutoFlush = true };
+            var separator = new string('=', 80);
+            Write(separator);
+            Write($"Upload Session Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            Write(separator);
+            Write("");
         }
         catch (Exception ex)
         {
@@ -55,50 +41,40 @@ public class UploadLogger : IDisposable
         }
     }
 
-    private void LogSessionStart()
-    {
-        var separator = new string('=', 80);
-        WriteToLog(separator);
-        WriteToLog($"{_operationType} Session Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        WriteToLog(separator);
-        WriteToLog("");
-    }
-
-    public void Info(string message) => WriteToLog($"[INFO ] {DateTime.Now:HH:mm:ss} - {message}");
-    public void Success(string message) => WriteToLog($"[ OK  ] {DateTime.Now:HH:mm:ss} - {message}");
-    public void Warning(string message) => WriteToLog($"[WARN ] {DateTime.Now:HH:mm:ss} - {message}");
-    public void Error(string message) => WriteToLog($"[ERROR] {DateTime.Now:HH:mm:ss} - {message}");
+    public void Info(string message) => Write($"[INFO ] {DateTime.Now:HH:mm:ss} - {message}");
+    public void Success(string message) => Write($"[ OK  ] {DateTime.Now:HH:mm:ss} - {message}");
+    public void Warning(string message) => Write($"[WARN ] {DateTime.Now:HH:mm:ss} - {message}");
+    public void Error(string message) => Write($"[ERROR] {DateTime.Now:HH:mm:ss} - {message}");
 
     public void Error(string message, Exception ex)
     {
-        WriteToLog($"[ERROR] {DateTime.Now:HH:mm:ss} - {message}");
-        WriteToLog($"        Exception: {ex.GetType().Name}");
-        WriteToLog($"        Message: {ex.Message}");
+        Write($"[ERROR] {DateTime.Now:HH:mm:ss} - {message}");
+        Write($"        Exception: {ex.GetType().Name}");
+        Write($"        Message: {ex.Message}");
         if (ex.InnerException != null)
-            WriteToLog($"        Inner Exception: {ex.InnerException.Message}");
-        WriteToLog("        Stack Trace:");
-        WriteToLog($"        {ex.StackTrace?.Replace(Environment.NewLine, Environment.NewLine + "        ")}");
+            Write($"        Inner Exception: {ex.InnerException.Message}");
+        Write("        Stack Trace:");
+        Write($"        {ex.StackTrace?.Replace(Environment.NewLine, Environment.NewLine + "        ")}");
     }
 
-    public void Progress(int percentage, string message) => WriteToLog($"[{percentage,3}%] {DateTime.Now:HH:mm:ss} - {message}");
-    public void LogMetadata(string key, string value) => WriteToLog($"  {key}: {value}");
+    public void Progress(int percentage, string message) => Write($"[{percentage,3}%] {DateTime.Now:HH:mm:ss} - {message}");
+    public void LogMetadata(string key, string value) => Write($"  {key}: {value}");
 
     public void Section(string sectionName)
     {
-        WriteToLog("");
-        WriteToLog($"--- {sectionName} ---");
+        Write("");
+        Write($"--- {sectionName} ---");
     }
 
-    private void WriteToLog(string message)
+    private void Write(string message)
     {
-        if (_disposed || _logWriter == null)
-            return;
+        if (_disposed || _writer == null) return;
 
-        lock (_lockObject)
+        lock (_lock)
         {
             try
             {
-                _logWriter.WriteLine(message);
+                _writer.WriteLine(message);
                 Debug.WriteLine(message);
             }
             catch (Exception ex)
@@ -108,33 +84,22 @@ public class UploadLogger : IDisposable
         }
     }
 
-    private void LogSessionEnd()
-    {
-        WriteToLog("");
-        WriteToLog($"{_operationType} Session Ended: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        WriteToLog(new string('=', 80));
-        WriteToLog("");
-    }
-
     public void Dispose()
     {
-        if (_disposed)
-            return;
+        if (_disposed) return;
 
-        lock (_lockObject)
+        lock (_lock)
         {
-            if (_logWriter != null)
+            if (_writer != null)
             {
-                LogSessionEnd();
-                _logWriter.Flush();
-                _logWriter.Dispose();
-                _logWriter = null;
+                Write("");
+                Write($"Upload Session Ended: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                Write(new string('=', 80));
+                Write("");
+                _writer.Dispose();
+                _writer = null;
             }
             _disposed = true;
         }
-
-        GC.SuppressFinalize(this);
     }
-
-    public string LogFilePath => _logFilePath;
 }

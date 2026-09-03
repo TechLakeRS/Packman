@@ -100,15 +100,16 @@ public sealed class GroupPickerViewModel : ObservableObject
     /// Replaces the selection with the groups from Settings, resolving each name to an id.
     /// Unresolved names stay in the list without one so they are visible; the upload skips them.
     /// </summary>
-    public async Task SeedFromSettingsAsync(AppSettings.GroupAssignmentConfig config)
+    public async Task<bool> SeedFromSettingsAsync(AppSettings.GroupAssignmentConfig config)
     {
+        var seq = ++_seedSeq;
         SelectedGroups.Clear();
-        if (config.ExistingGroups.Count == 0) return;
+        if (config.ExistingGroups.Count == 0) return true;
 
         if (!_auth.IsSignedIn)
         {
             GroupSearchHint = "Sign in to load the default groups from Settings.";
-            return;
+            return false;
         }
 
         var unresolved = new List<string>();
@@ -126,6 +127,9 @@ public sealed class GroupPickerViewModel : ObservableObject
             }
             catch { /* leave unresolved */ }
 
+            // A newer seed started while this one was awaiting; it owns the list now.
+            if (seq != _seedSeq) return false;
+
             if (string.IsNullOrEmpty(id)) unresolved.Add(name);
 
             SelectedGroups.Add(new AssignedGroup
@@ -139,7 +143,11 @@ public sealed class GroupPickerViewModel : ObservableObject
         GroupSearchHint = unresolved.Count == 0
             ? ""
             : $"Not found in Entra, will be skipped: {string.Join(", ", unresolved)}";
+        return true;
     }
+
+    /// <summary>Bumped per seed so an older, slower seed cannot append to a newer list.</summary>
+    private int _seedSeq;
 
     /// <summary>The groups that can actually be assigned.</summary>
     public List<AssignedGroup> AssignableGroups =>

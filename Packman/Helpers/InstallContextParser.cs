@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.IO;
-using System.Text.RegularExpressions;
 
 namespace Packman.Helpers;
 
@@ -10,18 +8,13 @@ public static class InstallContextParser
     /// <summary>"User" or "System"; defaults to "System".</summary>
     public static string ExtractFromPackage(string packagePath)
     {
-        var scriptPath = Path.Combine(packagePath, "Application", PsadtLayout.ScriptName);
-        if (!File.Exists(scriptPath))
+        var scriptPath = PsadtScript.Find(packagePath);
+        if (scriptPath == null)
             return "System";
 
         try
         {
-            var match = Regex.Match(File.ReadAllText(scriptPath), @"^\s*RequireAdmin\s*=\s*\$(\w+)",
-                RegexOptions.Multiline | RegexOptions.IgnoreCase);
-
-            return match.Success && match.Groups[1].Value.Equals("false", StringComparison.OrdinalIgnoreCase)
-                ? "User"
-                : "System";
+            return PsadtScript.Load(scriptPath).InstallContext;
         }
         catch (Exception ex)
         {

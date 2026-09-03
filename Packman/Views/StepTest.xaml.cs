@@ -1,7 +1,6 @@
-using Packman.Services;
+using Packman.Helpers;
 using Packman.ViewModels;
 using System.Collections.Specialized;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -33,13 +32,7 @@ public partial class StepTest : UserControl
     /// <summary>Picks a package built earlier, for Remote Test opened from the rail.</summary>
     private void BrowsePackage_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select the PSADT package folder to test" };
-
-        var intuneApps = AppServices.Settings.Settings.NetworkPaths.IntuneApplications;
-        if (!string.IsNullOrEmpty(intuneApps) && Directory.Exists(intuneApps))
-            dialog.InitialDirectory = intuneApps;
-
-        if (dialog.ShowDialog() == true)
-            (DataContext as RemoteTestViewModel)?.SelectPackage(dialog.FolderName);
+        var folder = PackageFolderDialog.Show("Select the PSADT package folder to test");
+        if (folder != null) (DataContext as RemoteTestViewModel)?.SelectPackage(folder);
     }
 }

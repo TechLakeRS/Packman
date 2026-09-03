@@ -63,12 +63,12 @@ public static class MetadataExtractor
 
         try
         {
-            var scriptContent = File.ReadAllText(scriptPath);
-            metadata["Vendor"] = ExtractHashtableValue(scriptContent, "AppVendor") ?? "";
-            metadata["AppName"] = ExtractHashtableValue(scriptContent, "AppName") ?? "";
-            metadata["Version"] = ExtractHashtableValue(scriptContent, "AppVersion") ?? "";
-            metadata["ScriptDate"] = ExtractHashtableValue(scriptContent, "AppScriptDate") ?? "";
-            metadata["ScriptAuthor"] = ExtractHashtableValue(scriptContent, "AppScriptAuthor") ?? "";
+            var script = PsadtScript.Load(scriptPath);
+            metadata["Vendor"] = script.Vendor;
+            metadata["AppName"] = script.AppName;
+            metadata["Version"] = script.AppVersion;
+            metadata["ScriptDate"] = script.ScriptDate;
+            metadata["ScriptAuthor"] = script.ScriptAuthor;
         }
         catch (Exception ex)
         {
@@ -76,12 +76,5 @@ public static class MetadataExtractor
         }
 
         return metadata;
-    }
-
-    private static string? ExtractHashtableValue(string scriptContent, string keyName)
-    {
-        var match = Regex.Match(scriptContent, $@"^\s*{keyName}\s*=\s*['""]([^'""]*)['""]",
-            RegexOptions.Multiline | RegexOptions.IgnoreCase);
-        return match.Success ? match.Groups[1].Value : null;
     }
 }

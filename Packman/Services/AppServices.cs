@@ -9,4 +9,5 @@ public static class AppServices
     public static SettingsService Settings { get; } = new();
     public static IntuneAuthService Auth { get; } = new();
     public static IntuneService Apps { get; } = new(() => Auth.GetAccessTokenAsync());
+    public static IDialogService Dialogs { get; set; } = new MessageBoxDialogService();
 }
