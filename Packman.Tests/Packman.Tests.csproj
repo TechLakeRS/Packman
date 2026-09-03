@@ -6,10 +6,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- The tests only touch the pure helpers (script editing, paths, Graph payloads),
-         so they run wherever the SDK does; the WPF framework reference is not pulled in. -->
-    <DisableTransitiveFrameworkReferences>true</DisableTransitiveFrameworkReferences>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- The tests only touch the pure helpers (script editing, paths, Graph payloads).
+         On Windows the project carries its own WindowsDesktop framework reference: NuGet
+         only prunes the framework-provided packages (System.CodeDom, System.DirectoryServices,
+         ...) it can see on the project itself, and the vendored packages/ folder does not
+         carry them. Off Windows there is no WindowsDesktop runtime, so the reference is
+         dropped and those few packages come from nuget.org instead (developer runs only). -->
+    <UseWindowsDesktopFramework Condition="'$(UseWindowsDesktopFramework)' == ''">$([MSBuild]::IsOSPlatform('Windows'))</UseWindowsDesktopFramework>
+    <DisableTransitiveFrameworkReferences Condition="'$(UseWindowsDesktopFramework)' != 'true'">true</DisableTransitiveFrameworkReferences>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +22,10 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseWindowsDesktopFramework)' == 'true'">
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
   </ItemGroup>
 
   <ItemGroup>
