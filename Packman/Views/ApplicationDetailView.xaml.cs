@@ -20,8 +20,8 @@ public partial class ApplicationDetailView : UserControl
     /// <summary>Raised after a retire; the host returns to the list and refreshes.</summary>
     public event Action? Deleted;
 
-    /// <summary>Raised by "Update version"; the host switches to the Create/Upgrade flow.</summary>
-    public event Action<IntuneApplication>? UpdateRequested;
+    /// <summary>Raised after the package content was republished, so the list can refresh.</summary>
+    public event Action? Updated;
 
     public ApplicationDetailView()
     {
@@ -40,10 +40,37 @@ public partial class ApplicationDetailView : UserControl
 
     private void ViewInIntune_Click(object sender, RoutedEventArgs e) => _vm?.OpenInIntune();
 
+    /// <summary>
+    /// Rebuilds the .intunewin from the source share and publishes it as new content for
+    /// the same Intune app. Everything else about the app is left alone.
+    /// </summary>
     private void Update_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm != null) UpdateRequested?.Invoke(_vm.Detail);
+        if (_vm == null) return;
+
+        if (!_vm.CanUpdatePackage)
+        {
+            MessageBox.Show(
+                "No package folder was found on the share for this app, so there is nothing to rebuild.\n\nCheck the Intune Applications path on the Settings page.",
+                "Package not found", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show(
+            $"Rebuild the package for \"{_vm.Detail.DisplayName}\" and upload it as a new content version?\n\n" +
+            $"Source: {_vm.SourcePath}\n\n" +
+            "The .intunewin is regenerated from the source folder and becomes the content devices download. " +
+            "Name, description, install commands, detection rules, requirements, return codes and assignments are not changed.",
+            "Update package", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (result != MessageBoxResult.Yes) return;
+
+        ErrorReporter.FireAndForget(async () =>
+        {
+            if (await _vm.UpdatePackageContentAsync()) Updated?.Invoke();
+        });
     }
+
+    private void CancelUpdate_Click(object sender, RoutedEventArgs e) => _vm?.CancelUpdate();
 
     private void ManageAssignments_Click(object sender, RoutedEventArgs e)
     {

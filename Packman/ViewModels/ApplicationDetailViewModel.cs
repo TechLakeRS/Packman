@@ -88,6 +88,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             OnPropertyChanged(nameof(SourcePathDisplay));
             OnPropertyChanged(nameof(SourceHintText));
             OnPropertyChanged(nameof(SourceHintOk));
+            OnPropertyChanged(nameof(CanUpdatePackage));
         }
     }
     public bool HasSource => !string.IsNullOrEmpty(_sourcePath);
@@ -150,6 +151,124 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         {
             StatusText = $"Could not retire app: {ex.Message}";
             return false;
+        }
+    }
+
+    // ── Package content update (regenerate .intunewin, keep the app's metadata) ──
+
+    /// <summary>The share folder has to be resolved before the package can be rebuilt.</summary>
+    public bool CanUpdatePackage => HasSource && !IsUpdating;
+
+    private CancellationTokenSource? _updateCts;
+
+    private bool _isUpdating;
+    public bool IsUpdating
+    {
+        get => _isUpdating;
+        private set
+        {
+            if (!Set(ref _isUpdating, value)) return;
+            OnPropertyChanged(nameof(CanUpdatePackage));
+        }
+    }
+
+    private string _updateStatus = "";
+    public string UpdateStatus { get => _updateStatus; private set => Set(ref _updateStatus, value); }
+
+    private int _updatePercent;
+    public int UpdatePercent { get => _updatePercent; private set => Set(ref _updatePercent, value); }
+
+    public void CancelUpdate() => _updateCts?.Cancel();
+
+    /// <summary>
+    /// Rebuilds the .intunewin from the package on the share and publishes it as a new
+    /// content version of this app. Display name, description, install commands, detection
+    /// rules, requirements, return codes, icon and assignments keep their tenant values —
+    /// only the payload devices download changes.
+    /// </summary>
+    public async Task<bool> UpdatePackageContentAsync()
+    {
+        if (IsUpdating) return false;
+
+        var packagePath = SourcePath;
+        if (string.IsNullOrEmpty(packagePath))
+        {
+            StatusText = "No package folder on the share — check the Intune Applications path in Settings.";
+            return false;
+        }
+
+        var settings = AppServices.Settings.Settings;
+        NativeCodeSigner? signer = null;
+        if (settings.CodeSigning.Enabled)
+            signer = new NativeCodeSigner(settings.CodeSigning.CertificateThumbprint, settings.CodeSigning.TimestampServer);
+
+        StatusText = "";
+        UpdateStatus = "Starting…";
+        UpdatePercent = 0;
+        IsUpdating = true;
+
+        _updateCts?.Dispose();
+        _updateCts = new CancellationTokenSource();
+        var token = _updateCts.Token;
+
+        try
+        {
+            using var uploadService = new IntuneUploadService(
+                AppServices.Auth.GetAccessTokenAsync, signer, settings.NetworkPaths.IntuneWinAppUtil);
+
+            var progress = new DetailProgress(this);
+            var appId = Detail.Id;
+            var appName = Detail.DisplayName;
+            var version = Detail.Version;
+
+            await Task.Run(() => uploadService.UpdatePackageContentAsync(
+                appId, appName, packagePath, version, progress, token), token);
+
+            IsUpdating = false;
+
+            // Size and last-modified come from Graph, and the checklist compares against them.
+            await LoadAsync();
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText = "Package update cancelled — the app still serves the previous content.";
+            return false;
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Could not update the package: {ex.Message}";
+            return false;
+        }
+        finally
+        {
+            IsUpdating = false;
+            _updateCts?.Dispose();
+            _updateCts = null;
+        }
+    }
+
+    /// <summary>Marshals upload progress back onto the UI thread.</summary>
+    private sealed class DetailProgress : IUploadProgress
+    {
+        private readonly ApplicationDetailViewModel _vm;
+        public DetailProgress(ApplicationDetailViewModel vm) => _vm = vm;
+
+        public void UpdateProgress(int percentage, string message)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher == null)
+            {
+                Apply(percentage, message);
+                return;
+            }
+            dispatcher.Invoke(() => Apply(percentage, message));
+        }
+
+        private void Apply(int percentage, string message)
+        {
+            _vm.UpdatePercent = percentage;
+            _vm.UpdateStatus = message;
         }
     }
 
