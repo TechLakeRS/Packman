@@ -21,12 +21,6 @@
   --pm-card-radius:       8px;                            /* Card.CornerRadius */
   --pm-card-padding:      20px 22px;                      /* Card.Padding */
 
-  --pm-card-soft-bg:           var(--pm-rail);                 /* CardSoft.Background */
-  --pm-card-soft-border-color: var(--pm-line);                 /* CardSoft.BorderBrush */
-  --pm-card-soft-border-width: 1px;                            /* CardSoft.BorderThickness */
-  --pm-card-soft-radius:       8px;                            /* CardSoft.CornerRadius */
-  --pm-card-soft-padding:      20px 22px;                      /* CardSoft.Padding */
-
   --pm-rule-height:    1px;                            /* Rule.Height */
   --pm-rule-min-width: 24px;                           /* Rule.MinWidth */
   --pm-rule-bg:        var(--pm-line);                 /* Rule.Background */
@@ -70,26 +64,15 @@
   --pm-icon-button-radius:       4px;                            /* IconButton.CornerRadius */
 
   --pm-back-button-family:       var(--pm-font-ui);              /* BackButton.FontFamily */
-  --pm-back-button-color:        var(--pm-muted-2);              /* BackButton.Foreground */
-  --pm-back-button-bg:           transparent;                    /* BackButton.Background */
+  --pm-back-button-color:        var(--pm-text-2);               /* BackButton.Foreground */
+  --pm-back-button-bg:           var(--pm-control);              /* BackButton.Background */
   --pm-back-button-border-color: var(--pm-control-stroke);       /* BackButton.BorderBrush */
-  --pm-back-button-border-width: 0;                              /* BackButton.BorderThickness */
-  --pm-back-button-size:         11px;                           /* BackButton.FontSize */
-  --pm-back-button-weight:       700;                            /* BackButton.FontWeight */
-  --pm-back-button-padding:      10px 14px;                      /* BackButton.Padding */
+  --pm-back-button-border-width: 1px;                            /* BackButton.BorderThickness */
+  --pm-back-button-size:         13px;                           /* BackButton.FontSize */
+  --pm-back-button-weight:       600;                            /* BackButton.FontWeight */
+  --pm-back-button-padding:      6px 10px;                       /* BackButton.Padding */
   --pm-back-button-min-height:   34px;                           /* BackButton.MinHeight */
   --pm-back-button-radius:       4px;                            /* BackButton.CornerRadius */
-
-  --pm-browse-button-family:       var(--pm-font-ui);              /* BrowseButton.FontFamily */
-  --pm-browse-button-color:        var(--pm-text-2);               /* BrowseButton.Foreground */
-  --pm-browse-button-bg:           var(--pm-control);              /* BrowseButton.Background */
-  --pm-browse-button-border-color: var(--pm-control-stroke);       /* BrowseButton.BorderBrush */
-  --pm-browse-button-border-width: 1px;                            /* BrowseButton.BorderThickness */
-  --pm-browse-button-size:         13px;                           /* BrowseButton.FontSize */
-  --pm-browse-button-weight:       600;                            /* BrowseButton.FontWeight */
-  --pm-browse-button-padding:      6px 10px;                       /* BrowseButton.Padding */
-  --pm-browse-button-min-height:   34px;                           /* BrowseButton.MinHeight */
-  --pm-browse-button-radius:       4px;                            /* BrowseButton.CornerRadius */
 
   --pm-card-action-button-family:       var(--pm-font-ui);              /* CardActionButton.FontFamily */
   --pm-card-action-button-color:        var(--pm-text-2);               /* CardActionButton.Foreground */
@@ -187,18 +170,6 @@
   --pm-detail-tab-weight:  600;                            /* DetailTab.FontWeight */
   --pm-detail-tab-padding: 10px 13px;                      /* DetailTab.Padding */
 
-  --pm-filter-pill-family:       var(--pm-font-mono);            /* FilterPill.FontFamily */
-  --pm-filter-pill-bg:           var(--pm-card);                 /* FilterPill.Background */
-  --pm-filter-pill-color:        var(--pm-muted-3);              /* FilterPill.Foreground */
-  --pm-filter-pill-border-color: var(--pm-line);                 /* FilterPill.BorderBrush */
-  --pm-filter-pill-size:         10px;                           /* FilterPill.FontSize */
-  --pm-filter-pill-weight:       500;                            /* FilterPill.FontWeight */
-  --pm-filter-pill-radius:       4px;                            /* FilterPill.CornerRadius */
-
-  --pm-pill-count-bg:      var(--pm-line-2);               /* PillCount.Background */
-  --pm-pill-count-radius:  9px;                            /* PillCount.CornerRadius */
-  --pm-pill-count-padding: 1px 5px;                        /* PillCount.Padding */
-
   --pm-row-icon-button-bg:     transparent;                    /* RowIconButton.Background */
   --pm-row-icon-button-color:  var(--pm-muted-2);              /* RowIconButton.Foreground */
   --pm-row-icon-button-width:  26px;                           /* RowIconButton.Width */
@@ -217,9 +188,4 @@
   --pm-stat-row-bad-color: var(--pm-bad);                  /* StatRowBad.Foreground */
 
   --pm-stat-row-mut-color: var(--pm-muted-3);              /* StatRowMut.Foreground */
-
-  --pm-status-list-row-bg:           var(--pm-card);                 /* StatusListRow.Background */
-  --pm-status-list-row-border-color: var(--pm-edge);                 /* StatusListRow.BorderBrush */
-  --pm-status-list-row-border-width: 0 0 0 2px;                      /* StatusListRow.BorderThickness */
-  --pm-status-list-row-padding:      10px 12px;                      /* StatusListRow.Padding */
 }
