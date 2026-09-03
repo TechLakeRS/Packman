@@ -102,8 +102,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
 
     public ObservableCollection<SourceCheck> SourceChecks { get; } = new();
 
-    // ── Deployment status (fixed 252px track to avoid binding GridLengths) ──
-    private const double BarWidth = 252;
+    // ── Deployment status (the bar's star columns are bound to these counts) ──
     public bool HasSummary => Detail.Statistics is { TotalDevices: > 0 };
     public string TargetedDevicesText => (Detail.Statistics?.TotalDevices ?? 0).ToString("N0");
     public int SumInstalled => Detail.Statistics?.SuccessfulInstalls ?? 0;
@@ -111,14 +110,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
     public int SumFailed => Detail.Statistics?.FailedInstalls ?? 0;
     public int SumNotInstalled => Detail.Statistics?.NotInstalled ?? 0;
     public int SumNotApplicable => Detail.Statistics?.NotApplicable ?? 0;
-    public double BarInstalled => Frac(SumInstalled);
-    public double BarPending => Frac(SumPending);
-    public double BarFailed => Frac(SumFailed);
-    private double Frac(int count)
-    {
-        var total = Detail.Statistics?.TotalDevices ?? 0;
-        return total > 0 ? BarWidth * count / total : 0;
-    }
+    public int SumRemaining => SumNotInstalled + SumNotApplicable;
 
     private bool _isLoading;
     public bool IsLoading { get => _isLoading; private set => Set(ref _isLoading, value); }
@@ -180,9 +172,6 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(SumFailed));
         OnPropertyChanged(nameof(SumNotInstalled));
         OnPropertyChanged(nameof(SumNotApplicable));
-        OnPropertyChanged(nameof(BarInstalled));
-        OnPropertyChanged(nameof(BarPending));
-        OnPropertyChanged(nameof(BarFailed));
     }
 
     private void RebuildDetection()

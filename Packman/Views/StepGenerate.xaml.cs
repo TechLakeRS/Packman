@@ -1,3 +1,4 @@
+using Packman.Helpers;
 using Packman.ViewModels;
 using System.IO;
 using System.Windows;
@@ -51,14 +52,8 @@ public partial class StepGenerate : UserControl
 
     private void BrowseUpgradePackage_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select existing PSADT package folder" };
-
-        var intuneApps = VM?.SettingsService.Settings.NetworkPaths.IntuneApplications;
-        if (!string.IsNullOrEmpty(intuneApps) && Directory.Exists(intuneApps))
-            dialog.InitialDirectory = intuneApps;
-
-        if (dialog.ShowDialog() == true)
-            VM?.Upgrade.LoadPackage(dialog.FolderName);
+        var folder = PackageFolderDialog.Show("Select existing PSADT package folder");
+        if (folder != null) VM?.Upgrade.LoadPackage(folder);
     }
 
     private void BrowseUpgradeSource_Click(object sender, RoutedEventArgs e)

@@ -92,18 +92,7 @@ public partial class ApplicationDetailView : UserControl
 
         try
         {
-            var vsCode = EditorLocator.FindVSCodePath();
-            var ise = vsCode == null ? EditorLocator.FindPowerShellISEPath() : null;
-
-            ProcessStartInfo psi;
-            if (vsCode != null)
-                psi = new ProcessStartInfo(vsCode, $"\"{script}\"") { UseShellExecute = true };
-            else if (ise != null)
-                psi = new ProcessStartInfo(ise, $"\"{script}\"") { UseShellExecute = true };
-            else
-                psi = new ProcessStartInfo(script) { UseShellExecute = true };
-
-            Process.Start(psi);
+            EditorLocator.Open(script);
         }
         catch (Exception ex)
         {
@@ -119,10 +108,10 @@ public partial class ApplicationDetailView : UserControl
     private void AddRule_Click(object sender, RoutedEventArgs e)
     {
         if (_vm == null) return;
-        var type = NewRuleType.SelectedIndex switch
+        var type = ((NewRuleType.SelectedItem as ComboBoxItem)?.Content as string) switch
         {
-            0 => DetectionRuleType.MSI,
-            2 => DetectionRuleType.Registry,
+            "MSI" => DetectionRuleType.MSI,
+            "Registry" => DetectionRuleType.Registry,
             _ => DetectionRuleType.File,
         };
         _vm.AddDetectionRule(type);

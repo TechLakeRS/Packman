@@ -187,14 +187,29 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     // ── Network Paths ──────────────────────────────────────────────────
+    private static readonly string[] PathDependents = [nameof(IsConfigured), nameof(ShowFirstRunBanner)];
+
     private string _intuneApplicationsPath = "";
-    public string IntuneApplicationsPath { get => _intuneApplicationsPath; set => Set(ref _intuneApplicationsPath, value); }
+    public string IntuneApplicationsPath { get => _intuneApplicationsPath; set => Set(ref _intuneApplicationsPath, value, PathDependents); }
 
     private string _psadtTemplatePath = "";
-    public string PSADTTemplatePath { get => _psadtTemplatePath; set => Set(ref _psadtTemplatePath, value); }
+    public string PSADTTemplatePath { get => _psadtTemplatePath; set => Set(ref _psadtTemplatePath, value, PathDependents); }
 
     private string _intuneWinAppUtilPath = "";
-    public string IntuneWinAppUtilPath { get => _intuneWinAppUtilPath; set => Set(ref _intuneWinAppUtilPath, value); }
+    public string IntuneWinAppUtilPath { get => _intuneWinAppUtilPath; set => Set(ref _intuneWinAppUtilPath, value, PathDependents); }
+
+    /// <summary>Where the settings file lives; shown under the page title.</summary>
+    public string SettingsPath => _svc.SettingsPath;
+
+    /// <summary>The three paths every flow needs are filled in.</summary>
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(_intuneApplicationsPath) &&
+        !string.IsNullOrWhiteSpace(_psadtTemplatePath) &&
+        !string.IsNullOrWhiteSpace(_intuneWinAppUtilPath);
+
+    private bool _firstRunDismissed;
+    public bool ShowFirstRunBanner => !_firstRunDismissed && !IsConfigured;
+    public RelayCommand DismissFirstRunCommand { get; }
 
     // ── Group Assignment ───────────────────────────────────────────────
     private bool _createGroupPerPackage;
@@ -320,6 +335,7 @@ public sealed class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(SettingsService svc, IntuneAuthService auth)
     {
+        DismissFirstRunCommand = new RelayCommand(() => { _firstRunDismissed = true; OnPropertyChanged(nameof(ShowFirstRunBanner)); });
         _svc = svc;
         _auth = auth;
         SaveCommand = new RelayCommand(Save);

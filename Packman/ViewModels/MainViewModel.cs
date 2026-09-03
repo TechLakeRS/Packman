@@ -3,7 +3,6 @@ using Packman.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Windows;
 
 namespace Packman.ViewModels;
 
@@ -22,6 +21,19 @@ public sealed class MainViewModel : ObservableObject
     public UpgradePackageViewModel Upgrade { get; } = new();
     public UploadStepViewModel Upload { get; }
     public RemoteTestViewModel RemoteTest { get; }
+
+    /// <summary>State of the in-app script editor (tabs, dirty files, search).</summary>
+    public EditorSessionViewModel Editor { get; }
+
+    private readonly IDialogService _dialogs = AppServices.Dialogs;
+
+    private string _screenTitle = "Create Package";
+    /// <summary>The page shown in the header and the window title.</summary>
+    public string ScreenTitle { get => _screenTitle; set => Set(ref _screenTitle, value); }
+
+    /// <summary>Footer stamps: the runtime the app is running on and its own version.</summary>
+    public string RuntimeStamp => System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+    public string AppVersion => "v" + (typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "0.0.0");
 
     private const int GenerateStep = 0;
     private const int UploadStep = 1;
@@ -163,6 +175,7 @@ public sealed class MainViewModel : ObservableObject
     {
         Upload = new UploadStepViewModel(CreatePackage, _settingsService, _auth);
         RemoteTest = new RemoteTestViewModel(_settingsService, CreatePackage, hasPublishStep: true);
+        Editor = new EditorSessionViewModel(CreatePackage, _dialogs);
         RemoteTest.ApplyDetectionRequested += Upload.ApplyDiscoveredRule;
 
         Steps = new ObservableCollection<StepViewModel>
@@ -276,10 +289,8 @@ public sealed class MainViewModel : ObservableObject
         var overwrite = false;
         if (existing != null)
         {
-            var answer = MessageBox.Show(
-                $"A package for this version already exists:\n\n{existing}\n\nReplace it?",
-                "Package already exists", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (answer != MessageBoxResult.Yes) return;
+            if (!_dialogs.Confirm($"A package for this version already exists:\n\n{existing}\n\nReplace it?", "Package already exists"))
+                return;
             overwrite = true;
         }
 
@@ -287,7 +298,7 @@ public sealed class MainViewModel : ObservableObject
         if (!string.IsNullOrEmpty(packagePath))
             RaisePackageDependents();
         else if (!string.IsNullOrEmpty(CreatePackage.StatusText))
-            MessageBox.Show(CreatePackage.StatusText, "Package Generation", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _dialogs.Warn(CreatePackage.StatusText, "Package Generation");
     }
 
     private async Task RunUpgradeAsync()
@@ -296,7 +307,7 @@ public sealed class MainViewModel : ObservableObject
         if (string.IsNullOrEmpty(newPackagePath))
         {
             if (!string.IsNullOrEmpty(Upgrade.StatusText))
-                MessageBox.Show(Upgrade.StatusText, "Package Upgrade", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _dialogs.Warn(Upgrade.StatusText, "Package Upgrade");
             return;
         }
 
