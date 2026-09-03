@@ -213,7 +213,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
 
         try
         {
-            var uploadService = new IntuneUploadService(
+            using var uploadService = new IntuneUploadService(
                 AppServices.Auth.GetAccessTokenAsync, signer, settings.NetworkPaths.IntuneWinAppUtil);
 
             var progress = new DetailProgress(this);
