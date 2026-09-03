@@ -1,4 +1,4 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:local="clr-namespace:Packman">
 
@@ -48,9 +48,6 @@
         <Setter Property="Padding" Value="22,20"/>
     </Style>
 
-    <Style x:Key="CardSoft" TargetType="{x:Type Border}" BasedOn="{StaticResource Card}">
-        <Setter Property="Background" Value="{DynamicResource RailBrush}"/>
-    </Style>
 
     <!-- ═══════════════ Headings ═══════════════ -->
     <Style x:Key="H1" TargetType="{x:Type TextBlock}">
@@ -74,6 +71,34 @@
     </Style>
 
     <!-- Uppercase letterspaced section label: the recurring rule-and-caption header. -->
+    <!-- Stroke-only line icon: every Path drawn from Icons.xaml uses this plus its own Stroke/thickness. -->
+    <Style x:Key="Icon" TargetType="{x:Type Path}">
+        <Setter Property="Fill" Value="Transparent"/>
+        <Setter Property="StrokeLineJoin" Value="Round"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+    </Style>
+
+    <!-- Row in a search-results dropdown. -->
+    <Style x:Key="PickerRow" TargetType="{x:Type Button}">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="rb" Background="Transparent">
+                        <ContentPresenter/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="rb" Property="Background" Value="{DynamicResource PrimarySoftBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="SectionLabel" TargetType="{x:Type TextBlock}">
         <Setter Property="FontFamily" Value="{StaticResource LabelFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
@@ -90,11 +115,6 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <Style x:Key="MonoValue" TargetType="{x:Type TextBlock}">
-        <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        <Setter Property="FontSize" Value="12"/>
-    </Style>
 
     <!-- Hairline used between a label and its trailing caption. -->
     <Style x:Key="Rule" TargetType="{x:Type Border}">
@@ -236,32 +256,6 @@
 
     <Style x:Key="BackButton" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}"/>
 
-    <!-- Skip (ghost text) -->
-    <Style x:Key="SkipButton" TargetType="{x:Type Button}">
-        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
-        <Setter Property="FontFamily" Value="{StaticResource UIFontFamily}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{DynamicResource Muted2Brush}"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="FontWeight" Value="Bold"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="14,10"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type Button}">
-                    <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
 
     <!-- Browse (sits inside a field, so it matches the field's inner height) -->
     <Style x:Key="BrowseButton" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}">
@@ -662,42 +656,7 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
-    <!-- Filter pill -->
-    <Style x:Key="FilterPill" TargetType="{x:Type RadioButton}">
-        <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
-        <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}"/>
-        <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource Muted3Brush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
-        <Setter Property="FontSize" Value="10"/>
-        <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type RadioButton}">
-                    <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="1" CornerRadius="4" Padding="10,7">
-                        <ContentPresenter VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsChecked" Value="True">
-                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource PrimaryDimBrush}"/>
-                            <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentTextBrush}"/>
-                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
 
-    <Style x:Key="PillCount" TargetType="{x:Type Border}">
-        <Setter Property="Background" Value="{DynamicResource Line2Brush}"/>
-        <Setter Property="CornerRadius" Value="9"/>
-        <Setter Property="Padding" Value="5,1"/>
-        <Setter Property="Margin" Value="7,0,0,0"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-    </Style>
 
     <!-- Row action button (⋯) -->
     <Style x:Key="RowIconButton" TargetType="{x:Type Button}">
@@ -836,12 +795,6 @@
     <!-- ═══════════════ Status list row ═══════════════ -->
     <!-- Publish steps, signing checks and scope lists all share this shape:
          a 2px status edge, a mark, a label and a trailing note. -->
-    <Style x:Key="StatusListRow" TargetType="{x:Type Border}">
-        <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource EdgeBrush}"/>
-        <Setter Property="BorderThickness" Value="2,0,0,0"/>
-        <Setter Property="Padding" Value="12,10"/>
-    </Style>
 
     <!-- ═══════════════ Progress ═══════════════ -->
     <!-- 4px rail, rounded ends. Without it the progress bars fall through to

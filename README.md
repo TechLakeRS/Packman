@@ -138,7 +138,7 @@ In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start; this file is 
 | **Editor host** | Microsoft Edge **WebView2 Runtime** (for the in-app script editor; without it the editor falls back to "open in VS Code") |
 | **PSADT v4 template** | A folder holding `Invoke-AppDeployToolkit.ps1` **plus the runtime** (`Invoke-AppDeployToolkit.exe` and the `PSAppDeployToolkit` module). A script-only starter ships in `Packman/PSADT/` — see `Packman/PSADT/README.md` |
 | **Content prep tool** | `IntuneWinAppUtil.exe` (Microsoft Win32 Content Prep Tool) |
-| **Tenant** | Microsoft Intune, with an account or app registration holding `DeviceManagementApps.ReadWrite.All`, `Group.Read.All`, `User.Read`, `Device.Read.All`, `GroupMember.ReadWrite.All` |
+| **Tenant** | Microsoft Intune, with an account or app registration holding `DeviceManagementApps.ReadWrite.All`, `Group.ReadWrite.All` (group search, plus creating the per-package groups), `User.Read`, `User.ReadBasic.All` (user search on the Advanced page), `Device.Read.All`, `GroupMember.ReadWrite.All` |
 | **Remote test (optional)** | A test machine with WinRM enabled and reachable, and administrative rights on it (the package is staged over the `C$` admin share) |
 
 ## Build and run
@@ -156,6 +156,13 @@ dotnet run --project Packman/Packman.csproj
 ```
 
 Or open `Packman.sln` in Visual Studio 2022 and run.
+
+The tests cover the parts that do not need Windows or a tenant (script editing, package paths,
+Graph payloads):
+
+```
+dotnet test Packman.sln
+```
 
 ## Offline builds
 
@@ -455,15 +462,18 @@ and that the IntuneWinAppUtil path is set, then press **BUILD & UPLOAD**.
 
 **What upload actually does**, with a five-stage overlay:
 
-1. **Signs** the package files, if code signing is enabled in Settings.
+1. **Signs** the deploy script, if code signing is enabled in Settings.
 2. **Builds** the `.intunewin` into the package's `Intune` folder using `IntuneWinAppUtil.exe`.
-3. **Registers** the Win32 app in your tenant and uploads the encrypted content to Azure blob
-   storage.
-4. **Commits and publishes** it with your detection rule, install/uninstall command lines,
-   requirements, return codes, install context, icon, and the privacy/information URLs.
-5. **Assigns** the groups listed on the Review step — and, if those options are on in Settings,
-   creates (or reuses) the per-package **install group** and **uninstall group** from their name
-   templates and assigns those too.
+3. **Registers** the Win32 app in your tenant with your detection rule, install/uninstall command
+   lines, requirements, return codes, install context, icon, and the privacy/information URLs.
+4. **Uploads** the encrypted content to Azure blob storage, streamed straight out of the
+   `.intunewin`, and commits it.
+5. **Publishes** the app and **assigns** the groups listed on the Review step — and, if those
+   options are on in Settings, creates (or reuses) the per-package **install group** and
+   **uninstall group** from their name templates and assigns those too.
+
+Cancelling removes the half-created app from the tenant; the result line says whether that
+succeeded.
 
 On success the status reads **Uploaded to Intune · App ID …**, a marker file recording the App ID is
 written into the package folder, and — if the package came from the upgrade flow — a
@@ -505,11 +515,12 @@ through the wizard:
    `Invoke-AppDeployToolkit.exe` and the deploy script, then reads the metadata and install context
    back out of the script.
 2. Edit the **Name in Intune** if needed.
-3. Review the **detection rules** — a version rule is proposed from a staged MSI. Unlike the wizard
-   you can add **several** rules here (File / Registry / MSI); Intune requires all of them to match.
+3. Review the **detection rules** — a product-code rule is proposed from a staged MSI. Unlike the
+   wizard you can add **several** rules here (File / Registry / MSI); Intune requires all of them
+   to match, and the upload refuses to start with none.
 4. Search and add **Entra groups**, each with an intent.
-5. Press **Upload**. A four-stage overlay tracks validation, upload, app creation and assignment,
-   and can be cancelled.
+5. Press **Upload**. The same five-stage overlay as the wizard tracks the publish and can be
+   cancelled.
 
 This page uses the install/uninstall command lines, requirements and return codes from Settings as
 they are — there is no deploy-mode picker and no icon upload.
@@ -716,14 +727,21 @@ Packman/
                   discovery, syntax validation, settings, theme, logging
     Intune/       Graph client and upload pipeline (blob upload, detection rules,
                   assignments, supersedence, advanced directory lookups)
-  ViewModels/     one per screen and wizard step
+  ViewModels/     one per screen and wizard step, plus the shared publish overlay
+                  and editor session
   Views/          XAML screens and wizard steps
-  Helpers/        MSI/EXE metadata, icon extraction, package location, converters
+    Controls/     SectionHeader, GroupPickerControl, PublishStepList
+  Helpers/        the PSADT script editor (PsadtScript), package paths, MSI/EXE
+                  metadata, icon extraction, converters
   Themes/         light/dark palettes, styles, icons
+  Fonts/          embedded UI fonts
   MonacoEditor/   the editor host page and Monaco assets
   PSADT/          bundled PSADT v4 template (script only)
+  Tools/          Update-PsadtCatalog.ps1, regenerates the function catalog
   PSADT_v4_Functions*.csv   function catalog behind the editor's IntelliSense
+Packman.Tests/    xunit tests for the script editing, package paths and Graph payloads
 packages/         vendored .nupkg files for offline restore
+.github/workflows/build.yml   restore, build and test on windows-latest
 ```
 
 ---

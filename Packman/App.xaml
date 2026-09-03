@@ -20,6 +20,8 @@
             <helpers:HexToBrushConverter x:Key="HexToBrush"/>
             <helpers:StringMatchConverter x:Key="StringMatch"/>
             <helpers:CountToStarConverter x:Key="CountToStar"/>
+            <helpers:InverseBoolConverter x:Key="InverseBool"/>
+            <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVis"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

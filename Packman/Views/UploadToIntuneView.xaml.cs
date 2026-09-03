@@ -1,8 +1,6 @@
-using Packman.Services;
+using Packman.Helpers;
 using Packman.ViewModels;
-using System.IO;
 using System.Windows.Controls;
-using System.Windows.Input;
 
 namespace Packman.Views;
 
@@ -22,19 +20,7 @@ public partial class UploadToIntuneView : UserControl
 
     private void Browse_Click(object sender, System.Windows.RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select the built PSADT package folder" };
-
-        var intuneApps = AppServices.Settings.Settings.NetworkPaths.IntuneApplications;
-        if (!string.IsNullOrEmpty(intuneApps) && Directory.Exists(intuneApps))
-            dialog.InitialDirectory = intuneApps;
-
-        if (dialog.ShowDialog() == true)
-            ViewModel.ProcessSelectedFolder(dialog.FolderName);
-    }
-
-    private void GroupSearch_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter && ViewModel.GroupPicker.SearchGroupsCommand.CanExecute(null))
-            ViewModel.GroupPicker.SearchGroupsCommand.Execute(null);
+        var folder = PackageFolderDialog.Show("Select the built PSADT package folder");
+        if (folder != null) ViewModel.ProcessSelectedFolder(folder);
     }
 }

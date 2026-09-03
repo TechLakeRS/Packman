@@ -8,7 +8,7 @@
         xmlns:vm="clr-namespace:Packman.ViewModels"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=True}"
-        Title="PACKMAN — Create Package"
+        Title="{Binding ScreenTitle, StringFormat='PACKMAN — {0}'}"
         Width="1320" Height="860"
         MinWidth="1180" MinHeight="720"
         WindowStartupLocation="CenterScreen"
@@ -43,7 +43,7 @@
                     <TextBlock Text="Packman" Margin="12,0,0,0" VerticalAlignment="Center"
                                FontSize="12" Foreground="{DynamicResource Text2Brush}"/>
                     <Border Width="1" Height="14" Background="{DynamicResource EdgeBrush}" Margin="12,0"/>
-                    <TextBlock x:Name="ScreenTitleText" Text="Create Package" VerticalAlignment="Center"
+                    <TextBlock Text="{Binding ScreenTitle}" VerticalAlignment="Center"
                                FontSize="12" Foreground="{DynamicResource DimBrush}"/>
                 </StackPanel>
             </ui:TitleBar.Header>
@@ -58,18 +58,6 @@
 
             <!-- Navigation pane: transparent so the backdrop carries it. -->
             <DockPanel Grid.Column="0" LastChildFill="False" Margin="0,0,0,10">
-                <Border DockPanel.Dock="Top" Height="32" Margin="12,0,12,10" CornerRadius="4"
-                        Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource ControlStrokeBrush}" BorderThickness="1">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="11,0">
-                        <Viewbox Width="14" Height="14">
-                            <Path Data="{StaticResource IconSearch}" Stroke="{DynamicResource DimBrush}" StrokeThickness="1.6"
-                                  Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                        </Viewbox>
-                        <TextBlock Text="Search" Margin="10,0,0,0" VerticalAlignment="Center"
-                                   FontSize="14" Foreground="{DynamicResource DimBrush}"/>
-                    </StackPanel>
-                </Border>
-
                 <StackPanel DockPanel.Dock="Top">
                     <RadioButton x:Name="CreatePackageNavBtn" Style="{StaticResource NavItem}" IsChecked="True" GroupName="Nav"
                                  Checked="CreatePackageNavBtn_Checked">
@@ -132,7 +120,7 @@
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,0">
                     <TextBlock Text="PSADT v4 · GRAPH BETA" FontFamily="{StaticResource LabelFontFamily}" FontSize="10"
                                FontWeight="SemiBold" Foreground="{DynamicResource FaintBrush}"/>
-                    <TextBlock Text="net9.0-windows" FontFamily="{StaticResource MonoFontFamily}" FontSize="10"
+                    <TextBlock Text="{Binding RuntimeStamp}" FontFamily="{StaticResource MonoFontFamily}" FontSize="10"
                                Foreground="{DynamicResource FaintBrush}" Margin="0,4,0,0"/>
                 </StackPanel>
 
@@ -389,10 +377,7 @@
                     <Border Grid.Row="1" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0">
                         <DockPanel Margin="18,0" LastChildFill="True">
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                                <TextBlock Text="last sync never" FontFamily="{StaticResource MonoFontFamily}" FontSize="11"
-                                           Foreground="{DynamicResource Dim2Brush}" VerticalAlignment="Center"/>
-                                <Border Width="1" Height="11" Background="{DynamicResource EdgeBrush}" Margin="9,0"/>
-                                <TextBlock Text="v1.0.0" FontFamily="{StaticResource MonoFontFamily}" FontSize="11"
+                                <TextBlock Text="{Binding AppVersion}" FontFamily="{StaticResource MonoFontFamily}" FontSize="11"
                                            Foreground="{DynamicResource Dim2Brush}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">

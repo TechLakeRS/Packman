@@ -32,8 +32,9 @@
         <DataTemplate x:Key="FileTabTemplate">
             <Border x:Name="TabBorder" CornerRadius="4" Margin="0,0,4,0" Background="Transparent">
                 <StackPanel Orientation="Horizontal">
-                    <Button Style="{StaticResource FlatTabButton}" Padding="9,3" Height="24"
-                            Click="Tab_Click" Tag="{Binding}" ToolTip="{Binding Path}">
+                    <Button Style="{StaticResource FlatTabButton}" Padding="9,3" Height="24" ToolTip="{Binding Path}"
+                            Command="{Binding DataContext.Editor.ActivateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding Name}" FontFamily="{StaticResource MonoFontFamily}"
                                        FontSize="11.5" Foreground="{DynamicResource CodeBarTxtBrush}" VerticalAlignment="Center"/>
@@ -42,15 +43,16 @@
                                        Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource FlatTabButton}" Width="18" Height="24" Margin="0,0,4,0"
-                            Click="TabClose_Click" Tag="{Binding}" ToolTip="Close">
+                    <Button Style="{StaticResource FlatTabButton}" Width="18" Height="24" Margin="0,0,4,0" ToolTip="Close"
+                            Command="{Binding DataContext.Editor.CloseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}">
                         <TextBlock Text="✕" FontSize="10" Foreground="{DynamicResource CodeBarTxtBrush}"/>
                     </Button>
                 </StackPanel>
             </Border>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsActive}" Value="True">
-                    <Setter TargetName="TabBorder" Property="Background" Value="#1FFFFFFF"/>
+                    <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource ControlHoverBrush}"/>
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -75,8 +77,9 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <!-- No package yet -->
-            <Border x:Name="EmptyState" Grid.Row="0" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
-                    CornerRadius="4" Padding="20" Visibility="Collapsed" VerticalAlignment="Top">
+            <Border Grid.Row="0" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                    CornerRadius="4" Padding="20" VerticalAlignment="Top"
+                    Visibility="{Binding Editor.HasPackage, Converter={StaticResource InverseBoolToVis}}">
                 <TextBlock Text="No package generated yet. Go back to the Generate step to create the package first."
                            FontSize="12.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
             </Border>
@@ -84,7 +87,7 @@
             <!-- Editor: tree + code editor, fills the remaining height.
                  The tree starts collapsed to a slim rail so the editor gets the width;
                  the rail button (or the chevron in the tree header) toggles it. -->
-            <Grid x:Name="EditorGrid" Grid.Row="1">
+            <Grid Grid.Row="1" Visibility="{Binding Editor.HasPackage, Converter={StaticResource BoolToVis}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="14"/>
@@ -96,7 +99,7 @@
                     <Button Style="{StaticResource IconButton}" Width="32" Height="32" Background="Transparent" BorderThickness="0"
                             VerticalAlignment="Top" ToolTip="Show files" Click="ToggleTree_Click">
                         <Viewbox Width="15" Height="15">
-                            <Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource InkBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource InkBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
                         </Viewbox>
                     </Button>
                 </Border>
@@ -117,39 +120,43 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Viewbox Width="14" Height="14">
-                                    <Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource InkBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    <Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource InkBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
                                 </Viewbox>
-                                <TextBlock x:Name="PackageNameText" Text="Package" Margin="7,0,0,0" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Editor.PackageName}" Margin="7,0,0,0" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                             <Button Grid.Column="1" Style="{StaticResource IconButton}" Width="28" Height="28" Background="Transparent" BorderThickness="0"
                                     ToolTip="Refresh files" Click="RefreshTree_Click">
                                 <Viewbox Width="13" Height="13">
-                                    <Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    <Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
                                 </Viewbox>
                             </Button>
                             <Button Grid.Column="2" Style="{StaticResource IconButton}" Width="28" Height="28" Background="Transparent" BorderThickness="0"
                                     ToolTip="Hide files" Click="ToggleTree_Click">
                                 <Viewbox Width="13" Height="13">
-                                    <Path Data="{StaticResource IconChevL}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    <Path Data="{StaticResource IconChevL}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Style="{StaticResource Icon}"/>
                                 </Viewbox>
                             </Button>
                         </Grid>
 
                         <!-- Search across the package: file names and file contents -->
                         <Grid Grid.Row="1" Margin="0,4,0,6">
-                            <TextBox x:Name="SearchBox" Style="{StaticResource TextField}" Height="34" FontSize="12" Padding="11,0,10,0"
+                            <TextBox Style="{StaticResource TextField}" Height="34" FontSize="12" Padding="11,0,10,0"
+                                     AutomationProperties.Name="Search package files"
                                      local:PlaceholderText.Text="Search names and contents…"
-                                     TextChanged="SearchBox_TextChanged"/>
+                                     Text="{Binding Editor.SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                         </Grid>
 
                         <TreeView x:Name="FileTree" Grid.Row="2" BorderThickness="0" Background="Transparent"
                                   Foreground="{DynamicResource InkBrush}" FontSize="12.5"
                                   ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding Editor.ShowTree, Converter={StaticResource BoolToVis}}"
                                   SelectedItemChanged="FileTree_SelectedItemChanged"/>
 
-                        <ListBox x:Name="SearchResults" Grid.Row="2" Visibility="Collapsed" BorderThickness="0" Background="Transparent"
+                        <ListBox x:Name="SearchResults" Grid.Row="2" BorderThickness="0" Background="Transparent"
+                                 ItemsSource="{Binding Editor.SearchHits}"
                                  ItemTemplate="{StaticResource SearchHitTemplate}" HorizontalContentAlignment="Stretch"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 Visibility="{Binding Editor.ShowSearchResults, Converter={StaticResource BoolToVis}}"
                                  SelectionChanged="SearchResults_SelectionChanged"/>
                     </Grid>
                 </Border>
@@ -163,14 +170,14 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
                         <!-- Tab strip + file actions -->
-                        <Border Grid.Row="0" BorderBrush="#1AFFFFFF" BorderThickness="0,0,0,1" Padding="8,6">
+                        <Border Grid.Row="0" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="8,6">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                                    <ItemsControl x:Name="FileTabs" ItemTemplate="{StaticResource FileTabTemplate}">
+                                    <ItemsControl ItemsSource="{Binding Editor.OpenFiles}" ItemTemplate="{StaticResource FileTabTemplate}">
                                         <ItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <StackPanel Orientation="Horizontal"/>
@@ -179,26 +186,25 @@
                                     </ItemsControl>
                                 </ScrollViewer>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button x:Name="DiskChangedButton" Style="{StaticResource MiniButton}"
-                                            Content="Changed on disk — reload" Click="Reload_Click"
-                                            Visibility="Collapsed" Margin="0,0,8,0"
+                                    <Button Style="{StaticResource MiniButton}" Content="Changed on disk — reload" Margin="0,0,8,0"
+                                            Command="{Binding Editor.ReloadCommand}"
+                                            Visibility="{Binding Editor.ShowChangedOnDisk, Converter={StaticResource BoolToVis}}"
                                             Background="{DynamicResource WarnSoftBrush}" BorderBrush="{DynamicResource WarnLineBrush}"
                                             Foreground="{DynamicResource WarnBrush}"
                                             ToolTip="This file was modified outside Packman"/>
-                                    <Button x:Name="ReloadButton" Style="{StaticResource MiniButton}"
-                                            Content="Reload" Click="Reload_Click" Margin="0,0,6,0"
-                                            ToolTip="Re-read this file from disk"/>
-                                    <Button x:Name="RevertButton" Style="{StaticResource MiniButton}"
-                                            Content="Revert" Click="Revert_Click" IsEnabled="False" Margin="0,0,6,0"/>
-                                    <Button x:Name="SaveButton" Style="{StaticResource MiniPrimaryButton}"
-                                            Content="Save" Click="Save_Click" IsEnabled="False" ToolTip="Save (Ctrl+S)"/>
+                                    <Button Style="{StaticResource MiniButton}" Content="Reload" Margin="0,0,6,0"
+                                            Command="{Binding Editor.ReloadCommand}" ToolTip="Re-read this file from disk"/>
+                                    <Button Style="{StaticResource MiniButton}" Content="Revert" Margin="0,0,6,0"
+                                            Command="{Binding Editor.RevertCommand}"/>
+                                    <Button Style="{StaticResource MiniPrimaryButton}" Content="Save" ToolTip="Save (Ctrl+S)"
+                                            Command="{Binding Editor.SaveCommand}"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
 
                         <!-- Monaco editor. -->
                         <Grid Grid.Row="1" MinHeight="300">
-                            <wv2:WebView2 x:Name="EditorWebView" DefaultBackgroundColor="#0C1322" Margin="1,0,1,0"/>
+                            <wv2:WebView2 x:Name="EditorWebView" Margin="1,0,1,0"/>
                             <TextBlock x:Name="EditorFallbackText" Visibility="Collapsed" Margin="16,14" TextWrapping="Wrap"
                                        FontFamily="{StaticResource MonoFontFamily}" FontSize="12.5" Foreground="{DynamicResource CodeBarTxtBrush}">
                                 <Run Text="The in-app editor needs the Microsoft Edge WebView2 Runtime, which was not found on this machine."/>
@@ -212,19 +218,30 @@
 
                         <!-- Status bar. The bottom padding also keeps the WebView2 HWND clear of
                              the border's rounded corners, which it cannot be clipped to. -->
-                        <Border Grid.Row="2" BorderBrush="#1AFFFFFF" BorderThickness="0,1,0,0" Padding="14,5,14,7">
+                        <Border Grid.Row="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,5,14,7">
                             <Grid>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock x:Name="StatusPosition" Text="Ln 1, Col 1" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock x:Name="StatusSelection" Text="" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock x:Name="StatusProblems" Text="" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.CursorText}" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.SelectionText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.StatusProblems}" Margin="12,0,0,0" FontSize="11">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource CodeBarTxtBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Editor.HasProblems}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource BadBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <TextBlock x:Name="StatusEol" Text="CRLF" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock x:Name="StatusEncoding" Text="UTF-8" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock x:Name="StatusLanguage" Text="PowerShell" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <Border Background="#2E3B67F5" BorderBrush="#733B67F5" BorderThickness="1" CornerRadius="4" Padding="7,1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="PSADT INTELLISENSE" FontSize="10" FontWeight="Bold" Foreground="#8FA9F9"/>
+                                    <TextBlock Text="{Binding Editor.StatusEol}" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.StatusEncoding}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.StatusLanguage}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <Border Background="{DynamicResource PrimaryDimBrush}" BorderBrush="{DynamicResource PrimaryLineBrush}" BorderThickness="1" CornerRadius="4" Padding="7,1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="PSADT INTELLISENSE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
                                     </Border>
                                 </StackPanel>
                             </Grid>

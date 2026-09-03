@@ -1,3 +1,4 @@
+using Packman.Helpers;
 using Packman.Models;
 using Packman.Services;
 using System.Collections.ObjectModel;
@@ -23,6 +24,9 @@ public sealed class AdvancedViewModel : ObservableObject
 
     public AdvancedViewModel()
     {
+        _bulkGroupSearchBox = new IncrementalSearch<EntraGroup>(q => _apps.SearchGroupsAsync(q), OnBulkGroupResults);
+        _deviceSearchBox = new IncrementalSearch<EntraDevice>(q => _apps.SearchDevicesAsync(q), () => OnPropertyChanged(nameof(HasDeviceResults)));
+        _appGroupSearchBox = new IncrementalSearch<EntraGroup>(q => _apps.SearchGroupsAsync(q), () => OnPropertyChanged(nameof(HasAppGroupResults)));
         BulkAddCommand = new AsyncRelayCommand(RunBulkAddAsync, () => CanBulkAdd);
         ConnectCommand = new RelayCommand(() => ConnectRequested?.Invoke());
     }
@@ -39,6 +43,10 @@ public sealed class AdvancedViewModel : ObservableObject
 
     // ══ 1. Bulk add PCs to a group ══════════════════════════════
 
+    private readonly IncrementalSearch<EntraGroup> _bulkGroupSearchBox;
+    private readonly IncrementalSearch<EntraDevice> _deviceSearchBox;
+    private readonly IncrementalSearch<EntraGroup> _appGroupSearchBox;
+
     private string _bulkGroupSearch = "";
     public string BulkGroupSearch
     {
@@ -50,12 +58,12 @@ public sealed class AdvancedViewModel : ObservableObject
             OnPropertyChanged(nameof(CanBulkAdd));
             RaiseBulkGroupCheck();
             BulkAddCommand.RaiseCanExecuteChanged();
-            _ = SearchGroupsAsync(BulkGroupSlot, value, BulkGroupResults, OnBulkGroupResults);
+            ErrorReporter.FireAndForget(() => _bulkGroupSearchBox.RunAsync(value));
         }
     }
 
-    public ObservableCollection<EntraGroup> BulkGroupResults { get; } = new();
-    public bool HasBulkGroupResults => BulkGroupResults.Count > 0;
+    public ObservableCollection<EntraGroup> BulkGroupResults => _bulkGroupSearchBox.Results;
+    public bool HasBulkGroupResults => _bulkGroupSearchBox.HasResults;
 
     private EntraGroup? _bulkGroup;
 
@@ -73,8 +81,7 @@ public sealed class AdvancedViewModel : ObservableObject
         _bulkGroup = group;
         _bulkGroupSearch = group.DisplayName;   // field write: don't retrigger the search
         OnPropertyChanged(nameof(BulkGroupSearch));
-        BulkGroupResults.Clear();
-        OnPropertyChanged(nameof(HasBulkGroupResults));
+        _bulkGroupSearchBox.Clear();
         OnPropertyChanged(nameof(CanBulkAdd));
         RaiseBulkGroupCheck();
         BulkAddCommand.RaiseCanExecuteChanged();
@@ -182,7 +189,7 @@ public sealed class AdvancedViewModel : ObservableObject
                 {
                     try
                     {
-                        if (await _apps.TryAddGroupMemberAsync(group.Id, device.Id)) addedHere++;
+                        if (await _apps.AddGroupMemberAsync(group.Id, device.Id)) addedHere++;
                     }
                     catch (Exception ex) { error = ex.Message; }
                 }
@@ -235,48 +242,22 @@ public sealed class AdvancedViewModel : ObservableObject
         {
             if (!Set(ref _deviceSearch, value)) return;
             _selectedDevice = null;
-            _ = RunDeviceSearchAsync(value);
+            ErrorReporter.FireAndForget(() => _deviceSearchBox.RunAsync(value));
         }
     }
 
-    public ObservableCollection<EntraDevice> DeviceResults { get; } = new();
-    public bool HasDeviceResults => DeviceResults.Count > 0;
+    public ObservableCollection<EntraDevice> DeviceResults => _deviceSearchBox.Results;
+    public bool HasDeviceResults => _deviceSearchBox.HasResults;
 
     private EntraDevice? _selectedDevice;
-
-    private int _deviceSearchSeq;
-    private async Task RunDeviceSearchAsync(string query)
-    {
-        var seq = ++_deviceSearchSeq;
-        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
-        {
-            DeviceResults.Clear();
-            OnPropertyChanged(nameof(HasDeviceResults));
-            return;
-        }
-        try
-        {
-            var results = await _apps.SearchDevicesAsync(query);
-            if (seq != _deviceSearchSeq) return;   // stale response
-            DeviceResults.Clear();
-            foreach (var d in results) DeviceResults.Add(d);
-        }
-        catch
-        {
-            if (seq != _deviceSearchSeq) return;
-            DeviceResults.Clear();
-        }
-        OnPropertyChanged(nameof(HasDeviceResults));
-    }
 
     public void SelectDeviceResult(EntraDevice device)
     {
         _selectedDevice = device;
         _deviceSearch = device.DisplayName;
         OnPropertyChanged(nameof(DeviceSearch));
-        DeviceResults.Clear();
-        OnPropertyChanged(nameof(HasDeviceResults));
-        _ = LoadDeviceGroupsAsync();
+        _deviceSearchBox.Clear();
+        ErrorReporter.FireAndForget(LoadDeviceGroupsAsync);
     }
 
     public ObservableCollection<DeviceGroupMembership> DeviceGroups { get; } = new();
@@ -295,8 +276,10 @@ public sealed class AdvancedViewModel : ObservableObject
 
     private async Task LoadDeviceGroupsAsync()
     {
+        // No "already loading" guard: the ReferenceEquals check below drops the stale result,
+        // and a guard here would drop the newer selection instead.
         var device = _selectedDevice;
-        if (device == null || IsDeviceLoading) return;
+        if (device == null) return;
 
         IsDeviceLoading = true;
         DeviceGroups.Clear();
@@ -317,7 +300,7 @@ public sealed class AdvancedViewModel : ObservableObject
         }
         finally
         {
-            IsDeviceLoading = false;
+            if (ReferenceEquals(_selectedDevice, device)) IsDeviceLoading = false;
             OnPropertyChanged(nameof(HasDeviceGroups));
         }
     }
@@ -332,12 +315,12 @@ public sealed class AdvancedViewModel : ObservableObject
         {
             if (!Set(ref _appGroupSearch, value)) return;
             _selectedAppGroup = null;
-            _ = SearchGroupsAsync(AppGroupSlot, value, AppGroupResults, () => OnPropertyChanged(nameof(HasAppGroupResults)));
+            ErrorReporter.FireAndForget(() => _appGroupSearchBox.RunAsync(value));
         }
     }
 
-    public ObservableCollection<EntraGroup> AppGroupResults { get; } = new();
-    public bool HasAppGroupResults => AppGroupResults.Count > 0;
+    public ObservableCollection<EntraGroup> AppGroupResults => _appGroupSearchBox.Results;
+    public bool HasAppGroupResults => _appGroupSearchBox.HasResults;
 
     private EntraGroup? _selectedAppGroup;
 
@@ -346,9 +329,8 @@ public sealed class AdvancedViewModel : ObservableObject
         _selectedAppGroup = group;
         _appGroupSearch = group.DisplayName;
         OnPropertyChanged(nameof(AppGroupSearch));
-        AppGroupResults.Clear();
-        OnPropertyChanged(nameof(HasAppGroupResults));
-        _ = LoadGroupAppsAsync();
+        _appGroupSearchBox.Clear();
+        ErrorReporter.FireAndForget(LoadGroupAppsAsync);
     }
 
     public ObservableCollection<GroupAppAssignment> GroupApps { get; } = new();
@@ -368,7 +350,7 @@ public sealed class AdvancedViewModel : ObservableObject
     private async Task LoadGroupAppsAsync()
     {
         var group = _selectedAppGroup;
-        if (group == null || IsAppScanLoading) return;
+        if (group == null) return;
 
         IsAppScanLoading = true;
         GroupApps.Clear();
@@ -390,37 +372,8 @@ public sealed class AdvancedViewModel : ObservableObject
         }
         finally
         {
-            IsAppScanLoading = false;
+            if (ReferenceEquals(_selectedAppGroup, group)) IsAppScanLoading = false;
             OnPropertyChanged(nameof(HasGroupApps));
         }
-    }
-
-    // ── Shared group search (one sequence guard per search box) ──
-    private const int BulkGroupSlot = 0;
-    private const int AppGroupSlot = 1;
-    private readonly int[] _groupSearchSeq = new int[2];
-
-    private async Task SearchGroupsAsync(int slot, string query, ObservableCollection<EntraGroup> target, Action notify)
-    {
-        var seq = ++_groupSearchSeq[slot];
-        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
-        {
-            target.Clear();
-            notify();
-            return;
-        }
-        try
-        {
-            var results = await _apps.SearchGroupsAsync(query);
-            if (seq != _groupSearchSeq[slot]) return;   // stale response
-            target.Clear();
-            foreach (var g in results) target.Add(g);
-        }
-        catch
-        {
-            if (seq != _groupSearchSeq[slot]) return;
-            target.Clear();
-        }
-        notify();
     }
 }

@@ -17,6 +17,8 @@ public sealed class ApplicationDetailViewModel : ObservableObject
 
     public ApplicationDetailViewModel(IntuneApplication app)
     {
+        _groupSearchBox = new IncrementalSearch<EntraGroup>(q => _apps.SearchGroupsAsync(q), () => OnPropertyChanged(nameof(HasGroupResults)));
+        _memberSearchBox = new IncrementalSearch<GroupMember>(q => _apps.SearchDevicesAndUsersAsync(q), () => OnPropertyChanged(nameof(HasMemberResults)));
         // Seed from the list row so the header renders now; LoadAsync fills the rest.
         Detail = new ApplicationDetail
         {
@@ -100,8 +102,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
 
     public ObservableCollection<SourceCheck> SourceChecks { get; } = new();
 
-    // ── Deployment status (fixed 252px track to avoid binding GridLengths) ──
-    private const double BarWidth = 252;
+    // ── Deployment status (the bar's star columns are bound to these counts) ──
     public bool HasSummary => Detail.Statistics is { TotalDevices: > 0 };
     public string TargetedDevicesText => (Detail.Statistics?.TotalDevices ?? 0).ToString("N0");
     public int SumInstalled => Detail.Statistics?.SuccessfulInstalls ?? 0;
@@ -109,14 +110,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
     public int SumFailed => Detail.Statistics?.FailedInstalls ?? 0;
     public int SumNotInstalled => Detail.Statistics?.NotInstalled ?? 0;
     public int SumNotApplicable => Detail.Statistics?.NotApplicable ?? 0;
-    public double BarInstalled => Frac(SumInstalled);
-    public double BarPending => Frac(SumPending);
-    public double BarFailed => Frac(SumFailed);
-    private double Frac(int count)
-    {
-        var total = Detail.Statistics?.TotalDevices ?? 0;
-        return total > 0 ? BarWidth * count / total : 0;
-    }
+    public int SumRemaining => SumNotInstalled + SumNotApplicable;
 
     private bool _isLoading;
     public bool IsLoading { get => _isLoading; private set => Set(ref _isLoading, value); }
@@ -178,9 +172,6 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         OnPropertyChanged(nameof(SumFailed));
         OnPropertyChanged(nameof(SumNotInstalled));
         OnPropertyChanged(nameof(SumNotApplicable));
-        OnPropertyChanged(nameof(BarInstalled));
-        OnPropertyChanged(nameof(BarPending));
-        OnPropertyChanged(nameof(BarFailed));
     }
 
     private void RebuildDetection()
@@ -249,6 +240,9 @@ public sealed class ApplicationDetailViewModel : ObservableObject
     private string _selectedIntent = "Required";
     public string SelectedIntent { get => _selectedIntent; set => Set(ref _selectedIntent, value); }
 
+    private readonly IncrementalSearch<EntraGroup> _groupSearchBox;
+    private readonly IncrementalSearch<GroupMember> _memberSearchBox;
+
     private string _groupSearch = "";
     public string GroupSearch
     {
@@ -258,40 +252,15 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             if (!Set(ref _groupSearch, value)) return;
             _selectedGroup = null;
             OnPropertyChanged(nameof(CanAddAssignment));
-            _ = RunGroupSearchAsync(value);
+            ErrorReporter.FireAndForget(() => _groupSearchBox.RunAsync(value));
         }
     }
 
-    public ObservableCollection<EntraGroup> GroupResults { get; } = new();
-    public bool HasGroupResults => GroupResults.Count > 0;
+    public ObservableCollection<EntraGroup> GroupResults => _groupSearchBox.Results;
+    public bool HasGroupResults => _groupSearchBox.HasResults;
 
     private EntraGroup? _selectedGroup;
     public bool CanAddAssignment => _selectedGroup != null;
-
-    private int _groupSearchSeq;
-    private async Task RunGroupSearchAsync(string query)
-    {
-        var seq = ++_groupSearchSeq;
-        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
-        {
-            GroupResults.Clear();
-            OnPropertyChanged(nameof(HasGroupResults));
-            return;
-        }
-        try
-        {
-            var results = await _apps.SearchGroupsAsync(query);
-            if (seq != _groupSearchSeq) return;   // stale response
-            GroupResults.Clear();
-            foreach (var g in results) GroupResults.Add(g);
-        }
-        catch
-        {
-            if (seq != _groupSearchSeq) return;
-            GroupResults.Clear();
-        }
-        OnPropertyChanged(nameof(HasGroupResults));
-    }
 
     public void SelectGroupResult(EntraGroup group)
     {
@@ -299,8 +268,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         _groupSearch = group.DisplayName;     // field write: don't retrigger the search
         OnPropertyChanged(nameof(GroupSearch));
         OnPropertyChanged(nameof(CanAddAssignment));
-        GroupResults.Clear();
-        OnPropertyChanged(nameof(HasGroupResults));
+        _groupSearchBox.Clear();
     }
 
     public async Task AddAssignmentAsync()
@@ -369,8 +337,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         FlyoutGroup = group;
         OnPropertyChanged(nameof(FlyoutHasGroup));
         Members.Clear();
-        MemberSearchResults.Clear();
-        OnPropertyChanged(nameof(HasMemberResults));
+        _memberSearchBox.Clear();
         _memberSearch = "";
         OnPropertyChanged(nameof(MemberSearch));
         IsFlyoutOpen = true;
@@ -388,7 +355,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             if (!ReferenceEquals(_flyoutGroup, group)) return;   // flyout switched meanwhile
             Members.Clear();
             foreach (var m in members) Members.Add(m);
-            MembersStatus = members.Count == 100 ? "Showing the first 100 members" : $"{members.Count} member{(members.Count == 1 ? "" : "s")}";
+            MembersStatus = $"{members.Count} member{(members.Count == 1 ? "" : "s")}";
         }
         catch (Exception ex)
         {
@@ -405,37 +372,12 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         set
         {
             if (!Set(ref _memberSearch, value)) return;
-            _ = RunMemberSearchAsync(value);
+            ErrorReporter.FireAndForget(() => _memberSearchBox.RunAsync(value));
         }
     }
 
-    public ObservableCollection<GroupMember> MemberSearchResults { get; } = new();
-    public bool HasMemberResults => MemberSearchResults.Count > 0;
-
-    private int _memberSearchSeq;
-    private async Task RunMemberSearchAsync(string query)
-    {
-        var seq = ++_memberSearchSeq;
-        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
-        {
-            MemberSearchResults.Clear();
-            OnPropertyChanged(nameof(HasMemberResults));
-            return;
-        }
-        try
-        {
-            var results = await _apps.SearchDevicesAndUsersAsync(query);
-            if (seq != _memberSearchSeq) return;
-            MemberSearchResults.Clear();
-            foreach (var m in results) MemberSearchResults.Add(m);
-        }
-        catch
-        {
-            if (seq != _memberSearchSeq) return;
-            MemberSearchResults.Clear();
-        }
-        OnPropertyChanged(nameof(HasMemberResults));
-    }
+    public ObservableCollection<GroupMember> MemberSearchResults => _memberSearchBox.Results;
+    public bool HasMemberResults => _memberSearchBox.HasResults;
 
     public async Task AddMemberAsync(GroupMember member)
     {
@@ -446,13 +388,12 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             await _apps.AddGroupMemberAsync(group.GroupId, member.Id);
             _memberSearch = "";
             OnPropertyChanged(nameof(MemberSearch));
-            MemberSearchResults.Clear();
-            OnPropertyChanged(nameof(HasMemberResults));
+            _memberSearchBox.Clear();
             await OpenMembersAsync(group);
         }
         catch (Exception ex)
         {
-            MembersStatus = ex.Message.Contains("403")
+            MembersStatus = ex is GraphException { IsForbidden: true }
                 ? "No permission to change membership — the signed-in account needs GroupMember.ReadWrite.All."
                 : $"Could not add member: {ex.Message}";
         }
@@ -469,7 +410,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MembersStatus = ex.Message.Contains("403")
+            MembersStatus = ex is GraphException { IsForbidden: true }
                 ? "No permission to change membership — the signed-in account needs GroupMember.ReadWrite.All."
                 : $"Could not remove member: {ex.Message}";
         }
@@ -523,8 +464,8 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             // Graph reports the committed upload, so allow for encryption overhead.
             var matches = intuneSize <= 0 || Math.Abs(size - intuneSize) <= intuneSize * 0.1;
             checks.Add(new SourceCheck(Path.GetFileName(intunewin), matches
-                ? $"{FormatSize(size)} — matches the Intune upload"
-                : $"{FormatSize(size)} on share vs {intuneSizeText} in Intune — re-upload?", ok: matches));
+                ? $"{ByteSize.Format(size)} — matches the Intune upload"
+                : $"{ByteSize.Format(size)} on share vs {intuneSizeText} in Intune — re-upload?", ok: matches));
         }
 
         checks.Add(File.Exists(Path.Combine(intuneDir, "detection.xml"))
@@ -539,13 +480,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         return checks;
     }
 
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        > 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024 * 1024):F1} GB",
-        > 1024L * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-        > 1024 => $"{bytes / 1024.0:F1} KB",
-        _ => $"{bytes} B",
-    };
+
 }
 
 /// <summary>One row of the Package tab's integrity checklist.</summary>

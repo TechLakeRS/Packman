@@ -61,6 +61,19 @@ public sealed class ApplicationsViewModel : ObservableObject
         ConnectCommand = new RelayCommand(() => ConnectRequested?.Invoke());
         SortByNameCommand = new RelayCommand(() => ToggleSort("name"));
         SortByUpdatedCommand = new RelayCommand(() => ToggleSort("updated"));
+
+        // Sign-out or a different tenant: the cached list belongs to the old session.
+        _auth.StateChanged += () =>
+        {
+            _loadedOnce = false;
+            _all.Clear();
+            _currentPage = 1;
+            ApplyFilters();
+            StatusText = _auth.IsSignedIn ? "" : "Sign in on the Settings page to load applications from Intune.";
+            OnPropertyChanged(nameof(ShowEmpty));
+            OnPropertyChanged(nameof(ShowConnectPrompt));
+            OnPropertyChanged(nameof(ShowPager));
+        };
     }
 
     private string _search = "";
@@ -165,7 +178,6 @@ public sealed class ApplicationsViewModel : ObservableObject
     public async Task LoadAsync(bool force = false)
     {
         if (IsLoading) return;
-        if (_loadedOnce && !force) return;
 
         if (!_auth.IsSignedIn)
         {
@@ -176,6 +188,8 @@ public sealed class ApplicationsViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowConnectPrompt));
             return;
         }
+
+        if (_loadedOnce && !force) return;
 
         IsLoading = true;
         StatusText = "";

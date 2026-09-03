@@ -36,7 +36,7 @@ public partial class MainWindow : FluentWindow
     /// </summary>
     private void MainWindow_Closing(object sender, CancelEventArgs e)
     {
-        if (_closeConfirmed || !EditStep.HasUnsavedChanges) return;
+        if (_closeConfirmed || DataContext is not MainViewModel vm || !vm.Editor.HasUnsavedChanges) return;
 
         e.Cancel = true;
         ErrorReporter.FireAndForget(async () =>
@@ -44,7 +44,7 @@ public partial class MainWindow : FluentWindow
             bool proceed;
             try
             {
-                proceed = await EditStep.PromptSaveAllAsync();
+                proceed = await vm.Editor.PromptSaveAllAsync();
             }
             catch (Exception ex)
             {
@@ -64,7 +64,7 @@ public partial class MainWindow : FluentWindow
         foreach (var p in new UIElement?[] { CreatePackagePage, RemoteTestPage, SettingsPage, UploadIntunePage, ApplicationsPage, AppDetailPage, AdvancedPage })
             if (p != null) p.Visibility = ReferenceEquals(p, page) ? Visibility.Visible : Visibility.Collapsed;
 
-        if (screenTitle != null && ScreenTitleText != null) ScreenTitleText.Text = screenTitle;
+        if (screenTitle != null && DataContext is MainViewModel vm) vm.ScreenTitle = screenTitle;
     }
 
     /// <summary>Switches to the Upload to Intune page, for the wizard's cross-link.</summary>
@@ -100,7 +100,7 @@ public partial class MainWindow : FluentWindow
     /// <summary>The footer action belongs to whichever tool is open.</summary>
     private void ToolAction_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is MainViewModel { IsEditToolOpen: true }) EditStep.OpenInExternalEditor();
+        if (DataContext is MainViewModel { IsEditToolOpen: true } vm) vm.Editor.OpenInExternalEditor();
     }
 
     /// <summary>
