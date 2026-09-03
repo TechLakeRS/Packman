@@ -21,6 +21,7 @@ public sealed class UploadStateException : Exception
 /// <summary>
 /// Uploads a Win32 (PSADT) package to Intune via Graph: sign, build the .intunewin,
 /// register the app, push the encrypted payload to Azure Storage, commit, publish, assign.
+/// The same build and publish steps also replace the content of an app that already exists.
 /// </summary>
 public partial class IntuneUploadService
 {
@@ -61,12 +62,6 @@ public partial class IntuneUploadService
         string? createdAppId = null;
         RollbackSucceeded = null;
 
-        void Report(int pct, string message)
-        {
-            progress?.UpdateProgress(pct, message);
-            log.Progress(pct, message);
-        }
-
         try
         {
             log.Section("UPLOAD METADATA");
@@ -82,59 +77,21 @@ public partial class IntuneUploadService
 
             log.Section("UPLOAD PROCESS");
 
-            Report(5, "Authenticating with Microsoft Graph...");
+            Report(progress, log, 5, "Authenticating with Microsoft Graph...");
             _ = await _graph.GetTokenAsync();
             log.Success("Authentication successful");
 
-            Report(10, "Signing application files...");
-            await SignApplicationFilesAsync(packagePath, progress, log, ct);
-
-            Report(20, "Packaging application files...");
-            var intuneWinFile = await CreateIntuneWinFileAsync(packagePath, ct);
-            log.Success($"Package created: {Path.GetFileName(intuneWinFile)}");
-
-            Report(30, "Reading package metadata...");
-            var intuneWin = ExtractIntuneWinInfo(intuneWinFile);
-            log.Success($"Package metadata extracted - Size: {intuneWin.UnencryptedContentSize:N0} bytes");
+            var intuneWin = await BuildIntuneWinAsync(packagePath, progress, log, ct);
 
             ct.ThrowIfCancellationRequested();
 
-            Report(35, "Registering application in Intune...");
+            Report(progress, log, 35, "Registering application in Intune...");
             var appId = await CreateWin32LobAppAsync(appInfo, installCommand, uninstallCommand, description, detectionRules,
                 installContext, intuneWin, iconPath, requirements, returnCodes, privacyUrl, informationUrl, ct);
             createdAppId = appId;
             log.Success($"Application registered with ID: {appId}");
 
-            Report(45, "Preparing content storage...");
-            var contentVersionId = await CreateContentVersionAsync(appId, ct);
-            log.Success($"Content version created: {contentVersionId}");
-
-            Report(50, "Initializing file upload...");
-            var fileId = await CreateFileEntryAsync(appId, contentVersionId, intuneWin, ct);
-            var fileUrl = FileUrl(appId, contentVersionId, fileId);
-            log.Success($"File entry created: {fileId}");
-
-            Report(55, "Requesting Azure upload URL...");
-            var storage = await WaitForUploadStateAsync(fileUrl, "azureStorageUriRequest", TimeSpan.FromMinutes(20), TimeSpan.FromSeconds(10), ct);
-            var sasUri = storage.GetSafeString("azureStorageUri");
-            if (string.IsNullOrEmpty(sasUri))
-                throw new UploadStateException("the Azure Storage URI", "azureStorageUriRequestSuccess without a URI");
-            log.Success("Azure Storage URI obtained");
-
-            await UploadToAzureStorageAsync(sasUri, fileUrl, intuneWin, progress, log, ct);
-            log.Success("Package uploaded to Azure Storage successfully");
-
-            Report(85, "Finalizing package upload...");
-            await CommitFileAsync(fileUrl, intuneWin.EncryptionInfo, ct);
-            log.Success("File committed successfully");
-
-            Report(90, "Processing uploaded package...");
-            await WaitForUploadStateAsync(fileUrl, "commitFile", TimeSpan.FromMinutes(10), TimeSpan.FromSeconds(5), ct);
-            log.Success("File processing completed");
-
-            Report(95, "Publishing application...");
-            await CommitAppAsync(appId, contentVersionId, ct);
-            log.Success("Application published successfully");
+            await PublishContentAsync(appId, intuneWin, progress, log, ct);
 
             // Published: a later supersedence or assignment failure must not roll it back.
             createdAppId = null;
@@ -147,12 +104,12 @@ public partial class IntuneUploadService
             var picked = pickedGroups?.Where(g => !string.IsNullOrWhiteSpace(g.GroupId)).ToList() ?? new List<AssignedGroup>();
             if (picked.Count > 0 || (groupAssignment?.HasAnyAssignment() ?? false))
             {
-                Report(98, "Assigning groups...");
+                Report(progress, log, 98, "Assigning groups...");
                 log.Section("GROUP ASSIGNMENT");
                 await AssignGroupsAsync(appId, appInfo, groupAssignment ?? new AppSettings.GroupAssignmentConfig(), picked, log, ct);
             }
 
-            Report(100, "Upload complete!");
+            Report(progress, log, 100, "Upload complete!");
             log.Section("UPLOAD COMPLETE");
             log.Success($"Application '{appInfo.Name}' uploaded successfully! ID: {appId}");
             return appId;
@@ -170,6 +127,70 @@ public partial class IntuneUploadService
             await RollbackCreatedAppAsync(createdAppId, log);
             throw;
         }
+    }
+
+    private static void Report(IUploadProgress? progress, UploadLogger log, int pct, string message)
+    {
+        progress?.UpdateProgress(pct, message);
+        log.Progress(pct, message);
+    }
+
+    /// <summary>Signs the script, runs IntuneWinAppUtil and reads the result. Progress 10-30.</summary>
+    private async Task<IntuneWinInfo> BuildIntuneWinAsync(string packagePath, IUploadProgress? progress, UploadLogger log, CancellationToken ct)
+    {
+        Report(progress, log, 10, "Signing application files...");
+        await SignApplicationFilesAsync(packagePath, progress, log, ct);
+
+        Report(progress, log, 20, "Packaging application files...");
+        var intuneWinFile = await CreateIntuneWinFileAsync(packagePath, ct);
+        log.Success($"Package created: {Path.GetFileName(intuneWinFile)}");
+
+        Report(progress, log, 30, "Reading package metadata...");
+        var intuneWin = ExtractIntuneWinInfo(intuneWinFile);
+        log.Success($"Package metadata extracted - Size: {intuneWin.UnencryptedContentSize:N0} bytes");
+        return intuneWin;
+    }
+
+    /// <summary>
+    /// Pushes a built .intunewin into an app as a new content version and switches the app
+    /// to it: content version, file entry, Azure upload, commit, publish. Nothing else on
+    /// the app is touched. Progress 45-95. Returns the committed content version id.
+    /// </summary>
+    private async Task<string> PublishContentAsync(string appId, IntuneWinInfo intuneWin, IUploadProgress? progress, UploadLogger log, CancellationToken ct)
+    {
+        Report(progress, log, 45, "Preparing content storage...");
+        var contentVersionId = await CreateContentVersionAsync(appId, ct);
+        log.Success($"Content version created: {contentVersionId}");
+
+        Report(progress, log, 50, "Initializing file upload...");
+        var fileId = await CreateFileEntryAsync(appId, contentVersionId, intuneWin, ct);
+        var fileUrl = FileUrl(appId, contentVersionId, fileId);
+        log.Success($"File entry created: {fileId}");
+
+        Report(progress, log, 55, "Requesting Azure upload URL...");
+        var storage = await WaitForUploadStateAsync(fileUrl, "azureStorageUriRequest", TimeSpan.FromMinutes(20), TimeSpan.FromSeconds(10), ct);
+        var sasUri = storage.GetSafeString("azureStorageUri");
+        if (string.IsNullOrEmpty(sasUri))
+            throw new UploadStateException("the Azure Storage URI", "azureStorageUriRequestSuccess without a URI");
+        log.Success("Azure Storage URI obtained");
+
+        await UploadToAzureStorageAsync(sasUri, fileUrl, intuneWin, progress, log, ct);
+        log.Success("Package uploaded to Azure Storage successfully");
+
+        Report(progress, log, 85, "Finalizing package upload...");
+        await CommitFileAsync(fileUrl, intuneWin.EncryptionInfo, ct);
+        log.Success("File committed successfully");
+
+        Report(progress, log, 90, "Processing uploaded package...");
+        await WaitForUploadStateAsync(fileUrl, "commitFile", TimeSpan.FromMinutes(10), TimeSpan.FromSeconds(5), ct);
+        log.Success("File processing completed");
+
+        // Switching the committed version is the only PATCH on the app: it carries just
+        // committedContentVersion, so every other property keeps its tenant value.
+        Report(progress, log, 95, "Publishing application...");
+        await CommitAppAsync(appId, contentVersionId, ct);
+        log.Success($"App now serves content version {contentVersionId}");
+        return contentVersionId;
     }
 
     /// <summary>

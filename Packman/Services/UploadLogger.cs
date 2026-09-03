@@ -5,7 +5,8 @@ using System.Text;
 namespace Packman.Services;
 
 /// <summary>
-/// Per-package upload log, written to %LocalAppData%\Packman\Logs\Upload\{App}-{date}.log.
+/// Per-package log for an upload or a content update, written to
+/// %LocalAppData%\Packman\Logs\{Upload|Update}\{App}-{date}.log.
 /// Tokens and SAS URIs never go through here.
 /// </summary>
 public sealed class UploadLogger : IDisposable
@@ -16,11 +17,15 @@ public sealed class UploadLogger : IDisposable
 
     public string LogFilePath { get; }
 
-    public UploadLogger(string applicationName)
+    private readonly string _operation;
+
+    /// <param name="operation">"Upload" or "Update": the log folder and the session label.</param>
+    public UploadLogger(string applicationName, string operation = "Upload")
     {
+        _operation = operation;
         var logDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "Packman", "Logs", "Upload");
+            "Packman", "Logs", operation);
         Directory.CreateDirectory(logDirectory);
 
         var safeAppName = string.Join("_", applicationName.Split(Path.GetInvalidFileNameChars()));
@@ -31,7 +36,7 @@ public sealed class UploadLogger : IDisposable
             _writer = new StreamWriter(LogFilePath, append: true, Encoding.UTF8) { AutoFlush = true };
             var separator = new string('=', 80);
             Write(separator);
-            Write($"Upload Session Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            Write($"{_operation} Session Started: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
             Write(separator);
             Write("");
         }
@@ -93,7 +98,7 @@ public sealed class UploadLogger : IDisposable
             if (_writer != null)
             {
                 Write("");
-                Write($"Upload Session Ended: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                Write($"{_operation} Session Ended: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 Write(new string('=', 80));
                 Write("");
                 _writer.Dispose();
