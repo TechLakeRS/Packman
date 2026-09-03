@@ -26,17 +26,16 @@ from `styles.css`:
 
 | File | What it holds | Examples |
 |---|---|---|
-| `tokens/colors.css` | 52 colour roles x 2 themes | surfaces `--pm-bg`, `--pm-shell`, `--pm-surface`, `--pm-flyout`, `--pm-card`, `--pm-card-2`, `--pm-rail`; strokes `--pm-line`, `--pm-line-2`, `--pm-edge`, `--pm-control-stroke`; fields `--pm-field`, `--pm-control`, `--pm-control-hover`; accent `--pm-primary`, `--pm-primary-2`, `--pm-primary-fg`, `--pm-primary-soft`, `--pm-primary-line`, `--pm-accent-text`; states `--pm-ok`, `--pm-warn`, `--pm-bad` with `-soft` fills and `-line` strokes (`--pm-ok-soft`, `--pm-ok-line`); code `--pm-code-bg`, `--pm-code-txt`, `--pm-code-keyword`, `--pm-code-string`, `--pm-code-comment` |
-| `tokens/typography.css` | font stacks + text styles | `--pm-font-ui`, `--pm-font-mono`, `--pm-font-label`; per style `-family`/`-size`/`-weight`/`-color`: `--pm-h1-*` (20/600), `--pm-h2-*` (14/600), `--pm-sub-text-*` (13, line-height 20), `--pm-section-label-*` (11/600, label face, typed in CAPS), `--pm-caption-*` and `--pm-mono-value-*` (mono 11/12), `--pm-field-label-*` (11.5/500), `--pm-col-head-*` (10/600) |
-| `tokens/components.css` | recipe per control style | `--pm-primary-button-*`, `--pm-ghost-button-*`, `--pm-mini-button-*`, `--pm-icon-button-*`, `--pm-text-field-*`, `--pm-mono-field-*`, `--pm-nav-item-*`, `--pm-page-tab-*`, `--pm-filter-pill-*`, `--pm-pill-count-*`, `--pm-card-*`, `--pm-status-list-row-*`, `--pm-focus-visual-*` - each with `-bg`, `-color`, `-border-color`, `-border-width`, `-radius`, `-padding`, `-min-height`/`-height`, `-size`, `-weight` as the source style defines them |
+| `tokens/colors.css` | 48 colour roles x 2 themes | surfaces `--pm-bg`, `--pm-shell`, `--pm-surface`, `--pm-flyout`, `--pm-card`, `--pm-card-2`, `--pm-rail`; strokes `--pm-line`, `--pm-line-2`, `--pm-edge`, `--pm-control-stroke`; fields `--pm-field`, `--pm-control`, `--pm-control-hover`; accent `--pm-primary`, `--pm-primary-2`, `--pm-primary-fg`, `--pm-primary-soft`, `--pm-primary-line`, `--pm-accent-text`; states `--pm-ok`, `--pm-warn`, `--pm-bad` with `-soft` fills and `-line` strokes (`--pm-ok-soft`, `--pm-ok-line`); code `--pm-code-bg`, `--pm-code-txt`, `--pm-code-bar-txt`, `--pm-code-comment` |
+| `tokens/typography.css` | font stacks + text styles | `--pm-font-ui`, `--pm-font-mono`, `--pm-font-label`; per style `-family`/`-size`/`-weight`/`-color`: `--pm-h1-*` (20/600), `--pm-h2-*` (14/600), `--pm-sub-text-*` (13, line-height 20), `--pm-section-label-*` (11/600, label face, typed in CAPS), `--pm-caption-*` (mono 11), `--pm-field-label-*` (11.5/500), `--pm-col-head-*` (10/600) |
+| `tokens/components.css` | recipe per control style | `--pm-primary-button-*`, `--pm-ghost-button-*`, `--pm-mini-button-*`, `--pm-icon-button-*`, `--pm-text-field-*`, `--pm-mono-field-*`, `--pm-nav-item-*`, `--pm-page-tab-*`, `--pm-card-*`, `--pm-focus-visual-*` - each with `-bg`, `-color`, `-border-color`, `-border-width`, `-radius`, `-padding`, `-min-height`/`-height`, `-size`, `-weight` as the source style defines them |
 
 Rules that follow from the source:
 
 - **Accent is amber and it is the only brand colour.** Filled accent = `--pm-primary` with
   `--pm-primary-fg` text. Amber as text, icon or hairline = `--pm-accent-text` (darker in
   light theme so it stays legible). Warnings are `--pm-warn`, never amber.
-- **Radii**: cards 8px (`--pm-card-radius`), buttons and fields 4px, nav items 5px, count
-  pills 9px (fully round). Separation is a layer plus a 1px `--pm-line` stroke, **no shadows**.
+- **Radii**: cards 8px (`--pm-card-radius`), buttons and fields 4px, nav items 5px. Separation is a layer plus a 1px `--pm-line` stroke, **no shadows**.
 - **Sizes**: buttons 34px min height (`--pm-primary-button-min-height`), mini buttons 26px,
   text fields 36px (`--pm-text-field-height`), nav rows 38px. Card padding is
   `--pm-card-padding` (20px 22px). No spacing scale exists; the app's gaps are mostly

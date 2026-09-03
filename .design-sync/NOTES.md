@@ -67,3 +67,11 @@ Repo-specific facts for the next sync. Read before running anything.
   straight from WPF-UI (dialogs, scrollbars, toggles) have no recipe here.
 - Toolchain: node 22, esbuild/ts-morph latest at staging time; nothing is fetched from the
   network during the build itself.
+
+## Drift log
+
+- 2026-09-03: main (PR #3/#4 merges) removed 4 colour roles (PaneColor, PrimaryGlowColor,
+  CodeKeywordColor, CodeStringColor), the LogoGradientBrush alias, the MonoValue text style
+  and the CardSoft, BrowseButton, FilterPill, PillCount and StatusListRow control styles, and
+  restyled BackButton. Tokens regenerated; `conventions.md` edited to drop the removed names
+  (counts, code colours, mono-value, filter pill, count pill, status row). 234 tokens now.
