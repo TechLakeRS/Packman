@@ -5,7 +5,11 @@ namespace Packman.Tests;
 
 public class PsadtScriptTests
 {
-    private const string Template = """
+    // Normalised to LF: a raw string literal takes the source file's own line endings,
+    // and a Windows checkout turns those into CRLF.
+    private static readonly string Template = RawTemplate.ReplaceLineEndings("\n");
+
+    private const string RawTemplate = """
         $adtSession = @{
             # App variables.
             AppVendor = ''

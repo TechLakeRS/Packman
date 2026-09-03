@@ -12,7 +12,9 @@ public class PackageFlowTests : IDisposable
     private readonly string _share;
     private readonly string _template;
 
-    private const string TemplateScript = """
+    private static readonly string TemplateScript = RawTemplateScript.ReplaceLineEndings("\n");
+
+    private const string RawTemplateScript = """
         $adtSession = @{
             AppVendor = ''
             AppName = ''
