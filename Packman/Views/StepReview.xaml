@@ -172,7 +172,7 @@
                 </StackPanel>
 
                 <!-- Progress rail -->
-                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Upload.Publish.ProgressValue}" Margin="0,16,0,0">
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Upload.Publish.ProgressValue, Mode=OneWay}" Margin="0,16,0,0">
                     <ProgressBar.Style>
                         <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
                             <Style.Triggers>
