@@ -139,8 +139,6 @@ public sealed class MainViewModel : ObservableObject
                 return IsUpgradeMode ? "UPGRADE PACKAGE" : "GENERATE PACKAGE";
             }
             if (CurrentStepIndex == UploadStep) return "CONTINUE TO REVIEW";
-            if (Upload.IsFailed) return "RETRY UPLOAD";
-            if (Upload.IsSucceeded) return "DONE";
             return "BUILD & UPLOAD";
         }
     }
@@ -148,10 +146,10 @@ public sealed class MainViewModel : ObservableObject
     public bool IsLastStep => CurrentStepIndex == Steps.Count - 1;
 
     /// <summary>The ↵ hint hides while an upload is in flight.</summary>
-    public bool ShowPrimaryKeyHint => !Upload.IsRunning;
+    public bool ShowPrimaryKeyHint => !Upload.Publish.IsRunning;
 
     /// <summary>Swaps the primary action for a status line while an upload runs.</summary>
-    public bool IsUploadRunning => Upload.IsRunning;
+    public bool IsUploadRunning => Upload.Publish.IsRunning;
 
     public string StepPosition => $"step {CurrentStepIndex + 1} of {Steps.Count}";
 
@@ -164,7 +162,8 @@ public sealed class MainViewModel : ObservableObject
     public MainViewModel()
     {
         Upload = new UploadStepViewModel(CreatePackage, _settingsService, _auth);
-        RemoteTest = new RemoteTestViewModel(_settingsService, CreatePackage, Upload);
+        RemoteTest = new RemoteTestViewModel(_settingsService, CreatePackage, hasPublishStep: true);
+        RemoteTest.ApplyDetectionRequested += Upload.ApplyDiscoveredRule;
 
         Steps = new ObservableCollection<StepViewModel>
         {
@@ -174,14 +173,14 @@ public sealed class MainViewModel : ObservableObject
         };
 
         BackCommand     = new RelayCommand(() => CurrentStepIndex--, () => CurrentStepIndex > 0);
-        PrimaryCommand  = new AsyncRelayCommand(OnPrimaryAsync, () => !CreatePackage.IsGenerating && !Upgrade.IsBusy && !Upload.IsPublishing);
+        PrimaryCommand  = new AsyncRelayCommand(OnPrimaryAsync, () => !CreatePackage.IsGenerating && !Upgrade.IsBusy && !Upload.Publish.IsPublishing);
         GoToStepCommand = new RelayCommand<int>(i => CurrentStepIndex = i);
 
         OpenEditToolCommand      = new RelayCommand(() => ActiveTool = PackageTool.EditScript, () => HasPackage);
         OpenTestToolCommand      = new RelayCommand(() => ActiveTool = PackageTool.RemoteTest, () => HasPackage);
         CloseToolCommand         = new RelayCommand(() => ActiveTool = PackageTool.None);
         OpenPackageFolderCommand = new RelayCommand(OpenPackageFolder, () => HasPackage);
-        NewPackageCommand        = new RelayCommand(StartNewPackage, () => HasPackage && !Upload.IsRunning);
+        NewPackageCommand        = new RelayCommand(StartNewPackage, () => HasPackage && !Upload.Publish.IsRunning);
 
         ContinueToUploadCommand = new RelayCommand(() =>
         {
@@ -209,20 +208,15 @@ public sealed class MainViewModel : ObservableObject
             if (e.PropertyName == nameof(UpgradePackageViewModel.IsBusy))
                 PrimaryCommand.RaiseCanExecuteChanged();
         };
-        Upload.PropertyChanged += (_, e) =>
+        Upload.Publish.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(UploadStepViewModel.IsPublishing))
-                PrimaryCommand.RaiseCanExecuteChanged();
-
-            // The publish button's label comes from the upload state.
-            if (e.PropertyName is nameof(UploadStepViewModel.IsPublishing)
-                              or nameof(UploadStepViewModel.IsRunning)
-                              or nameof(UploadStepViewModel.IsComplete))
+            if (e.PropertyName is nameof(PublishRunViewModel.IsPublishing)
+                              or nameof(PublishRunViewModel.IsRunning)
+                              or nameof(PublishRunViewModel.IsComplete))
             {
-                OnPropertyChanged(nameof(PrimaryLabel));
-                OnPropertyChanged(nameof(ShowPrimaryKeyHint));
-                OnPropertyChanged(nameof(IsUploadRunning));
+                PrimaryCommand.RaiseCanExecuteChanged();
                 NewPackageCommand.RaiseCanExecuteChanged();
+                RaiseAll(nameof(ShowPrimaryKeyHint), nameof(IsUploadRunning));
             }
         };
     }

@@ -10,7 +10,7 @@
     <Grid>
         <!-- ============ FORM ============ -->
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      Visibility="{Binding IsNotPublishing, Converter={StaticResource BoolToVis}}">
+                      Visibility="{Binding Publish.IsNotPublishing, Converter={StaticResource BoolToVis}}">
             <StackPanel Margin="26,20,26,26">
                 <StackPanel>
                     <TextBlock Text="Upload to Intune" Style="{StaticResource H1}"/>
@@ -334,12 +334,12 @@
         </ScrollViewer>
 
         <!-- ============ PUBLISHING OVERLAY ============ -->
-        <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding IsPublishing, Converter={StaticResource BoolToVis}}">
+        <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding Publish.IsPublishing, Converter={StaticResource BoolToVis}}">
             <StackPanel Width="560" VerticalAlignment="Center" HorizontalAlignment="Center">
 
                 <!-- Spinner (running) -->
                 <Viewbox Width="56" Height="56" HorizontalAlignment="Center"
-                         Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}">
+                         Visibility="{Binding Publish.IsRunning, Converter={StaticResource BoolToVis}}">
                     <Grid Width="44" Height="44" RenderTransformOrigin="0.5,0.5">
                         <Grid.RenderTransform>
                             <RotateTransform Angle="0"/>
@@ -371,7 +371,7 @@
 
                 <!-- Done check (complete & success) -->
                 <Border Width="52" Height="52" CornerRadius="4" Background="{DynamicResource OkSoftBrush}" HorizontalAlignment="Center"
-                        Visibility="{Binding IsSucceeded, Converter={StaticResource BoolToVis}}">
+                        Visibility="{Binding Publish.IsSucceeded, Converter={StaticResource BoolToVis}}">
                     <Viewbox Width="22" Height="22">
                         <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.6" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                     </Viewbox>
@@ -379,21 +379,21 @@
 
                 <!-- Error mark (complete & failed) -->
                 <Border Width="52" Height="52" CornerRadius="4" Background="{DynamicResource BadSoftBrush}" HorizontalAlignment="Center"
-                        Visibility="{Binding IsFailed, Converter={StaticResource BoolToVis}}">
+                        Visibility="{Binding Publish.IsFailed, Converter={StaticResource BoolToVis}}">
                     <Viewbox Width="20" Height="20">
                         <Path Data="{StaticResource IconX}" Stroke="{DynamicResource BadBrush}" StrokeThickness="2.4" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                     </Viewbox>
                 </Border>
 
-                <TextBlock Text="{Binding PublishTitle}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                <TextBlock Text="{Binding Publish.Title}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                            HorizontalAlignment="Center" Margin="0,18,0,0"/>
                 <TextBlock Text="Building the Win32 package and pushing to Microsoft Intune. This usually takes ~30 seconds — keep this tab open."
                            FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center"
                            HorizontalAlignment="Center" Margin="0,8,0,0"
-                           Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}"/>
+                           Visibility="{Binding Publish.IsRunning, Converter={StaticResource BoolToVis}}"/>
 
                 <!-- Steps -->
-                <ItemsControl ItemsSource="{Binding PublishSteps}" Margin="0,24,0,0">
+                <ItemsControl ItemsSource="{Binding Publish.Steps}" Margin="0,24,0,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border CornerRadius="4" Padding="16,14" Margin="0,0,0,10"
@@ -466,18 +466,18 @@
                 </ItemsControl>
 
                 <!-- Cancel while running -->
-                <StackPanel Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
+                <StackPanel Visibility="{Binding Publish.IsRunning, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
                     <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Center" Margin="0,16,0,0"
-                            Command="{Binding CancelUploadCommand}" Content="Cancel upload"
+                            Command="{Binding Publish.CancelCommand}" Content="Cancel upload"
                             AutomationProperties.Name="Cancel upload"
                             ToolTip="Stops the upload. Anything already created in Intune is removed."/>
                 </StackPanel>
 
                 <!-- Result + Done -->
-                <StackPanel Visibility="{Binding IsComplete, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
-                    <TextBlock Text="{Binding ResultText}" FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"/>
+                <StackPanel Visibility="{Binding Publish.IsComplete, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
+                    <TextBlock Text="{Binding Publish.ResultText}" FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"/>
                     <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center" Margin="0,16,0,0"
-                            Command="{Binding DoneCommand}" Content="Done"
+                            Command="{Binding Publish.DoneCommand}" Content="Done"
                             AutomationProperties.Name="Done"/>
                 </StackPanel>
             </StackPanel>

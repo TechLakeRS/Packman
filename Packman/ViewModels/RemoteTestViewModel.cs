@@ -29,7 +29,7 @@ public sealed class RemoteTestViewModel : ObservableObject
 
     // Both null on the standalone page: no wizard to pre-fill the package or feed.
     private readonly CreatePackageViewModel? _create;
-    private readonly UploadStepViewModel? _upload;
+    private readonly bool _hasPublishStep;
     private readonly SettingsService _settingsService;
 
     // PSADT is chatty: buffer and flush on a timer, or the console re-renders per line.
@@ -61,11 +61,14 @@ public sealed class RemoteTestViewModel : ObservableObject
     public RelayCommand ApplyDetectionCommand { get; }
     public RelayCommand ClearLogCommand { get; }
 
+    /// <summary>Raised with the discovered rule when the packager applies it; the host routes it to the publish step.</summary>
+    public event Action<DetectionRule>? ApplyDetectionRequested;
+
     public RemoteTestViewModel(SettingsService settingsService,
-        CreatePackageViewModel? create = null, UploadStepViewModel? upload = null)
+        CreatePackageViewModel? create = null, bool hasPublishStep = false)
     {
         _create = create;
-        _upload = upload;
+        _hasPublishStep = hasPublishStep;
         _settingsService = settingsService;
 
         RefreshRecentComputers();
@@ -105,7 +108,7 @@ public sealed class RemoteTestViewModel : ObservableObject
     public bool NeedsPackage => _packagePath.Length == 0;
 
     /// <summary>The publish step only accepts the wizard's own package.</summary>
-    public bool HasPublishStep => _upload != null;
+    public bool HasPublishStep => _hasPublishStep;
     public bool IsGeneratedPackage => _isGeneratedPackage;
     public bool IsSelectedPackage => HasPackage && !_isGeneratedPackage;
 
@@ -373,12 +376,9 @@ public sealed class RemoteTestViewModel : ObservableObject
     /// <summary>Pushes the discovered rule into the publish step's detection fields.</summary>
     private void ApplyDetection()
     {
-        if (_discoveredRule == null || _upload == null) return;
+        if (_discoveredRule == null || !_hasPublishStep) return;
 
-        _upload.SelectedDetectionMethod = _discoveredRule.CheckVersion ? "File version" : "File exists";
-        _upload.DetectionPath = _discoveredRule.Path;
-        _upload.DetectionName = _discoveredRule.FileOrFolderName;
-        _upload.DetectionValue = _discoveredRule.DetectionValue;
+        ApplyDetectionRequested?.Invoke(_discoveredRule);
 
         Append($"[OK] Applied to the publish step: {_discoveredRule.Title}");
         Flush();

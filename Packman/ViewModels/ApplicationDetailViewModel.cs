@@ -17,6 +17,8 @@ public sealed class ApplicationDetailViewModel : ObservableObject
 
     public ApplicationDetailViewModel(IntuneApplication app)
     {
+        _groupSearchBox = new IncrementalSearch<EntraGroup>(q => _apps.SearchGroupsAsync(q), () => OnPropertyChanged(nameof(HasGroupResults)));
+        _memberSearchBox = new IncrementalSearch<GroupMember>(q => _apps.SearchDevicesAndUsersAsync(q), () => OnPropertyChanged(nameof(HasMemberResults)));
         // Seed from the list row so the header renders now; LoadAsync fills the rest.
         Detail = new ApplicationDetail
         {
@@ -249,6 +251,9 @@ public sealed class ApplicationDetailViewModel : ObservableObject
     private string _selectedIntent = "Required";
     public string SelectedIntent { get => _selectedIntent; set => Set(ref _selectedIntent, value); }
 
+    private readonly IncrementalSearch<EntraGroup> _groupSearchBox;
+    private readonly IncrementalSearch<GroupMember> _memberSearchBox;
+
     private string _groupSearch = "";
     public string GroupSearch
     {
@@ -258,40 +263,15 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             if (!Set(ref _groupSearch, value)) return;
             _selectedGroup = null;
             OnPropertyChanged(nameof(CanAddAssignment));
-            _ = RunGroupSearchAsync(value);
+            ErrorReporter.FireAndForget(() => _groupSearchBox.RunAsync(value));
         }
     }
 
-    public ObservableCollection<EntraGroup> GroupResults { get; } = new();
-    public bool HasGroupResults => GroupResults.Count > 0;
+    public ObservableCollection<EntraGroup> GroupResults => _groupSearchBox.Results;
+    public bool HasGroupResults => _groupSearchBox.HasResults;
 
     private EntraGroup? _selectedGroup;
     public bool CanAddAssignment => _selectedGroup != null;
-
-    private int _groupSearchSeq;
-    private async Task RunGroupSearchAsync(string query)
-    {
-        var seq = ++_groupSearchSeq;
-        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
-        {
-            GroupResults.Clear();
-            OnPropertyChanged(nameof(HasGroupResults));
-            return;
-        }
-        try
-        {
-            var results = await _apps.SearchGroupsAsync(query);
-            if (seq != _groupSearchSeq) return;   // stale response
-            GroupResults.Clear();
-            foreach (var g in results) GroupResults.Add(g);
-        }
-        catch
-        {
-            if (seq != _groupSearchSeq) return;
-            GroupResults.Clear();
-        }
-        OnPropertyChanged(nameof(HasGroupResults));
-    }
 
     public void SelectGroupResult(EntraGroup group)
     {
@@ -299,8 +279,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         _groupSearch = group.DisplayName;     // field write: don't retrigger the search
         OnPropertyChanged(nameof(GroupSearch));
         OnPropertyChanged(nameof(CanAddAssignment));
-        GroupResults.Clear();
-        OnPropertyChanged(nameof(HasGroupResults));
+        _groupSearchBox.Clear();
     }
 
     public async Task AddAssignmentAsync()
@@ -369,8 +348,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         FlyoutGroup = group;
         OnPropertyChanged(nameof(FlyoutHasGroup));
         Members.Clear();
-        MemberSearchResults.Clear();
-        OnPropertyChanged(nameof(HasMemberResults));
+        _memberSearchBox.Clear();
         _memberSearch = "";
         OnPropertyChanged(nameof(MemberSearch));
         IsFlyoutOpen = true;
@@ -405,37 +383,12 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         set
         {
             if (!Set(ref _memberSearch, value)) return;
-            _ = RunMemberSearchAsync(value);
+            ErrorReporter.FireAndForget(() => _memberSearchBox.RunAsync(value));
         }
     }
 
-    public ObservableCollection<GroupMember> MemberSearchResults { get; } = new();
-    public bool HasMemberResults => MemberSearchResults.Count > 0;
-
-    private int _memberSearchSeq;
-    private async Task RunMemberSearchAsync(string query)
-    {
-        var seq = ++_memberSearchSeq;
-        if (string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2)
-        {
-            MemberSearchResults.Clear();
-            OnPropertyChanged(nameof(HasMemberResults));
-            return;
-        }
-        try
-        {
-            var results = await _apps.SearchDevicesAndUsersAsync(query);
-            if (seq != _memberSearchSeq) return;
-            MemberSearchResults.Clear();
-            foreach (var m in results) MemberSearchResults.Add(m);
-        }
-        catch
-        {
-            if (seq != _memberSearchSeq) return;
-            MemberSearchResults.Clear();
-        }
-        OnPropertyChanged(nameof(HasMemberResults));
-    }
+    public ObservableCollection<GroupMember> MemberSearchResults => _memberSearchBox.Results;
+    public bool HasMemberResults => _memberSearchBox.HasResults;
 
     public async Task AddMemberAsync(GroupMember member)
     {
@@ -446,8 +399,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             await _apps.AddGroupMemberAsync(group.GroupId, member.Id);
             _memberSearch = "";
             OnPropertyChanged(nameof(MemberSearch));
-            MemberSearchResults.Clear();
-            OnPropertyChanged(nameof(HasMemberResults));
+            _memberSearchBox.Clear();
             await OpenMembersAsync(group);
         }
         catch (Exception ex)

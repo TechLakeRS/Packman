@@ -3,14 +3,12 @@ using Packman.Models;
 using Packman.Services;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
-using System.Windows;
 
 namespace Packman.ViewModels;
 
 /// <summary>
-/// The final wizard step: builds the .intunewin from the package Create/Upgrade produced
-/// and uploads it to Intune.
+/// The wizard's Upload and Review steps: detection, requirements, return codes and groups
+/// for the package Create/Upgrade produced, then the publish itself.
 /// </summary>
 public class UploadStepViewModel : ObservableObject
 {
@@ -22,8 +20,6 @@ public class UploadStepViewModel : ObservableObject
     private string _appSummaryDetail = "";
     private string _detectionSummary = "";
     private string _statusText = "";
-    private int _progressValue;
-    private bool _isUploading;
 
     private string _selectedDetectionMethod = DetectionMethod.FileExists;
     private string _detectionPath = "";
@@ -46,9 +42,6 @@ public class UploadStepViewModel : ObservableObject
     /// <summary>In-flight group seeding. Awaited before publishing.</summary>
     private Task? _seeding;
 
-    /// <summary>Cancels the running upload. Null when idle.</summary>
-    private CancellationTokenSource? _cts;
-
     private string _selectedDeployMode = DeployModeDefault;
 
     private string _reviewName = "";
@@ -60,97 +53,42 @@ public class UploadStepViewModel : ObservableObject
     private string _reviewPackageType = "";
     private string _reviewSize = "";
 
+    private static readonly string[] DetectionDependents =
+    [
+        nameof(IsFileDetection), nameof(IsFileVersionDetection), nameof(IsRegistryDetection),
+        nameof(IsMsiDetection), nameof(HasNoMsiProductCode),
+    ];
+
     public UploadStepViewModel(CreatePackageViewModel create, SettingsService settingsService, IntuneAuthService auth)
     {
         _create = create;
         _settingsService = settingsService;
         _auth = auth;
 
-        DoneCommand = new RelayCommand(() => { IsPublishing = false; IsComplete = false; });
         AddReturnCodeCommand = new RelayCommand(AddReturnCode);
         RestoreDefaultsCommand = new RelayCommand(ApplyIntuneDefaults);
-        CancelUploadCommand = new RelayCommand(CancelUpload, () => IsRunning);
         ApplyIntuneDefaults();
 
-        PublishSteps = new ObservableCollection<PublishStepViewModel>
+        // The overlay's status line doubles as this step's status line.
+        Publish.PropertyChanged += (_, e) =>
         {
-            new(1, "Building .intunewin package"),
-            new(2, "Signing with Authenticode"),
-            new(3, "Uploading to tenant"),
-            new(4, "Creating Win32 app"),
-            new(5, "Assigning to groups"),
+            if (e.PropertyName == nameof(PublishRunViewModel.StatusText))
+                StatusText = Publish.StatusText;
         };
     }
 
-    public string AppSummaryName { get => _appSummaryName; set => Set(ref _appSummaryName, value); }
-    public string AppSummaryDetail { get => _appSummaryDetail; set => Set(ref _appSummaryDetail, value); }
-    public string DetectionSummary { get => _detectionSummary; set => Set(ref _detectionSummary, value); }
-    public string StatusText { get => _statusText; set => Set(ref _statusText, value); }
-    public int ProgressValue { get => _progressValue; set => Set(ref _progressValue, value); }
-    public bool IsUploading { get => _isUploading; set => Set(ref _isUploading, value); }
+    public string AppSummaryName { get => _appSummaryName; private set => Set(ref _appSummaryName, value); }
+    public string AppSummaryDetail { get => _appSummaryDetail; private set => Set(ref _appSummaryDetail, value); }
+    public string DetectionSummary { get => _detectionSummary; private set => Set(ref _detectionSummary, value); }
+    public string StatusText { get => _statusText; private set => Set(ref _statusText, value); }
 
     public bool IsSignedIn => _auth.IsSignedIn;
     public bool IsNotSignedIn => !_auth.IsSignedIn;
     public string SignedInUser => _auth.SignedInUser ?? "";
+    public string TenantName => _auth.TenantName;
 
-    // ── Publishing overlay ─────────────────────────────────────────────
-    public ObservableCollection<PublishStepViewModel> PublishSteps { get; }
-    public RelayCommand DoneCommand { get; }
-
-    private bool _isPublishing;
-    public bool IsPublishing
-    {
-        get => _isPublishing;
-        private set
-        {
-            if (!Set(ref _isPublishing, value)) return;
-            OnPropertyChanged(nameof(IsNotPublishing));
-            OnPropertyChanged(nameof(IsRunning));
-            CancelUploadCommand.RaiseCanExecuteChanged();
-        }
-    }
-    public bool IsNotPublishing => !_isPublishing;
-
-    /// <summary>Publish started but not finished. Drives the spinner.</summary>
-    public bool IsRunning => _isPublishing && !_isComplete;
-
-    private bool _isComplete;
-    public bool IsComplete
-    {
-        get => _isComplete;
-        private set
-        {
-            if (!Set(ref _isComplete, value)) return;
-            OnPropertyChanged(nameof(IsRunning));
-            OnPropertyChanged(nameof(IsSucceeded));
-            OnPropertyChanged(nameof(IsFailed));
-            CancelUploadCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    private bool _succeeded;
-    public bool IsSucceeded => _isComplete && _succeeded;
-    public bool IsFailed => _isComplete && !_succeeded;
-
-    private string _publishTitle = "";
-    public string PublishTitle { get => _publishTitle; private set => Set(ref _publishTitle, value); }
-
-    private string _resultText = "";
-    public string ResultText { get => _resultText; private set => Set(ref _resultText, value); }
-
-    /// <summary>Tenant label taken from the signed-in UPN domain.</summary>
-    public string TenantName
-    {
-        get
-        {
-            var upn = _auth.SignedInUser ?? "";
-            var at = upn.IndexOf('@');
-            if (at < 0 || at == upn.Length - 1) return "your";
-            var domain = upn[(at + 1)..];
-            var dot = domain.IndexOf('.');
-            return dot > 0 ? domain[..dot] : domain;
-        }
-    }
+    /// <summary>The "Publishing…" overlay: steps, progress, cancel and done.</summary>
+    public PublishRunViewModel Publish { get; } = new();
 
     // ── Detection method ───────────────────────────────────────────────
     public List<string> DetectionMethods { get; } = DetectionMethod.All;
@@ -168,11 +106,7 @@ public class UploadStepViewModel : ObservableObject
                 _detectionProductCode = FindMsiProductCode();
                 OnPropertyChanged(nameof(DetectionProductCode));
             }
-            OnPropertyChanged(nameof(IsFileDetection));
-            OnPropertyChanged(nameof(IsFileVersionDetection));
-            OnPropertyChanged(nameof(IsRegistryDetection));
-            OnPropertyChanged(nameof(IsMsiDetection));
-            OnPropertyChanged(nameof(HasNoMsiProductCode));
+            RaiseAll(DetectionDependents);
             RefreshDetectionSummary();
         }
     }
@@ -232,6 +166,20 @@ public class UploadStepViewModel : ObservableObject
         }
     }
 
+    /// <summary>Takes a rule the Remote Test tool discovered on a device.</summary>
+    public void ApplyDiscoveredRule(DetectionRule rule)
+    {
+        if (rule.Type != DetectionRuleType.File) return;
+
+        _detectionPath = rule.Path;
+        _detectionName = rule.FileOrFolderName;
+        _detectionValue = rule.DetectionValue;
+        _selectedDetectionMethod = rule.CheckVersion ? DetectionMethod.FileVersion : DetectionMethod.FileExists;
+        RaiseAll(nameof(DetectionPath), nameof(DetectionName), nameof(DetectionValue), nameof(SelectedDetectionMethod));
+        RaiseAll(DetectionDependents);
+        RefreshDetectionSummary();
+    }
+
     // ── Requirements & return codes (seeded from Settings ▸ Intune Defaults) ──
     public IReadOnlyList<string> OperatingSystems { get; } = RequirementInfo.SupportedOperatingSystems;
 
@@ -246,15 +194,6 @@ public class UploadStepViewModel : ObservableObject
 
     public RelayCommand AddReturnCodeCommand { get; }
     public RelayCommand RestoreDefaultsCommand { get; }
-
-    /// <summary>Stops an upload; the service removes the half-built app.</summary>
-    public RelayCommand CancelUploadCommand { get; }
-
-    private void CancelUpload()
-    {
-        StatusText = "Cancelling…";
-        _cts?.Cancel();
-    }
 
     /// <summary>Re-seeds requirements and return codes from the saved defaults.</summary>
     private void ApplyIntuneDefaults()
@@ -290,13 +229,7 @@ public class UploadStepViewModel : ObservableObject
     public string SelectedDeployMode
     {
         get => _selectedDeployMode;
-        set
-        {
-            if (!Set(ref _selectedDeployMode, value)) return;
-            OnPropertyChanged(nameof(DeployModeHint));
-            OnPropertyChanged(nameof(InstallCommandPreview));
-            OnPropertyChanged(nameof(UninstallCommandPreview));
-        }
+        set => Set(ref _selectedDeployMode, value, [nameof(DeployModeHint), nameof(InstallCommandPreview), nameof(UninstallCommandPreview)]);
     }
 
     public string DeployModeHint => _selectedDeployMode switch
@@ -327,14 +260,14 @@ public class UploadStepViewModel : ObservableObject
     public GroupPickerViewModel GroupPicker { get; } = new();
 
     // ── Review ─────────────────────────────────────────────────────────
-    public string ReviewName { get => _reviewName; set => Set(ref _reviewName, value); }
-    public string ReviewVendor { get => _reviewVendor; set => Set(ref _reviewVendor, value); }
-    public string ReviewVersion { get => _reviewVersion; set => Set(ref _reviewVersion, value); }
-    public string ReviewAuthor { get => _reviewAuthor; set => Set(ref _reviewAuthor, value); }
-    public string ReviewArchitecture { get => _reviewArchitecture; set => Set(ref _reviewArchitecture, value); }
-    public string ReviewContext { get => _reviewContext; set => Set(ref _reviewContext, value); }
-    public string ReviewPackageType { get => _reviewPackageType; set => Set(ref _reviewPackageType, value); }
-    public string ReviewSize { get => _reviewSize; set => Set(ref _reviewSize, value); }
+    public string ReviewName { get => _reviewName; private set => Set(ref _reviewName, value); }
+    public string ReviewVendor { get => _reviewVendor; private set => Set(ref _reviewVendor, value); }
+    public string ReviewVersion { get => _reviewVersion; private set => Set(ref _reviewVersion, value); }
+    public string ReviewAuthor { get => _reviewAuthor; private set => Set(ref _reviewAuthor, value); }
+    public string ReviewArchitecture { get => _reviewArchitecture; private set => Set(ref _reviewArchitecture, value); }
+    public string ReviewContext { get => _reviewContext; private set => Set(ref _reviewContext, value); }
+    public string ReviewPackageType { get => _reviewPackageType; private set => Set(ref _reviewPackageType, value); }
+    public string ReviewSize { get => _reviewSize; private set => Set(ref _reviewSize, value); }
 
     private string _intuneDisplayName = "";
     /// <summary>Title in Intune. Seeded from the package metadata, editable before upload.</summary>
@@ -343,9 +276,7 @@ public class UploadStepViewModel : ObservableObject
     /// <summary>Refreshes the summary from the package produced earlier in the wizard.</summary>
     public void RefreshFromPackage()
     {
-        OnPropertyChanged(nameof(IsSignedIn));
-        OnPropertyChanged(nameof(IsNotSignedIn));
-        OnPropertyChanged(nameof(SignedInUser));
+        RaiseAll(nameof(IsSignedIn), nameof(IsNotSignedIn), nameof(SignedInUser), nameof(TenantName));
 
         if (string.IsNullOrEmpty(_create.CurrentPackagePath))
         {
@@ -390,9 +321,16 @@ public class UploadStepViewModel : ObservableObject
         ReviewArchitecture = appInfo.Architecture;
         ReviewContext = appInfo.InstallContext;
         ReviewPackageType = appInfo.PackageType;
-        ReviewSize = ByteSize.Format(GetSourceSizeBytes(_create.CurrentPackagePath));
-        OnPropertyChanged(nameof(InstallCommandPreview));
-        OnPropertyChanged(nameof(UninstallCommandPreview));
+        RaiseAll(nameof(InstallCommandPreview), nameof(UninstallCommandPreview));
+
+        // The share can be slow; the size arrives when it arrives.
+        ReviewSize = "…";
+        var packagePath = _create.CurrentPackagePath;
+        ErrorReporter.FireAndForget(async () =>
+        {
+            var size = await Task.Run(() => GetSourceSizeBytes(packagePath));
+            if (_create.CurrentPackagePath == packagePath) ReviewSize = ByteSize.Format(size);
+        });
     }
 
     private async Task SeedGroupsAsync(string packagePath)
@@ -404,18 +342,15 @@ public class UploadStepViewModel : ObservableObject
     /// <summary>Refreshes the Review step without touching the edited fields.</summary>
     public void RefreshReview()
     {
-        OnPropertyChanged(nameof(IsSignedIn));
-        OnPropertyChanged(nameof(IsNotSignedIn));
-        OnPropertyChanged(nameof(SignedInUser));
-        OnPropertyChanged(nameof(InstallCommandPreview));
-        OnPropertyChanged(nameof(UninstallCommandPreview));
+        RaiseAll(nameof(IsSignedIn), nameof(IsNotSignedIn), nameof(SignedInUser), nameof(TenantName),
+                 nameof(InstallCommandPreview), nameof(UninstallCommandPreview));
         RefreshDetectionSummary();
     }
 
     private void RefreshDetectionSummary()
     {
         if (string.IsNullOrEmpty(_create.CurrentPackagePath)) return;
-        DetectionSummary = DescribeDetectionProblem() ?? DescribeDetection(BuildSelectedDetectionRules());
+        DetectionSummary = DescribeDetectionProblem() ?? (BuildSelectedDetectionRule()?.Title ?? "No detection rule");
     }
 
     /// <summary>
@@ -439,32 +374,11 @@ public class UploadStepViewModel : ObservableObject
 
     private static bool Blank(string? value) => string.IsNullOrWhiteSpace(value);
 
-    private List<DetectionRule> BuildSelectedDetectionRules()
-        => SelectedDetectionMethod switch
-        {
-            DetectionMethod.FileExists => new List<DetectionRule>
-            {
-                new() { Type = DetectionRuleType.File, Path = DetectionPath, FileOrFolderName = DetectionName,
-                        DetectionType = "exists", Check32BitOn64System = true }
-            },
-            DetectionMethod.FileVersion => new List<DetectionRule>
-            {
-                new() { Type = DetectionRuleType.File, Path = DetectionPath, FileOrFolderName = DetectionName,
-                        DetectionType = "version", CheckVersion = true, Operator = "greaterThanOrEqual",
-                        DetectionValue = DetectionValue, Check32BitOn64System = true }
-            },
-            DetectionMethod.RegistryKey => new List<DetectionRule>
-            {
-                new() { Type = DetectionRuleType.Registry,
-                        Path = RegistryHiveNames.Combine(SelectedRegistryHive, RegistryKeyPath),
-                        FileOrFolderName = RegistryValueName, DetectionType = "exists" }
-            },
-            DetectionMethod.MsiProductCode => new List<DetectionRule>
-            {
-                new() { Type = DetectionRuleType.MSI, Path = DetectionProductCode }
-            },
-            _ => new List<DetectionRule>()
-        };
+    private DetectionRule? BuildSelectedDetectionRule() => DetectionRuleFactory.FromMethod(
+        SelectedDetectionMethod,
+        DetectionPath, DetectionName, DetectionValue, null,
+        SelectedRegistryHive, RegistryKeyPath, RegistryValueName,
+        DetectionProductCode);
 
     /// <summary>Product code of the first MSI staged in the package, if any.</summary>
     private string FindMsiProductCode()
@@ -482,22 +396,11 @@ public class UploadStepViewModel : ObservableObject
         catch { return ""; }
     }
 
-    private RequirementInfo BuildRequirements()
-    {
-        var req = new RequirementInfo { MinimumOperatingSystem = SelectedOperatingSystem };
-        if (int.TryParse(MinFreeDiskSpaceMB, out var disk) && disk > 0) req.MinimumFreeDiskSpaceMB = disk;
-        if (int.TryParse(MinMemoryMB, out var mem) && mem > 0) req.MinimumMemoryMB = mem;
-        if (int.TryParse(MinProcessors, out var cpus) && cpus > 0) req.MinimumNumberOfProcessors = cpus;
-        if (int.TryParse(MinCpuSpeedMHz, out var mhz) && mhz > 0) req.MinimumCpuSpeedMHz = mhz;
-        return req;
-    }
-
     private static long GetSourceSizeBytes(string packagePath)
     {
         try { return DirectoryCopy.TotalSize(Path.Combine(packagePath, "Application", "Files")); }
         catch { return 0; }
     }
-
 
     public async Task UploadAsync()
     {
@@ -525,7 +428,13 @@ public class UploadStepViewModel : ObservableObject
         if (detectionProblem != null)
         {
             StatusText = detectionProblem;
-            ResultText = detectionProblem;
+            return;
+        }
+
+        var invalidCode = ReturnCodes.FirstOrDefault(r => r.ToInfo() == null);
+        if (invalidCode != null)
+        {
+            StatusText = $"Return code '{invalidCode.Code}' is not a number.";
             return;
         }
 
@@ -545,114 +454,38 @@ public class UploadStepViewModel : ObservableObject
         groupAssignment.ExistingGroups.Clear();
 
         var assignedGroups = GroupPicker.AssignableGroups;
-        var detectionRules = BuildSelectedDetectionRules();
-        var requirements = BuildRequirements();
+        var detectionRules = new List<DetectionRule> { BuildSelectedDetectionRule()! };
+        var requirements = RequirementInfo.Parse(SelectedOperatingSystem, MinFreeDiskSpaceMB, MinMemoryMB, MinProcessors, MinCpuSpeedMHz);
         var returnCodes = ReturnCodes.Select(r => r.ToInfo()).OfType<ReturnCodeInfo>().ToList();
+        var installCommand = InstallCommandPreview;
+        var uninstallCommand = UninstallCommandPreview;
+        var iconPath = string.IsNullOrEmpty(_create.ExtractedIconPath) ? null : _create.ExtractedIconPath;
+        var predecessorAppId = string.IsNullOrEmpty(_create.PredecessorAppId) ? null : _create.PredecessorAppId;
 
-        NativeCodeSigner? signer = null;
-        if (settings.CodeSigning.Enabled)
-            signer = new NativeCodeSigner(settings.CodeSigning.CertificateThumbprint, settings.CodeSigning.TimestampServer);
+        NativeCodeSigner? signer = settings.CodeSigning.Enabled
+            ? new NativeCodeSigner(settings.CodeSigning.CertificateThumbprint, settings.CodeSigning.TimestampServer)
+            : null;
 
-        PublishSteps[2] = new PublishStepViewModel(3, $"Uploading to {TenantName} tenant");
-        foreach (var s in PublishSteps) s.State = "pending";
-        PublishSteps[0].State = "working";
+        var uploadService = new IntuneUploadService(_auth.GetAccessTokenAsync, signer, settings.NetworkPaths.IntuneWinAppUtil);
 
-        PublishTitle = $"Publishing {appInfo.Manufacturer} {appInfo.Name}…".Trim();
-        ResultText = "";
-        _succeeded = false;
-        IsComplete = false;
-        IsPublishing = true;
-        IsUploading = true;
-        ProgressValue = 0;
-        StatusText = "Starting upload…";
-
-        var progress = new DispatchedProgress(this);
-
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
-        var token = _cts.Token;
-
-        var uploadService = new IntuneUploadService(
-            _auth.GetAccessTokenAsync,
-            signer,
-            settings.NetworkPaths.IntuneWinAppUtil);
-
-        try
-        {
-            var appId = await Task.Run(() => uploadService.UploadWin32ApplicationAsync(
-                appInfo,
-                packagePath,
-                detectionRules,
-                InstallCommandPreview,
-                UninstallCommandPreview,
-                appInfo.DisplayName,
-                appInfo.InstallContext,
-                string.IsNullOrEmpty(_create.ExtractedIconPath) ? null : _create.ExtractedIconPath,
-                progress,
-                string.IsNullOrEmpty(_create.PredecessorAppId) ? null : _create.PredecessorAppId,
-                groupAssignment,
-                requirements,
-                returnCodes,
-                settings.IntuneDefaults.PrivacyUrl,
-                settings.IntuneDefaults.InformationUrl,
-                assignedGroups,
-                token), token);
-
-            ProgressValue = 100;
-            foreach (var s in PublishSteps) s.State = "done";
-            ResultText = assignedGroups.Count > 0
+        await Publish.RunAsync(
+            $"Publishing {appInfo.Manufacturer} {appInfo.Name}…".Trim(),
+            TenantName,
+            (progress, ct) => uploadService.UploadWin32ApplicationAsync(
+                appInfo, packagePath, detectionRules, installCommand, uninstallCommand,
+                appInfo.DisplayName, appInfo.InstallContext, iconPath, progress, predecessorAppId,
+                groupAssignment, requirements, returnCodes,
+                settings.IntuneDefaults.PrivacyUrl, settings.IntuneDefaults.InformationUrl,
+                assignedGroups, ct),
+            appId => assignedGroups.Count > 0
                 ? $"Published and assigned to {assignedGroups.Count} group(s). App ID {appId}"
-                : $"Published successfully. App ID {appId}";
-            StatusText = $"Uploaded to Intune · App ID {appId}";
-            _succeeded = true;
-            IsComplete = true;
-        }
-        catch (OperationCanceledException)
-        {
-            var working = PublishSteps.FirstOrDefault(s => s.State == "working");
-            if (working != null) working.State = "error";
-            ResultText = uploadService.RollbackSucceeded switch
+                : $"Published successfully. App ID {appId}",
+            () => uploadService.RollbackSucceeded switch
             {
                 true => "Upload cancelled. The partially created app was removed from Intune.",
                 false => "Upload cancelled. The partially created app could not be removed; delete it in the Intune admin center.",
                 null => "Upload cancelled before anything was created in Intune.",
-            };
-            StatusText = "Upload cancelled.";
-            _succeeded = false;
-            IsComplete = true;
-        }
-        catch (Exception ex)
-        {
-            var working = PublishSteps.FirstOrDefault(s => s.State == "working");
-            if (working != null) working.State = "error";
-            ResultText = $"Upload failed: {ex.Message}";
-            StatusText = $"Upload failed: {ex.Message}";
-            _succeeded = false;
-            IsComplete = true;
-        }
-        finally
-        {
-            IsUploading = false;
-            _cts?.Dispose();
-            _cts = null;
-        }
-    }
-
-    /// <summary>Maps 0-100 progress onto the five overlay steps.</summary>
-    private void OnUploadProgress(int pct)
-    {
-        // 0 Building · 1 Signing · 2 Uploading · 3 Creating Win32 app · 4 Assigning
-        int active =
-            pct < 15 ? 0 :
-            pct < 25 ? 1 :
-            pct < 90 ? 2 :
-            pct < 98 ? 3 : 4;
-
-        for (int i = 0; i < PublishSteps.Count; i++)
-        {
-            if (i < active) { if (PublishSteps[i].State != "done") PublishSteps[i].State = "done"; }
-            else if (i == active) { if (PublishSteps[i].State == "pending") PublishSteps[i].State = "working"; }
-        }
+            });
     }
 
     /// <summary>
@@ -685,37 +518,8 @@ public class UploadStepViewModel : ObservableObject
                 : DetectionMethod.FileVersion;
         }
 
-        OnPropertyChanged(nameof(SelectedDetectionMethod));
-        OnPropertyChanged(nameof(IsFileDetection));
-        OnPropertyChanged(nameof(IsFileVersionDetection));
-        OnPropertyChanged(nameof(IsRegistryDetection));
-        OnPropertyChanged(nameof(IsMsiDetection));
-        OnPropertyChanged(nameof(HasNoMsiProductCode));
-        OnPropertyChanged(nameof(DetectionPath));
-        OnPropertyChanged(nameof(DetectionName));
-        OnPropertyChanged(nameof(DetectionValue));
-        OnPropertyChanged(nameof(RegistryKeyPath));
-        OnPropertyChanged(nameof(RegistryValueName));
-        OnPropertyChanged(nameof(SelectedRegistryHive));
-        OnPropertyChanged(nameof(DetectionProductCode));
-    }
-
-    private static string DescribeDetection(List<DetectionRule> rules)
-        => rules.Count == 0 ? "No detection rule" : rules[0].Title;
-
-    private sealed class DispatchedProgress : IUploadProgress
-    {
-        private readonly UploadStepViewModel _vm;
-        public DispatchedProgress(UploadStepViewModel vm) => _vm = vm;
-
-        public void UpdateProgress(int percentage, string message)
-        {
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                _vm.ProgressValue = percentage;
-                _vm.StatusText = message;
-                _vm.OnUploadProgress(percentage);
-            });
-        }
+        RaiseAll(nameof(SelectedDetectionMethod), nameof(DetectionPath), nameof(DetectionName), nameof(DetectionValue),
+                 nameof(RegistryKeyPath), nameof(RegistryValueName), nameof(SelectedRegistryHive), nameof(DetectionProductCode));
+        RaiseAll(DetectionDependents);
     }
 }

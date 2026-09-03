@@ -21,6 +21,19 @@ public class RequirementInfo
     public int? MinimumNumberOfProcessors { get; set; }
     public int? MinimumCpuSpeedMHz { get; set; }
 
+    /// <summary>Builds requirements from the text fields; blank or non-positive means no constraint.</summary>
+    public static RequirementInfo Parse(string operatingSystem, string freeDiskSpaceMB, string memoryMB, string processors, string cpuSpeedMHz) => new()
+    {
+        MinimumOperatingSystem = string.IsNullOrWhiteSpace(operatingSystem) ? SupportedOperatingSystems[0] : operatingSystem.Trim(),
+        MinimumFreeDiskSpaceMB = Optional(freeDiskSpaceMB),
+        MinimumMemoryMB = Optional(memoryMB),
+        MinimumNumberOfProcessors = Optional(processors),
+        MinimumCpuSpeedMHz = Optional(cpuSpeedMHz),
+    };
+
+    private static int? Optional(string? text)
+        => int.TryParse(text?.Trim(), out var value) && value > 0 ? value : null;
+
     /// <summary>
     /// Maps the friendly OS name to the Graph minimumSupportedOperatingSystem flag.
     /// </summary>

@@ -31,6 +31,20 @@ public class IntuneAuthService
 
     public string? SignedInUser { get; private set; }
 
+    /// <summary>Tenant label from the signed-in UPN's domain ("contoso" for user@contoso.com); "your" when unknown.</summary>
+    public string TenantName
+    {
+        get
+        {
+            var upn = SignedInUser ?? "";
+            var at = upn.IndexOf('@');
+            if (at < 0 || at == upn.Length - 1) return "your";
+            var domain = upn[(at + 1)..];
+            var dot = domain.IndexOf('.');
+            return dot > 0 ? domain[..dot] : domain;
+        }
+    }
+
     /// <summary>Raised on sign-in state changes so screens can refresh.</summary>
     public event Action? StateChanged;
 

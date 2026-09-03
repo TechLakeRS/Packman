@@ -75,7 +75,7 @@
         <!-- ═══════════ PUBLISHING ═══════════ -->
         <StackPanel Grid.Column="2" VerticalAlignment="Top">
             <!-- Pre-flight, shown until publishing starts -->
-            <StackPanel Visibility="{Binding Upload.IsNotPublishing, Converter={StaticResource BoolToVis}}">
+            <StackPanel Visibility="{Binding Upload.Publish.IsNotPublishing, Converter={StaticResource BoolToVis}}">
                 <!-- Deployment -->
                 <DockPanel Margin="0,0,0,12">
                     <TextBlock DockPanel.Dock="Left" Text="DEPLOYMENT" Style="{StaticResource SectionLabel}"/>
@@ -126,7 +126,7 @@
             </StackPanel>
 
             <!-- Live publish state -->
-            <StackPanel Visibility="{Binding Upload.IsPublishing, Converter={StaticResource BoolToVis}}">
+            <StackPanel Visibility="{Binding Upload.Publish.IsPublishing, Converter={StaticResource BoolToVis}}">
                 <DockPanel Margin="0,0,0,14">
                     <TextBlock DockPanel.Dock="Left" Text="PUBLISHING" Style="{StaticResource SectionLabel}"/>
                     <TextBlock DockPanel.Dock="Right" Text="{Binding Upload.TenantName}" Style="{StaticResource Caption}"/>
@@ -136,7 +136,7 @@
                 <StackPanel Orientation="Horizontal">
                     <Grid Width="30" Height="30" VerticalAlignment="Top">
                         <!-- running: rotating arc -->
-                        <Grid Visibility="{Binding Upload.IsRunning, Converter={StaticResource BoolToVis}}" RenderTransformOrigin="0.5,0.5">
+                        <Grid Visibility="{Binding Upload.Publish.IsRunning, Converter={StaticResource BoolToVis}}" RenderTransformOrigin="0.5,0.5">
                             <Grid.RenderTransform>
                                 <RotateTransform Angle="0"/>
                             </Grid.RenderTransform>
@@ -164,19 +164,19 @@
                                   Data="M15,1 A14,14 0 0 1 29,15"/>
                         </Grid>
                         <Border BorderBrush="{DynamicResource OkBrush}" BorderThickness="1.5"
-                                Visibility="{Binding Upload.IsSucceeded, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding Upload.Publish.IsSucceeded, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="&#x2713;" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource OkBrush}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <Border BorderBrush="{DynamicResource BadBrush}" BorderThickness="1.5"
-                                Visibility="{Binding Upload.IsFailed, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding Upload.Publish.IsFailed, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="&#x2715;" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BadBrush}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </Grid>
 
                     <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" MaxWidth="320">
-                        <TextBlock Text="{Binding Upload.PublishTitle}" FontSize="14.5" FontWeight="Bold" LineHeight="19"
+                        <TextBlock Text="{Binding Upload.Publish.Title}" FontSize="14.5" FontWeight="Bold" LineHeight="19"
                                    Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding Upload.StatusText}" Margin="0,5,0,0" TextWrapping="Wrap"
                                    FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5" LineHeight="15"
@@ -185,15 +185,15 @@
                 </StackPanel>
 
                 <!-- Progress rail -->
-                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Upload.ProgressValue}" Margin="0,16,0,0">
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Upload.Publish.ProgressValue}" Margin="0,16,0,0">
                     <ProgressBar.Style>
                         <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Upload.IsSucceeded}" Value="True">
+                                <DataTrigger Binding="{Binding Upload.Publish.IsSucceeded}" Value="True">
                                     <Setter Property="Foreground" Value="{DynamicResource OkBrush}"/>
                                     <Setter Property="Value" Value="100"/>
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding Upload.IsFailed}" Value="True">
+                                <DataTrigger Binding="{Binding Upload.Publish.IsFailed}" Value="True">
                                     <Setter Property="Foreground" Value="{DynamicResource BadBrush}"/>
                                     <Setter Property="Value" Value="100"/>
                                 </DataTrigger>
@@ -204,7 +204,7 @@
 
                 <!-- Step list -->
                 <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Margin="0,16,0,0" CornerRadius="4">
-                    <ItemsControl ItemsSource="{Binding Upload.PublishSteps}">
+                    <ItemsControl ItemsSource="{Binding Upload.Publish.Steps}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border BorderThickness="2,0,0,1" Padding="12,10">
@@ -298,13 +298,13 @@
                     </ItemsControl>
                 </Border>
 
-                <TextBlock Text="{Binding Upload.ResultText}" Margin="0,14,0,0" TextWrapping="Wrap"
+                <TextBlock Text="{Binding Upload.Publish.ResultText}" Margin="0,14,0,0" TextWrapping="Wrap"
                            FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5" LineHeight="18">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
                             <Setter Property="Foreground" Value="{DynamicResource Muted2Brush}"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Upload.IsFailed}" Value="True">
+                                <DataTrigger Binding="{Binding Upload.Publish.IsFailed}" Value="True">
                                     <Setter Property="Foreground" Value="{DynamicResource BadBrush}"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -313,15 +313,15 @@
                 </TextBlock>
 
                 <Button Style="{StaticResource GhostButton}" Content="CANCEL UPLOAD" HorizontalAlignment="Stretch" Margin="0,14,0,0"
-                        Command="{Binding Upload.CancelUploadCommand}"
+                        Command="{Binding Upload.Publish.CancelCommand}"
                         AutomationProperties.Name="Cancel upload"
                         ToolTip="Stops the upload. Anything already created in Intune is removed."
-                        Visibility="{Binding Upload.IsRunning, Converter={StaticResource BoolToVis}}"/>
+                        Visibility="{Binding Upload.Publish.IsRunning, Converter={StaticResource BoolToVis}}"/>
 
                 <Button Style="{StaticResource GhostButton}" Content="DONE" HorizontalAlignment="Stretch" Margin="0,14,0,0"
-                        Command="{Binding Upload.DoneCommand}"
+                        Command="{Binding Upload.Publish.DoneCommand}"
                         AutomationProperties.Name="Done"
-                        Visibility="{Binding Upload.IsComplete, Converter={StaticResource BoolToVis}}"/>
+                        Visibility="{Binding Upload.Publish.IsComplete, Converter={StaticResource BoolToVis}}"/>
             </StackPanel>
         </StackPanel>
     </Grid>
