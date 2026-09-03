@@ -1,0 +1,12 @@
+{
+  "shape": "package",
+  "pkg": "packman-tokens",
+  "globalName": "Packman",
+  "buildCmd": "node .design-sync/gen-tokens.mjs",
+  "tokensPkg": "packman-tokens",
+  "tokensGlob": "tokens/*.css",
+  "cssEntry": "styles.css",
+  "extraFonts": ["fonts.css"],
+  "guidelinesGlob": "docs/*.md",
+  "readmeHeader": ".design-sync/conventions.md"
+}
