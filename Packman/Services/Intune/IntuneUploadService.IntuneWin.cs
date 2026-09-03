@@ -3,49 +3,45 @@ using Packman.Models;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
 using System.Xml.Linq;
 
 namespace Packman.Services;
 
 public partial class IntuneUploadService
 {
-    private async Task SignApplicationFilesAsync(string packagePath, IUploadProgress? progress, UploadLogger uploadLogger, CancellationToken ct)
+    private async Task SignApplicationFilesAsync(string packagePath, IUploadProgress? progress, UploadLogger log, CancellationToken ct)
     {
         try
         {
-            uploadLogger.Section("FILE SIGNING");
+            log.Section("FILE SIGNING");
 
-            // No signer configured, or no usable certificate.
             if (_signer == null || !_signer.IsCertificateAvailable())
             {
                 progress?.UpdateProgress(15, "Code signing disabled - skipping file signing");
-                uploadLogger.Warning("Code signing disabled or certificate not available - skipping file signing");
+                log.Warning("Code signing disabled or certificate not available - skipping file signing");
                 return;
             }
 
-            var scriptPath = FindPSADTScript(packagePath);
+            var scriptPath = PsadtScript.Find(packagePath);
             if (scriptPath == null)
             {
-                uploadLogger.Warning("No PSADT script found - skipping signing");
+                log.Warning("No PSADT script found - skipping signing");
                 return;
             }
 
             var scriptName = Path.GetFileName(scriptPath);
             progress?.UpdateProgress(10, $"Signing {scriptName}...");
-            uploadLogger.Info($"Signing {scriptName} (SHA-256 + RFC 3161)");
+            log.Info($"Signing {scriptName} (SHA-256 + RFC 3161)");
 
             var result = await _signer.SignFileAsync(scriptPath, ct);
             if (result.Success)
             {
                 progress?.UpdateProgress(15, $"{scriptName} signed successfully");
-                uploadLogger.Success($"{scriptName} signed successfully");
+                log.Success($"{scriptName} signed successfully");
             }
             else
             {
-                uploadLogger.Warning($"Failed to sign {scriptName}: {result.ErrorMessage}");
+                log.Warning($"Failed to sign {scriptName}: {result.ErrorMessage}");
             }
         }
         catch (OperationCanceledException)
@@ -54,21 +50,13 @@ public partial class IntuneUploadService
         }
         catch (Exception ex)
         {
-            uploadLogger.Error("File signing failed", ex);
+            log.Error("File signing failed", ex);
             progress?.UpdateProgress(15, "File signing failed - continuing with upload");
         }
     }
 
-    private static string? FindPSADTScript(string packagePath)
-    {
-        var path = Path.Combine(packagePath, "Application", PsadtLayout.ScriptName);
-        if (File.Exists(path)) return path;
-
-        path = Path.Combine(packagePath, PsadtLayout.ScriptName);
-        return File.Exists(path) ? path : null;
-    }
-
-    private async Task CreateIntuneWinFileAsync(string packagePath, CancellationToken ct)
+    /// <summary>Runs IntuneWinAppUtil and returns the .intunewin it produced.</summary>
+    private async Task<string> CreateIntuneWinFileAsync(string packagePath, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(_converterPath) || !File.Exists(_converterPath))
             throw new FileNotFoundException($"IntuneWinAppUtil.exe not found at: '{_converterPath}'. Set the IntuneWinAppUtil path on the Settings page.");
@@ -86,153 +74,131 @@ public partial class IntuneUploadService
 
         Directory.CreateDirectory(outputFolder);
 
-        var arguments = $"-c \"{applicationFolder}\" -s \"{setupFile}\" -o \"{outputFolder}\" -q";
+        // A stale .intunewin from an earlier run would be picked up as this build's output.
+        foreach (var stale in Directory.GetFiles(outputFolder, "*.intunewin"))
+            File.Delete(stale);
 
-        var processStartInfo = new ProcessStartInfo
+        var startInfo = new ProcessStartInfo
         {
             FileName = _converterPath,
-            Arguments = arguments,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            CreateNoWindow = true
+            CreateNoWindow = true,
         };
+        startInfo.ArgumentList.Add("-c"); startInfo.ArgumentList.Add(applicationFolder);
+        startInfo.ArgumentList.Add("-s"); startInfo.ArgumentList.Add(setupFile);
+        startInfo.ArgumentList.Add("-o"); startInfo.ArgumentList.Add(outputFolder);
+        startInfo.ArgumentList.Add("-q");
 
-        using var process = new Process { StartInfo = processStartInfo };
+        using var process = new Process { StartInfo = startInfo };
         process.Start();
 
-        // Drain both pipes concurrently: in sequence this deadlocks as soon as the child
-        // fills the buffer of the stream we are not reading yet.
-        var outputTask = process.StandardOutput.ReadToEndAsync(ct);
-        var errorTask = process.StandardError.ReadToEndAsync(ct);
-        await Task.WhenAll(outputTask, errorTask);
-        await process.WaitForExitAsync(ct);
+        string stdout, stderr;
+        try
+        {
+            // Drain both pipes concurrently: in sequence this deadlocks as soon as the child
+            // fills the buffer of the stream we are not reading yet.
+            var outputTask = process.StandardOutput.ReadToEndAsync(ct);
+            var errorTask = process.StandardError.ReadToEndAsync(ct);
+            await Task.WhenAll(outputTask, errorTask);
+            await process.WaitForExitAsync(ct);
+            stdout = outputTask.Result;
+            stderr = errorTask.Result;
+        }
+        catch (OperationCanceledException)
+        {
+            // Disposing the Process object does not stop the child; it would keep writing
+            // into Intune\ and the next run would pick its output up.
+            try { process.Kill(entireProcessTree: true); } catch { }
+            throw;
+        }
 
         if (process.ExitCode != 0)
         {
-            var errorMessage = string.IsNullOrWhiteSpace(errorTask.Result) ? outputTask.Result : errorTask.Result;
-            throw new Exception($"IntuneWinAppUtil failed with exit code {process.ExitCode}: {errorMessage}");
+            var message = string.IsNullOrWhiteSpace(stderr) ? stdout : stderr;
+            throw new Exception($"IntuneWinAppUtil failed with exit code {process.ExitCode}: {message}");
         }
 
-        Debug.WriteLine($"Created .intunewin file using: {_converterPath} {arguments}");
+        var produced = Directory.GetFiles(outputFolder, "*.intunewin");
+        if (produced.Length == 0)
+            throw new FileNotFoundException("IntuneWinAppUtil finished but produced no .intunewin file.");
+        return produced[0];
     }
 
-    private IntuneWinInfo ExtractIntuneWinInfo(string intuneWinFilePath)
+    /// <summary>
+    /// Reads detection.xml out of the archive. The encryption keys stay in memory; nothing
+    /// is written to %TEMP%, and the payload is streamed from the archive at upload time.
+    /// </summary>
+    private static IntuneWinInfo ExtractIntuneWinInfo(string intuneWinPath)
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        Directory.CreateDirectory(tempDir);
+        using var archive = ZipFile.OpenRead(intuneWinPath);
 
-        try
+        var detectionEntry = archive.Entries.FirstOrDefault(e => e.Name.Equals("detection.xml", StringComparison.OrdinalIgnoreCase))
+            ?? throw new Exception($"detection.xml not found. Available files: {string.Join(", ", archive.Entries.Select(e => e.Name))}");
+
+        XElement appInfo;
+        using (var stream = detectionEntry.Open())
+            appInfo = XDocument.Load(stream).Root
+                ?? throw new Exception("detection.xml is empty.");
+
+        if (!appInfo.Name.LocalName.Equals("ApplicationInfo", StringComparison.OrdinalIgnoreCase))
+            throw new Exception($"Root element is not ApplicationInfo. Found: {appInfo.Name}");
+
+        var encryption = appInfo.Elements().FirstOrDefault(e => e.Name.LocalName == "EncryptionInfo")
+            ?? throw new Exception($"EncryptionInfo not found. Available elements: {string.Join(", ", appInfo.Elements().Select(e => e.Name.LocalName))}");
+
+        var contentEntry = FindContentEntry(archive)
+            ?? throw new Exception("Could not find the encrypted content file in the archive.\n\nAvailable files:\n  "
+                                   + string.Join("\n  ", archive.Entries.Select(e => $"{e.Name} ({e.Length:N0} bytes)")));
+
+        static string Value(XElement parent, string localName)
+            => parent.Elements().FirstOrDefault(e => e.Name.LocalName.Equals(localName, StringComparison.OrdinalIgnoreCase))?.Value.Trim() ?? "";
+
+        var fileName = Value(appInfo, "FileName");
+        if (string.IsNullOrEmpty(fileName)) fileName = Path.GetFileName(intuneWinPath);
+
+        if (!long.TryParse(Value(appInfo, "UnencryptedContentSize"), out var unencryptedSize))
+            unencryptedSize = contentEntry.Length;
+
+        var encryptionKey = Value(encryption, "EncryptionKey");
+        if (string.IsNullOrEmpty(encryptionKey))
+            throw new Exception("EncryptionKey is missing from detection.xml");
+
+        return new IntuneWinInfo
         {
-            using var archive = ZipFile.OpenRead(intuneWinFilePath);
-
-            var detectionEntry = archive.Entries.FirstOrDefault(e =>
-                e.Name.Equals("detection.xml", StringComparison.OrdinalIgnoreCase));
-
-            if (detectionEntry == null)
+            IntuneWinPath = intuneWinPath,
+            FileName = fileName,
+            UnencryptedContentSize = unencryptedSize,
+            ContentEntryName = contentEntry.FullName,
+            EncryptedContentSize = contentEntry.Length,
+            EncryptionInfo = new EncryptionInfo
             {
-                var availableFiles = string.Join(", ", archive.Entries.Select(e => e.Name));
-                throw new Exception($"detection.xml not found. Available files: {availableFiles}");
-            }
+                EncryptionKey = encryptionKey,
+                MacKey = Value(encryption, "MacKey"),
+                InitializationVector = Value(encryption, "InitializationVector"),
+                Mac = Value(encryption, "Mac"),
+                ProfileIdentifier = Value(encryption, "ProfileIdentifier") is { Length: > 0 } p ? p : "ProfileVersion1",
+                FileDigest = Value(encryption, "FileDigest"),
+                FileDigestAlgorithm = Value(encryption, "FileDigestAlgorithm") is { Length: > 0 } a ? a : "SHA256",
+            },
+        };
+    }
 
-            var detectionXmlPath = Path.Combine(tempDir, "detection.xml");
-            detectionEntry.ExtractToFile(detectionXmlPath);
-
-            var detectionXml = XDocument.Load(detectionXmlPath);
-            var appInfo = detectionXml.Root;
-
-            if (appInfo == null || !appInfo.Name.LocalName.Equals("ApplicationInfo", StringComparison.OrdinalIgnoreCase))
-                throw new Exception($"Root element is not ApplicationInfo. Found: {appInfo?.Name}");
-
-            var encryptionInfo = appInfo.Elements().FirstOrDefault(e => e.Name.LocalName == "EncryptionInfo");
-            if (encryptionInfo == null)
-            {
-                var availableElements = string.Join(", ", appInfo.Elements().Select(e => e.Name.LocalName));
-                throw new Exception($"EncryptionInfo not found. Available elements: {availableElements}");
-            }
-
-            ZipArchiveEntry? contentEntry = null;
-
-            var commonDatNames = new[] { "Contents.dat", "IntunePackage.dat", "contents.dat", "intunepackage.dat" };
-            foreach (var datName in commonDatNames)
-            {
-                contentEntry = archive.Entries.FirstOrDefault(e => e.Name.Equals(datName, StringComparison.OrdinalIgnoreCase));
-                if (contentEntry != null)
-                    break;
-            }
-
-            contentEntry ??= archive.Entries.FirstOrDefault(e =>
-                e.Name.EndsWith(".intunewin", StringComparison.OrdinalIgnoreCase) && e.Length > 1000);
-
-            contentEntry ??= archive.Entries.FirstOrDefault(e => e.Name.EndsWith(".dat", StringComparison.OrdinalIgnoreCase));
-
-            contentEntry ??= archive.Entries
-                .Where(e => !e.Name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(e => e.Length)
-                .FirstOrDefault();
-
-            if (contentEntry == null)
-            {
-                var fileList = string.Join("\n  ", archive.Entries.Select(e => $"{e.Name} ({e.Length:N0} bytes)"));
-                throw new Exception($"Could not find encrypted content file in archive.\n\nAvailable files:\n  {fileList}");
-            }
-
-            var encryptedFilePath = Path.Combine(tempDir, contentEntry.Name);
-            contentEntry.ExtractToFile(encryptedFilePath);
-
-            string GetElementValue(XElement parent, string localName)
-            {
-                var element = parent.Elements().FirstOrDefault(e => e.Name.LocalName.Equals(localName, StringComparison.OrdinalIgnoreCase));
-                return element?.Value?.Trim() ?? "";
-            }
-
-            var fileName = GetElementValue(appInfo, "FileName");
-            if (string.IsNullOrEmpty(fileName))
-                fileName = Path.GetFileName(intuneWinFilePath);
-
-            var unencryptedSizeStr = GetElementValue(appInfo, "UnencryptedContentSize");
-            if (!long.TryParse(unencryptedSizeStr, out var unencryptedSize))
-                unencryptedSize = contentEntry.Length;
-
-            var result = new IntuneWinInfo
-            {
-                FileName = fileName,
-                UnencryptedContentSize = unencryptedSize,
-                EncryptedFilePath = encryptedFilePath,
-                TempDirectory = tempDir,
-                EncryptionInfo = new EncryptionInfo
-                {
-                    EncryptionKey = GetElementValue(encryptionInfo, "EncryptionKey"),
-                    MacKey = GetElementValue(encryptionInfo, "MacKey"),
-                    InitializationVector = GetElementValue(encryptionInfo, "InitializationVector"),
-                    Mac = GetElementValue(encryptionInfo, "Mac"),
-                    ProfileIdentifier = GetElementValue(encryptionInfo, "ProfileIdentifier"),
-                    FileDigest = GetElementValue(encryptionInfo, "FileDigest"),
-                    FileDigestAlgorithm = GetElementValue(encryptionInfo, "FileDigestAlgorithm")
-                }
-            };
-
-            if (string.IsNullOrEmpty(result.EncryptionInfo.ProfileIdentifier))
-                result.EncryptionInfo.ProfileIdentifier = "ProfileVersion1";
-            if (string.IsNullOrEmpty(result.EncryptionInfo.FileDigestAlgorithm))
-                result.EncryptionInfo.FileDigestAlgorithm = "SHA256";
-
-            if (string.IsNullOrEmpty(result.EncryptionInfo.EncryptionKey))
-                throw new Exception("EncryptionKey is missing from detection.xml");
-
-            if (!File.Exists(result.EncryptedFilePath))
-                throw new Exception($"Encrypted content file was not extracted properly: {result.EncryptedFilePath}");
-
-            return result;
-        }
-        catch
+    // IntuneWinAppUtil names the payload IntunePackage.intunewin inside Contents\; older
+    // builds used Contents.dat. Fall back to the largest non-XML entry.
+    private static ZipArchiveEntry? FindContentEntry(ZipArchive archive)
+    {
+        var known = new[] { "IntunePackage.intunewin", "Contents.dat", "IntunePackage.dat" };
+        foreach (var name in known)
         {
-            if (Directory.Exists(tempDir))
-            {
-                try { Directory.Delete(tempDir, true); } catch { }
-            }
-            throw;
+            var entry = archive.Entries.FirstOrDefault(e => e.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (entry != null) return entry;
         }
+
+        return archive.Entries.FirstOrDefault(e => e.Name.EndsWith(".intunewin", StringComparison.OrdinalIgnoreCase) && e.Length > 1000)
+            ?? archive.Entries.FirstOrDefault(e => e.Name.EndsWith(".dat", StringComparison.OrdinalIgnoreCase))
+            ?? archive.Entries.Where(e => !e.Name.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)).OrderByDescending(e => e.Length).FirstOrDefault();
     }
 
     private async Task<string> CreateWin32LobAppAsync(
@@ -242,28 +208,20 @@ public partial class IntuneUploadService
         string description,
         List<DetectionRule> detectionRules,
         string installContext,
-        IntuneWinInfo intuneWinInfo,
-        string? iconPath = null,
-        RequirementInfo? requirements = null,
-        List<ReturnCodeInfo>? returnCodes = null,
-        string? privacyUrl = null,
-        string? informationUrl = null,
-        CancellationToken ct = default)
+        IntuneWinInfo intuneWin,
+        string? iconPath,
+        RequirementInfo? requirements,
+        List<ReturnCodeInfo>? returnCodes,
+        string? privacyUrl,
+        string? informationUrl,
+        CancellationToken ct)
     {
-        var formattedDetectionRules = new List<Dictionary<string, object>>();
-        foreach (var rule in detectionRules)
-        {
-            var formattedRule = ConvertDetectionRuleForBetaAPI(rule);
-            if (formattedRule != null)
-                formattedDetectionRules.Add(formattedRule);
-        }
-
         // A guessed rule uploads fine and then never detects the app, so refuse instead.
-        if (formattedDetectionRules.Count == 0)
+        if (detectionRules.Count == 0)
             throw new InvalidOperationException(
                 "No usable detection rule was supplied. Set a detection rule on the Upload step before publishing.");
 
-        var createAppPayload = new Dictionary<string, object>
+        var payload = new Dictionary<string, object>
         {
             ["@odata.type"] = "#microsoft.graph.win32LobApp",
             ["displayName"] = appInfo.DisplayName,
@@ -275,91 +233,62 @@ public partial class IntuneUploadService
             ["applicableArchitectures"] = "x86,x64,arm64",
             ["minimumSupportedOperatingSystem"] = new Dictionary<string, object>
             {
-                [(requirements ?? new RequirementInfo()).OperatingSystemFlag] = true
+                [(requirements ?? new RequirementInfo()).OperatingSystemFlag] = true,
             },
-            ["fileName"] = intuneWinInfo.FileName,
+            ["fileName"] = intuneWin.FileName,
             ["setupFilePath"] = PsadtLayout.SetupFileName,
             ["installExperience"] = new Dictionary<string, object>
             {
-                ["runAsAccount"] = installContext,
-                ["deviceRestartBehavior"] = "allow"
+                // Graph enum values are lower case; "System"/"User" only work by tolerance.
+                ["runAsAccount"] = installContext.Equals("User", StringComparison.OrdinalIgnoreCase) ? "user" : "system",
+                ["deviceRestartBehavior"] = "allow",
             },
-            ["detectionRules"] = formattedDetectionRules.ToArray(),
+            ["detectionRules"] = detectionRules.Select(DetectionRuleGraph.Serialize).ToList(),
             ["returnCodes"] = (returnCodes is { Count: > 0 } ? returnCodes : ReturnCodeInfo.Defaults())
                 .Select(rc => new Dictionary<string, object> { ["returnCode"] = rc.Code, ["type"] = rc.GraphType })
-                .ToArray()
+                .ToList(),
         };
 
         if (!string.IsNullOrWhiteSpace(privacyUrl))
-            createAppPayload["privacyInformationUrl"] = privacyUrl.Trim();
+            payload["privacyInformationUrl"] = privacyUrl.Trim();
         if (!string.IsNullOrWhiteSpace(informationUrl))
-            createAppPayload["informationUrl"] = informationUrl.Trim();
+            payload["informationUrl"] = informationUrl.Trim();
 
         if (requirements?.MinimumFreeDiskSpaceMB is int disk)
-            createAppPayload["minimumFreeDiskSpaceInMB"] = disk;
+            payload["minimumFreeDiskSpaceInMB"] = disk;
         if (requirements?.MinimumMemoryMB is int mem)
-            createAppPayload["minimumMemoryInMB"] = mem;
+            payload["minimumMemoryInMB"] = mem;
         if (requirements?.MinimumNumberOfProcessors is int cpus)
-            createAppPayload["minimumNumberOfProcessors"] = cpus;
+            payload["minimumNumberOfProcessors"] = cpus;
         if (requirements?.MinimumCpuSpeedMHz is int mhz)
-            createAppPayload["minimumCpuSpeedInMHz"] = mhz;
+            payload["minimumCpuSpeedInMHz"] = mhz;
 
-        if (!string.IsNullOrEmpty(iconPath) && File.Exists(iconPath))
-        {
-            var iconData = ConvertIconToBase64(iconPath);
-            if (iconData != null)
-                createAppPayload["largeIcon"] = iconData;
-        }
+        if (!string.IsNullOrEmpty(iconPath) && File.Exists(iconPath) && ReadIcon(iconPath) is { } icon)
+            payload["largeIcon"] = icon;
 
-        var json = JsonSerializer.Serialize(createAppPayload, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = true
-        });
-
-        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, "https://graph.microsoft.com/beta/deviceAppManagement/mobileApps");
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        var sw = Stopwatch.StartNew();
-        var response = await sharedHttpClient!.SendAsync(request, ct);
-        var responseText = await response.Content.ReadAsStringAsync(ct);
-        sw.Stop();
-
-        if (!response.IsSuccessStatusCode)
-        {
-            LogGraphFailureDiagnostics("CreateWin32LobApp (POST)", request, response, sw, responseText);
-            throw new Exception($"Failed to create Win32 app. Status: {response.StatusCode}, Response: {responseText}");
-        }
-
-        var createdApp = JsonSerializer.Deserialize<JsonElement>(responseText);
-        var appId = createdApp.GetProperty("id").GetString();
-
-        return appId ?? throw new Exception("App ID not returned from creation");
+        var created = (await _graph.PostAsync(GraphClient.MobileApps, payload, "Create Win32 app", ct)).Json;
+        return created.GetSafeString("id") is { Length: > 0 } id ? id : throw new Exception("App ID not returned from creation");
     }
 
-    private Dictionary<string, object>? ConvertIconToBase64(string iconPath)
+    private static Dictionary<string, object>? ReadIcon(string iconPath)
     {
         try
         {
-            var iconBytes = File.ReadAllBytes(iconPath);
-            var base64String = Convert.ToBase64String(iconBytes);
-            var extension = Path.GetExtension(iconPath).ToLower();
-            var mimeType = extension switch
+            var mimeType = Path.GetExtension(iconPath).ToLowerInvariant() switch
             {
-                ".png" => "image/png",
                 ".jpg" or ".jpeg" => "image/jpeg",
                 ".ico" => "image/x-icon",
-                _ => "image/png"
+                _ => "image/png",
             };
-
             return new Dictionary<string, object>
             {
                 ["type"] = mimeType,
-                ["value"] = base64String
+                ["value"] = Convert.ToBase64String(File.ReadAllBytes(iconPath)),
             };
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error converting icon to base64: {ex.Message}");
+            Debug.WriteLine($"Error reading icon: {ex.Message}");
             return null;
         }
     }

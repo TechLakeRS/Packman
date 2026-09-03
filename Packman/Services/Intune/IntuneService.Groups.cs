@@ -1,37 +1,44 @@
 using Packman.Helpers;
 using Packman.Models;
-using System.Net.Http;
 using System.Text.Json;
 
 namespace Packman.Services;
 
 public partial class IntuneService
 {
-    /// <summary>Searches security groups by name prefix. Needs Group.Read.All.</summary>
-    public async Task<List<EntraGroup>> SearchGroupsAsync(string query)
+    /// <summary>Searches security groups by name prefix. Needs Group.Read.All or higher.</summary>
+    public async Task<List<EntraGroup>> SearchGroupsAsync(string query, CancellationToken ct = default)
     {
         var results = new List<EntraGroup>();
         if (string.IsNullOrWhiteSpace(query))
             return results;
 
+        // No $orderby: on directory objects it needs the advanced-query headers alongside
+        // $filter, so the twenty results are sorted here instead.
         var filter = Uri.EscapeDataString($"startswith(displayName,'{OData.Literal(query.Trim())}')");
-        var url = $"https://graph.microsoft.com/beta/groups?$filter={filter}&$select=id,displayName&$top=20&$orderby=displayName";
+        var url = $"{GraphClient.Groups}?$filter={filter}&$select=id,displayName&$top=20";
 
-        using var request = await AuthRequestAsync(HttpMethod.Get, url);
-        var response = await Http.SendAsync(request);
-        var body = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Group search failed ({(int)response.StatusCode}): {body}");
-
-        using var doc = JsonDocument.Parse(body);
-        if (doc.RootElement.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
+        var page = (await _graph.GetAsync(url, "Group search", ct)).Json;
+        if (page.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
             foreach (var g in arr.EnumerateArray())
                 results.Add(new EntraGroup
                 {
                     Id = g.GetSafeString("id"),
-                    DisplayName = g.TryGetProperty("displayName", out var n) ? n.GetString() ?? "" : "",
+                    DisplayName = g.GetSafeString("displayName"),
                 });
 
-        return results;
+        return results.OrderBy(g => g.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>The id of the group with exactly this display name, or null.</summary>
+    public async Task<string?> FindGroupIdAsync(string displayName, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(displayName)) return null;
+
+        var filter = Uri.EscapeDataString($"displayName eq '{OData.Literal(displayName.Trim())}'");
+        var page = (await _graph.GetAsync($"{GraphClient.Groups}?$filter={filter}&$select=id", "Group lookup", ct)).Json;
+        if (page.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array && arr.GetArrayLength() > 0)
+            return arr[0].GetSafeString("id") is { Length: > 0 } id ? id : null;
+        return null;
     }
 }

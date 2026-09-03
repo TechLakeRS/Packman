@@ -1,78 +1,26 @@
 using Packman.Helpers;
 using Packman.Models;
-using System.Net.Http;
-using System.Text;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace Packman.Services;
 
 public partial class IntuneService
 {
-    private const string GraphBeta = "https://graph.microsoft.com/beta";
-
     // ── Detection rules ─────────────────────────────────
     // No per-rule endpoint: the whole detectionRules array is PATCHed.
-    public async Task UpdateDetectionRulesAsync(string appId, IEnumerable<DetectionRule> rules)
+    public async Task UpdateDetectionRulesAsync(string appId, IEnumerable<DetectionRule> rules, CancellationToken ct = default)
     {
         var payload = new Dictionary<string, object?>
         {
             ["@odata.type"] = "#microsoft.graph.win32LobApp",
-            ["detectionRules"] = rules.Select(SerializeDetectionRule).ToList(),
+            ["detectionRules"] = rules.Select(DetectionRuleGraph.Serialize).ToList(),
         };
-        using var request = await AuthRequestAsync(HttpMethod.Patch, $"{Base}/{appId}");
-        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        var response = await Http.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Could not update detection rules ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
+        await _graph.PatchAsync($"{Base}/{appId}", payload, "Update detection rules", ct);
     }
 
-    private static Dictionary<string, object?> SerializeDetectionRule(DetectionRule r) => r.Type switch
-    {
-        DetectionRuleType.MSI => new()
-        {
-            ["@odata.type"] = "#microsoft.graph.win32LobAppProductCodeDetection",
-            ["productCode"] = r.Path,
-            ["productVersion"] = r.CheckVersion ? r.FileOrFolderName : null,
-            ["productVersionOperator"] = r.CheckVersion ? DefaultOperator(r.Operator) : "notConfigured",
-        },
-        DetectionRuleType.File => new()
-        {
-            ["@odata.type"] = "#microsoft.graph.win32LobAppFileSystemDetection",
-            ["path"] = r.Path,
-            ["fileOrFolderName"] = r.FileOrFolderName,
-            ["check32BitOn64System"] = r.Check32BitOn64System,
-            ["detectionType"] = string.IsNullOrEmpty(r.DetectionType) ? "exists" : r.DetectionType,
-            ["operator"] = OperatorNeedsValue(r.DetectionType) ? DefaultOperator(r.Operator) : "notConfigured",
-            ["detectionValue"] = OperatorNeedsValue(r.DetectionType) ? r.DetectionValue : null,
-        },
-        DetectionRuleType.Registry => new()
-        {
-            ["@odata.type"] = "#microsoft.graph.win32LobAppRegistryDetection",
-            ["keyPath"] = r.Path,
-            ["valueName"] = r.FileOrFolderName,
-            ["check32BitOn64System"] = r.Check32BitOn64System,
-            ["detectionType"] = string.IsNullOrEmpty(r.DetectionType) ? "exists" : r.DetectionType,
-            ["operator"] = OperatorNeedsValue(r.DetectionType) ? DefaultOperator(r.Operator) : "notConfigured",
-            ["detectionValue"] = OperatorNeedsValue(r.DetectionType) ? r.DetectionValue : null,
-        },
-        DetectionRuleType.Script => new()
-        {
-            ["@odata.type"] = "#microsoft.graph.win32LobAppPowerShellScriptDetection",
-            ["scriptContent"] = r.ScriptContent,
-            ["enforceSignatureCheck"] = r.EnforceSignatureCheck,
-            ["runAs32Bit"] = r.RunAs32Bit,
-        },
-        _ => throw new NotSupportedException($"Unknown detection rule type: {r.Type}"),
-    };
-
-    private static bool OperatorNeedsValue(string detectionType) =>
-        detectionType is "version" or "string" or "integer" or "sizeInMB" or "modifiedDate";
-
-    private static string DefaultOperator(string op) =>
-        string.IsNullOrEmpty(op) || op == "notConfigured" ? "equal" : op;
-
     // ── Assignments ─────────────────────────────────────
-    public async Task AddAssignmentAsync(string appId, string groupId, string intent)
+    public async Task AddAssignmentAsync(string appId, string groupId, string intent, CancellationToken ct = default)
     {
         var payload = new Dictionary<string, object>
         {
@@ -84,110 +32,89 @@ public partial class IntuneService
                 ["groupId"] = groupId,
             },
         };
-        using var request = await AuthRequestAsync(HttpMethod.Post, $"{Base}/{appId}/assignments");
-        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        var response = await Http.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Could not add assignment ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
+        await _graph.PostAsync($"{Base}/{appId}/assignments", payload, "Add assignment", ct);
     }
 
-    public async Task RemoveAssignmentAsync(string appId, string assignmentId)
-    {
-        using var request = await AuthRequestAsync(HttpMethod.Delete, $"{Base}/{appId}/assignments/{assignmentId}");
-        var response = await Http.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Could not remove assignment ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
-    }
+    public Task RemoveAssignmentAsync(string appId, string assignmentId, CancellationToken ct = default)
+        => _graph.DeleteAsync($"{Base}/{appId}/assignments/{assignmentId}", "Remove assignment", ct);
 
     // ── Group members ───────────────────────────────────
-    public async Task<List<GroupMember>> GetGroupMembersAsync(string groupId)
+    /// <summary>Every direct member of a group, all pages.</summary>
+    public async Task<List<GroupMember>> GetGroupMembersAsync(string groupId, CancellationToken ct = default)
     {
         var members = new List<GroupMember>();
-        var url = $"{GraphBeta}/groups/{groupId}/members?$select=id,displayName&$top=100";
-        using var request = await AuthRequestAsync(HttpMethod.Get, url);
-        var response = await Http.SendAsync(request);
-        var body = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Could not load members ({(int)response.StatusCode}): {body}");
-
-        using var doc = JsonDocument.Parse(body);
-        if (doc.RootElement.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
-            foreach (var m in arr.EnumerateArray())
-                members.Add(new GroupMember
+        var url = $"{GraphClient.Groups}/{groupId}/members?$select=id,displayName&$top=999";
+        await foreach (var m in _graph.GetAllPagesAsync(url, "Load members", ct))
+        {
+            members.Add(new GroupMember
+            {
+                Id = m.GetSafeString("id"),
+                DisplayName = m.GetSafeString("displayName"),
+                Kind = m.GetSafeString("@odata.type") switch
                 {
-                    Id = m.GetSafeString("id"),
-                    DisplayName = m.GetSafeString("displayName"),
-                    Kind = m.GetSafeString("@odata.type") switch
-                    {
-                        "#microsoft.graph.device" => "Device",
-                        "#microsoft.graph.user" => "User",
-                        "#microsoft.graph.group" => "Group",
-                        var t => t.Replace("#microsoft.graph.", ""),
-                    },
-                });
+                    "#microsoft.graph.device" => "Device",
+                    "#microsoft.graph.user" => "User",
+                    "#microsoft.graph.group" => "Group",
+                    var t => t.Replace("#microsoft.graph.", ""),
+                },
+            });
+        }
         return members;
     }
 
-    /// <summary>Adds a device or user to a group. Needs GroupMember.ReadWrite.All.</summary>
-    public async Task AddGroupMemberAsync(string groupId, string directoryObjectId)
+    /// <summary>
+    /// Adds a device or user to a group. Returns false when it was already a member,
+    /// which Graph reports as a 400 "already exist". Needs GroupMember.ReadWrite.All.
+    /// </summary>
+    public async Task<bool> AddGroupMemberAsync(string groupId, string directoryObjectId, CancellationToken ct = default)
     {
         var payload = new Dictionary<string, string>
         {
             ["@odata.id"] = $"https://graph.microsoft.com/v1.0/directoryObjects/{directoryObjectId}",
         };
-        using var request = await AuthRequestAsync(HttpMethod.Post, $"{GraphBeta}/groups/{groupId}/members/$ref");
-        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        var response = await Http.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Could not add member ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
+        var response = await _graph.PostAsync($"{GraphClient.Groups}/{groupId}/members/$ref", payload, "Add member", ct, throwOnError: false);
+        if (response.IsSuccess) return true;
+        if (response.StatusCode == 400 && response.Body.Contains("already exist", StringComparison.OrdinalIgnoreCase)) return false;
+        throw response.ToException("Add member");
     }
 
-    public async Task RemoveGroupMemberAsync(string groupId, string memberId)
-    {
-        using var request = await AuthRequestAsync(HttpMethod.Delete, $"{GraphBeta}/groups/{groupId}/members/{memberId}/$ref");
-        var response = await Http.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Could not remove member ({(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
-    }
+    public Task RemoveGroupMemberAsync(string groupId, string memberId, CancellationToken ct = default)
+        => _graph.DeleteAsync($"{GraphClient.Groups}/{groupId}/members/{memberId}/$ref", "Remove member", ct);
 
     /// <summary>
     /// Searches devices and users by name prefix for the add-member picker. Queried
     /// independently so a missing scope on one doesn't hide the other's results.
     /// </summary>
-    public async Task<List<GroupMember>> SearchDevicesAndUsersAsync(string query)
+    public async Task<List<GroupMember>> SearchDevicesAndUsersAsync(string query, CancellationToken ct = default)
     {
         var results = new List<GroupMember>();
         if (string.IsNullOrWhiteSpace(query)) return results;
 
         var filter = Uri.EscapeDataString($"startswith(displayName,'{OData.Literal(query.Trim())}')");
-        results.AddRange(await SearchDirectoryAsync($"{GraphBeta}/devices?$filter={filter}&$select=id,displayName&$top=8", "Device"));
-        results.AddRange(await SearchDirectoryAsync($"{GraphBeta}/users?$filter={filter}&$select=id,displayName&$top=8", "User"));
+        results.AddRange(await SearchDirectoryAsync($"{GraphClient.Devices}?$filter={filter}&$select=id,displayName&$top=8", "Device", ct));
+        results.AddRange(await SearchDirectoryAsync($"{GraphClient.Users}?$filter={filter}&$select=id,displayName&$top=8", "User", ct));
         return results;
     }
 
-    private async Task<List<GroupMember>> SearchDirectoryAsync(string url, string kind)
+    private async Task<List<GroupMember>> SearchDirectoryAsync(string url, string kind, CancellationToken ct)
     {
         var results = new List<GroupMember>();
-        try
+        var response = await _graph.GetAsync(url, $"Search {kind.ToLowerInvariant()}s", ct, throwOnError: false);
+        if (!response.IsSuccess)
         {
-            using var request = await AuthRequestAsync(HttpMethod.Get, url);
-            var response = await Http.SendAsync(request);
-            if (!response.IsSuccessStatusCode) return results;
+            // Typically a missing directory scope; the other query still answers.
+            Debug.WriteLine($"{kind} search failed: HTTP {response.StatusCode} {GraphException.ExtractMessage(response.Body)}");
+            return results;
+        }
 
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            if (doc.RootElement.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
-                foreach (var m in arr.EnumerateArray())
-                    results.Add(new GroupMember
-                    {
-                        Id = m.GetSafeString("id"),
-                        DisplayName = m.GetSafeString("displayName"),
-                        Kind = kind,
-                    });
-        }
-        catch
-        {
-            // Missing directory scope; return what the other query found.
-        }
+        if (response.Json.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array)
+            foreach (var m in arr.EnumerateArray())
+                results.Add(new GroupMember
+                {
+                    Id = m.GetSafeString("id"),
+                    DisplayName = m.GetSafeString("displayName"),
+                    Kind = kind,
+                });
         return results;
     }
 }

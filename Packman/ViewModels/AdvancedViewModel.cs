@@ -182,7 +182,7 @@ public sealed class AdvancedViewModel : ObservableObject
                 {
                     try
                     {
-                        if (await _apps.TryAddGroupMemberAsync(group.Id, device.Id)) addedHere++;
+                        if (await _apps.AddGroupMemberAsync(group.Id, device.Id)) addedHere++;
                     }
                     catch (Exception ex) { error = ex.Message; }
                 }

@@ -1,49 +1,44 @@
 using Packman.Helpers;
 using Packman.Models;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
 
 namespace Packman.Services;
 
 public partial class IntuneUploadService
 {
-    private const string GraphBeta = "https://graph.microsoft.com/beta";
-
     /// <summary>
     /// Assigns the published app to the groups picked for this upload plus the ones set on
     /// the Settings page. Failures are logged as warnings and never fail the upload.
     /// </summary>
     private async Task AssignGroupsAsync(string appId, ApplicationInfo appInfo, AppSettings.GroupAssignmentConfig config,
-                                         IEnumerable<AssignedGroup>? pickedGroups, UploadLogger log)
+                                         IEnumerable<AssignedGroup>? pickedGroups, UploadLogger log, CancellationToken ct)
     {
         foreach (var picked in pickedGroups ?? Enumerable.Empty<AssignedGroup>())
         {
             if (string.IsNullOrWhiteSpace(picked.GroupId)) continue;
-            await CreateGroupAssignmentAsync(appId, picked.GroupId, ParseIntent(picked.AssignmentType), picked.GroupName, log);
+            await CreateGroupAssignmentAsync(appId, picked.GroupId, ParseIntent(picked.AssignmentType), picked.GroupName, log, ct);
         }
 
         foreach (var existing in config.ExistingGroups)
         {
             if (string.IsNullOrWhiteSpace(existing.GroupName)) continue;
-            var groupId = await ResolveGroupIdAsync(existing.GroupName, log);
+            var groupId = await ResolveGroupIdAsync(existing.GroupName, log, ct);
             if (groupId == null)
             {
                 log.Warning($"Group '{existing.GroupName}' not found in Entra ID - skipped");
                 continue;
             }
-            await CreateGroupAssignmentAsync(appId, groupId, existing.Intent, existing.GroupName, log);
+            await CreateGroupAssignmentAsync(appId, groupId, existing.Intent, existing.GroupName, log, ct);
         }
 
         if (config.CreateGroupPerPackage)
-            await AssignPerPackageGroupAsync(appId, appInfo, config.GroupNameTemplate, config.NewGroupIntent, log);
+            await AssignPerPackageGroupAsync(appId, appInfo, config.GroupNameTemplate, config.NewGroupIntent, log, ct);
 
         if (config.CreateUninstallGroupPerPackage)
-            await AssignPerPackageGroupAsync(appId, appInfo, config.UninstallGroupNameTemplate, AssignmentIntent.Uninstall, log);
+            await AssignPerPackageGroupAsync(appId, appInfo, config.UninstallGroupNameTemplate, AssignmentIntent.Uninstall, log, ct);
     }
 
     /// <summary>Resolves or creates the per-package group and assigns it.</summary>
-    private async Task AssignPerPackageGroupAsync(string appId, ApplicationInfo appInfo, string template, AssignmentIntent intent, UploadLogger log)
+    private async Task AssignPerPackageGroupAsync(string appId, ApplicationInfo appInfo, string template, AssignmentIntent intent, UploadLogger log, CancellationToken ct)
     {
         var name = GroupAssignmentNamer.Build(template, appInfo.Manufacturer, appInfo.Name, appInfo.Version);
         if (string.IsNullOrWhiteSpace(name))
@@ -52,110 +47,86 @@ public partial class IntuneUploadService
             return;
         }
         // Reuse an existing group with this name before creating one.
-        var groupId = await ResolveGroupIdAsync(name, log) ?? await CreateSecurityGroupAsync(name, log);
+        var groupId = await ResolveGroupIdAsync(name, log, ct) ?? await CreateSecurityGroupAsync(name, log, ct);
         if (groupId != null)
-            await CreateGroupAssignmentAsync(appId, groupId, intent, name, log);
+            await CreateGroupAssignmentAsync(appId, groupId, intent, name, log, ct);
     }
 
-    private async Task<string?> ResolveGroupIdAsync(string displayName, UploadLogger log)
+    private async Task<string?> ResolveGroupIdAsync(string displayName, UploadLogger log, CancellationToken ct)
     {
-        try
+        var filter = Uri.EscapeDataString($"displayName eq '{OData.Literal(displayName.Trim())}'");
+        var response = await _graph.GetAsync($"{GraphClient.Groups}?$filter={filter}&$select=id", "Group lookup", ct, throwOnError: false);
+        if (!response.IsSuccess)
         {
-            var filter = Uri.EscapeDataString($"displayName eq '{OData.Literal(displayName)}'");
-            var url = $"{GraphBeta}/groups?$filter={filter}&$select=id";
-            using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, url);
-            var response = await sharedHttpClient!.SendAsync(request);
-            if (!response.IsSuccessStatusCode) return null;
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            if (doc.RootElement.TryGetProperty("value", out var arr) && arr.GetArrayLength() > 0)
-                return arr[0].TryGetProperty("id", out var id) ? id.GetString() : null;
+            log.Warning($"Could not look up group '{displayName}' (HTTP {response.StatusCode}): {GraphException.ExtractMessage(response.Body)}");
             return null;
         }
-        catch (Exception ex)
+
+        var page = response.Json;
+        if (page.TryGetProperty("value", out var arr) && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
+            return arr[0].GetSafeString("id") is { Length: > 0 } id ? id : null;
+        return null;
+    }
+
+    private async Task<string?> CreateSecurityGroupAsync(string displayName, UploadLogger log, CancellationToken ct)
+    {
+        var payload = new
         {
-            log.Warning($"Could not look up group '{displayName}': {ex.Message}");
+            displayName,
+            mailEnabled = false,
+            mailNickname = SanitizeMailNickname(displayName),
+            securityEnabled = true,
+            groupTypes = Array.Empty<string>(),
+        };
+        var response = await _graph.PostAsync(GraphClient.Groups, payload, "Create group", ct, throwOnError: false);
+        if (!response.IsSuccess)
+        {
+            var hint = response.StatusCode == 403 ? " (needs Group.ReadWrite.All; sign out and in again to consent)" : "";
+            log.Warning($"Could not create group '{displayName}' (HTTP {response.StatusCode}){hint}: {GraphException.ExtractMessage(response.Body)}");
             return null;
         }
+
+        var id = response.Json.GetSafeString("id");
+        log.Success($"Created group '{displayName}'");
+        return string.IsNullOrEmpty(id) ? null : id;
     }
 
-    private async Task<string?> CreateSecurityGroupAsync(string displayName, UploadLogger log)
+    private async Task CreateGroupAssignmentAsync(string appId, string groupId, AssignmentIntent intent, string groupName, UploadLogger log, CancellationToken ct)
     {
-        try
+        var payload = new Dictionary<string, object>
         {
-            var payload = new
+            ["@odata.type"] = "#microsoft.graph.mobileAppAssignment",
+            ["intent"] = intent switch
             {
-                displayName,
-                mailEnabled = false,
-                mailNickname = SanitizeMailNickname(displayName),
-                securityEnabled = true,
-                groupTypes = Array.Empty<string>(),
-            };
-            using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, $"{GraphBeta}/groups");
-            request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var response = await sharedHttpClient!.SendAsync(request);
-            var body = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode)
+                AssignmentIntent.Required => "required",
+                AssignmentIntent.Uninstall => "uninstall",
+                _ => "available",
+            },
+            ["target"] = new Dictionary<string, object>
             {
-                log.Warning($"Could not create group '{displayName}' (HTTP {(int)response.StatusCode}): {body}");
-                return null;
-            }
-            using var doc = JsonDocument.Parse(body);
-            var id = doc.RootElement.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
-            log.Success($"Created group '{displayName}'");
-            return id;
-        }
-        catch (Exception ex)
-        {
-            log.Warning($"Could not create group '{displayName}': {ex.Message}");
-            return null;
-        }
+                ["@odata.type"] = "#microsoft.graph.groupAssignmentTarget",
+                ["groupId"] = groupId,
+            },
+        };
+        var response = await _graph.PostAsync($"{GraphClient.MobileApps}/{appId}/assignments", payload, "Assign group", ct, throwOnError: false);
+        if (response.IsSuccess)
+            log.Success($"Assigned '{groupName}' ({intent})");
+        else
+            log.Warning($"Could not assign '{groupName}' (HTTP {response.StatusCode}): {GraphException.ExtractMessage(response.Body)}");
     }
 
-    private async Task CreateGroupAssignmentAsync(string appId, string groupId, AssignmentIntent intent, string groupName, UploadLogger log)
-    {
-        try
-        {
-            var payload = new Dictionary<string, object>
-            {
-                ["@odata.type"] = "#microsoft.graph.mobileAppAssignment",
-                ["intent"] = intent switch
-                {
-                    AssignmentIntent.Required => "required",
-                    AssignmentIntent.Uninstall => "uninstall",
-                    _ => "available",
-                },
-                ["target"] = new Dictionary<string, object>
-                {
-                    ["@odata.type"] = "#microsoft.graph.groupAssignmentTarget",
-                    ["groupId"] = groupId,
-                },
-            };
-            using var request = await CreateAuthenticatedRequestAsync(
-                HttpMethod.Post, $"{GraphBeta}/deviceAppManagement/mobileApps/{appId}/assignments");
-            request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var response = await sharedHttpClient!.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-                log.Success($"Assigned '{groupName}' ({intent})");
-            else
-                log.Warning($"Could not assign '{groupName}' (HTTP {(int)response.StatusCode}): {await response.Content.ReadAsStringAsync()}");
-        }
-        catch (Exception ex)
-        {
-            log.Warning($"Could not assign '{groupName}': {ex.Message}");
-        }
-    }
-
-    private static AssignmentIntent ParseIntent(string intent) => intent?.ToLowerInvariant() switch
+    private static AssignmentIntent ParseIntent(string intent) => intent.ToLowerInvariant() switch
     {
         "uninstall" => AssignmentIntent.Uninstall,
         "available" => AssignmentIntent.Available,
         _ => AssignmentIntent.Required,
     };
 
+    // Graph caps mailNickname at 64 characters and allows letters, digits, '_' and '-'.
     private static string SanitizeMailNickname(string displayName)
     {
-        var chars = displayName.Where(c => char.IsLetterOrDigit(c) || c is '_' or '-').ToArray();
-        var nickname = new string(chars);
+        var nickname = new string(displayName.Where(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '-').ToArray());
+        if (nickname.Length > 64) nickname = nickname[..64];
         return string.IsNullOrEmpty(nickname) ? "group" : nickname;
     }
 }

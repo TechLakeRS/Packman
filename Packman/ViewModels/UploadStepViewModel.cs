@@ -390,7 +390,7 @@ public class UploadStepViewModel : ObservableObject
         ReviewArchitecture = appInfo.Architecture;
         ReviewContext = appInfo.InstallContext;
         ReviewPackageType = appInfo.PackageType;
-        ReviewSize = FormatSize(GetSourceSizeBytes(_create.CurrentPackagePath));
+        ReviewSize = ByteSize.Format(GetSourceSizeBytes(_create.CurrentPackagePath));
         OnPropertyChanged(nameof(InstallCommandPreview));
         OnPropertyChanged(nameof(UninstallCommandPreview));
     }
@@ -498,15 +498,6 @@ public class UploadStepViewModel : ObservableObject
         catch { return 0; }
     }
 
-    private static string FormatSize(long bytes)
-    {
-        if (bytes <= 0) return "—";
-        string[] units = { "B", "KB", "MB", "GB" };
-        double size = bytes;
-        int unit = 0;
-        while (size >= 1024 && unit < units.Length - 1) { size /= 1024; unit++; }
-        return $"{size:0.#} {units[unit]}";
-    }
 
     public async Task UploadAsync()
     {
@@ -581,13 +572,13 @@ public class UploadStepViewModel : ObservableObject
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
+        var uploadService = new IntuneUploadService(
+            _auth.GetAccessTokenAsync,
+            signer,
+            settings.NetworkPaths.IntuneWinAppUtil);
+
         try
         {
-            using var uploadService = new IntuneUploadService(
-                _auth.GetAccessTokenAsync,
-                signer,
-                settings.NetworkPaths.IntuneWinAppUtil);
-
             var appId = await Task.Run(() => uploadService.UploadWin32ApplicationAsync(
                 appInfo,
                 packagePath,
@@ -620,7 +611,12 @@ public class UploadStepViewModel : ObservableObject
         {
             var working = PublishSteps.FirstOrDefault(s => s.State == "working");
             if (working != null) working.State = "error";
-            ResultText = "Upload cancelled. Anything already created in Intune was removed.";
+            ResultText = uploadService.RollbackSucceeded switch
+            {
+                true => "Upload cancelled. The partially created app was removed from Intune.",
+                false => "Upload cancelled. The partially created app could not be removed; delete it in the Intune admin center.",
+                null => "Upload cancelled before anything was created in Intune.",
+            };
             StatusText = "Upload cancelled.";
             _succeeded = false;
             IsComplete = true;

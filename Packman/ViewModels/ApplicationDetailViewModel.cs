@@ -388,7 +388,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             if (!ReferenceEquals(_flyoutGroup, group)) return;   // flyout switched meanwhile
             Members.Clear();
             foreach (var m in members) Members.Add(m);
-            MembersStatus = members.Count == 100 ? "Showing the first 100 members" : $"{members.Count} member{(members.Count == 1 ? "" : "s")}";
+            MembersStatus = $"{members.Count} member{(members.Count == 1 ? "" : "s")}";
         }
         catch (Exception ex)
         {
@@ -452,7 +452,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MembersStatus = ex.Message.Contains("403")
+            MembersStatus = ex is GraphException { IsForbidden: true }
                 ? "No permission to change membership — the signed-in account needs GroupMember.ReadWrite.All."
                 : $"Could not add member: {ex.Message}";
         }
@@ -469,7 +469,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MembersStatus = ex.Message.Contains("403")
+            MembersStatus = ex is GraphException { IsForbidden: true }
                 ? "No permission to change membership — the signed-in account needs GroupMember.ReadWrite.All."
                 : $"Could not remove member: {ex.Message}";
         }
@@ -523,8 +523,8 @@ public sealed class ApplicationDetailViewModel : ObservableObject
             // Graph reports the committed upload, so allow for encryption overhead.
             var matches = intuneSize <= 0 || Math.Abs(size - intuneSize) <= intuneSize * 0.1;
             checks.Add(new SourceCheck(Path.GetFileName(intunewin), matches
-                ? $"{FormatSize(size)} — matches the Intune upload"
-                : $"{FormatSize(size)} on share vs {intuneSizeText} in Intune — re-upload?", ok: matches));
+                ? $"{ByteSize.Format(size)} — matches the Intune upload"
+                : $"{ByteSize.Format(size)} on share vs {intuneSizeText} in Intune — re-upload?", ok: matches));
         }
 
         checks.Add(File.Exists(Path.Combine(intuneDir, "detection.xml"))
@@ -539,13 +539,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         return checks;
     }
 
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        > 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024 * 1024):F1} GB",
-        > 1024L * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-        > 1024 => $"{bytes / 1024.0:F1} KB",
-        _ => $"{bytes} B",
-    };
+
 }
 
 /// <summary>One row of the Package tab's integrity checklist.</summary>

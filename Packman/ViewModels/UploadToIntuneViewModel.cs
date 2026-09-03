@@ -142,7 +142,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
 
             PackageRoot = root;
             PackageFolderName = new DirectoryInfo(root).Name;
-            SizeText = FormatSize(DirectorySize(root));
+            SizeText = ByteSize.Format(DirectoryCopy.TotalSize(root));
 
             BuildDetectionRules(root);
             IsValidated = true;
@@ -405,7 +405,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
 
         try
         {
-            using var uploadService = new IntuneUploadService(
+            var uploadService = new IntuneUploadService(
                 _auth.GetAccessTokenAsync, signer, settings.NetworkPaths.IntuneWinAppUtil);
 
             var groups = GroupPicker.AssignableGroups;
@@ -515,24 +515,8 @@ public sealed class UploadToIntuneViewModel : ObservableObject
     public RelayCommand DoneCommand { get; }
 
     // ── Helpers ─────────────────────────────────────────
-    private static long DirectorySize(string path)
-    {
-        try
-        {
-            return new DirectoryInfo(path)
-                .EnumerateFiles("*", SearchOption.AllDirectories)
-                .Sum(f => f.Length);
-        }
-        catch { return 0; }
-    }
 
-    private static string FormatSize(long bytes) => bytes switch
-    {
-        > 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024 * 1024):F1} GB",
-        > 1024L * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-        > 1024 => $"{bytes / 1024.0:F1} KB",
-        _ => $"{bytes} B",
-    };
+
 
     private sealed class StepProgress : IUploadProgress
     {
