@@ -33,7 +33,17 @@ public class IntuneApplication : ApplicationBase
         ["#e0552b", "#3b67f5", "#1f8a5b", "#6b8a1f", "#e08a2b", "#2d8cff", "#d4322b", "#7c3aed"];
 
     public string Initial => string.IsNullOrWhiteSpace(DisplayName) ? "?" : DisplayName.Substring(0, 1).ToUpperInvariant();
-    public string TileColor => Palette[(uint)DisplayName.GetHashCode() % Palette.Length];
+    // string.GetHashCode is randomised per process; a stable hash keeps a tile's colour
+    // the same from one launch to the next.
+    public string TileColor => Palette[StableHash(DisplayName) % Palette.Length];
+
+    private static uint StableHash(string text)
+    {
+        uint hash = 2166136261;
+        foreach (var c in text)
+            hash = (hash ^ c) * 16777619;
+        return hash;
+    }
     public string UpdatedText => RelativeTime(LastModified);
 
     protected static string RelativeTime(DateTime when)

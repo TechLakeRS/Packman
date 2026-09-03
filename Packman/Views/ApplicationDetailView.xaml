@@ -17,7 +17,7 @@
             <Button Style="{StaticResource Breadcrumb}" Click="Back_Click" Margin="0,0,0,14">
                 <StackPanel Orientation="Horizontal">
                     <Viewbox Width="14" Height="14" Margin="0,0,5,0">
-                        <Path Data="{StaticResource IconChevL}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        <Path Data="{StaticResource IconChevL}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Style="{StaticResource Icon}"/>
                     </Viewbox>
                     <TextBlock Text="Applications" VerticalAlignment="Center"/>
                     <TextBlock Text="{Binding Detail.Category, StringFormat=' / {0}'}" VerticalAlignment="Center"
@@ -59,14 +59,14 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource GhostButton}" Margin="0,0,9,0" Click="Update_Click">
                         <StackPanel Orientation="Horizontal">
-                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
                             <TextBlock Text="Update version" Margin="7,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource GhostButton}" Click="EditScript_Click"
                             IsEnabled="{Binding HasSource}" ToolTip="Open the PSADT script from the source share">
                         <StackPanel Orientation="Horizontal">
-                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconCode}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconCode}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
                             <TextBlock Text="Edit script" Margin="7,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
@@ -145,7 +145,7 @@
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="Manage in Deployment" VerticalAlignment="Center"/>
                                             <Viewbox Width="13" Height="13" Margin="5,0,0,0">
-                                                <Path Data="{StaticResource IconChevR}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                                <Path Data="{StaticResource IconChevR}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.2" Style="{StaticResource Icon}"/>
                                             </Viewbox>
                                         </StackPanel>
                                     </Button>
@@ -237,7 +237,7 @@
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                     <Button Style="{StaticResource GhostButton}" Click="OpenFolder_Click" IsEnabled="{Binding HasSource}">
                                         <StackPanel Orientation="Horizontal">
-                                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                            <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/></Viewbox>
                                             <TextBlock Text="Open folder" Margin="7,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
@@ -252,7 +252,7 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Viewbox.Style>
-                                            <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.4" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                            <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.4" Style="{StaticResource Icon}"/>
                                         </Viewbox>
                                         <TextBlock Text="{Binding SourceHintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center">
                                             <TextBlock.Style>
@@ -300,9 +300,9 @@
                                                             </Style>
                                                         </Border.Style>
                                                         <Viewbox Width="10" Height="10">
-                                                            <Path Stroke="White" StrokeThickness="2.6" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                                            <Path Stroke="White" StrokeThickness="2.6">
                                                                 <Path.Style>
-                                                                    <Style TargetType="Path">
+                                                                    <Style TargetType="Path" BasedOn="{StaticResource Icon}">
                                                                         <Setter Property="Data" Value="{StaticResource IconX}"/>
                                                                         <Style.Triggers>
                                                                             <DataTrigger Binding="{Binding IsOk}" Value="True">
@@ -371,14 +371,14 @@
                                                    Margin="12,0,0,0" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <ComboBox AutomationProperties.Name="Uninstall command" x:Name="NewRuleType" Width="110" Height="34" SelectedIndex="0">
+                                        <ComboBox AutomationProperties.Name="New rule type" x:Name="NewRuleType" Width="110" Height="34" SelectedIndex="0">
                                             <ComboBoxItem Content="MSI"/>
                                             <ComboBoxItem Content="File"/>
                                             <ComboBoxItem Content="Registry"/>
                                         </ComboBox>
                                         <Button Style="{StaticResource GhostButton}" Margin="8,0,0,0" Click="AddRule_Click">
                                             <StackPanel Orientation="Horizontal">
-                                                <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconPlus}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.3" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconPlus}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.3" Style="{StaticResource Icon}"/></Viewbox>
                                                 <TextBlock Text="Add rule" Margin="6,0,0,0" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
@@ -425,7 +425,7 @@
                                                                     </Style.Triggers>
                                                                 </Style>
                                                             </Button.Style>
-                                                            <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconPencil}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                            <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconPencil}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
                                                         </Button>
                                                         <Button Grid.Column="3" Click="DeleteRule_Click" ToolTip="Delete rule">
                                                             <Button.Style>
@@ -437,7 +437,7 @@
                                                                     </Style.Triggers>
                                                                 </Style>
                                                             </Button.Style>
-                                                            <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                            <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
                                                         </Button>
                                                     </Grid>
 
@@ -583,7 +583,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <Border Grid.Column="0" Width="36" Height="36" CornerRadius="4" Background="{DynamicResource PrimaryDimBrush}" VerticalAlignment="Center">
                                                         <Viewbox Width="17" Height="17">
-                                                            <Path Data="{StaticResource IconGroup}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                                            <Path Data="{StaticResource IconGroup}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
                                                         </Viewbox>
                                                     </Border>
                                                     <TextBlock Grid.Column="1" Text="{Binding GroupName}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
@@ -592,7 +592,7 @@
                                                                     VerticalAlignment="Center" Margin="12,0,0,0"/>
                                                     <Button Grid.Column="3" Style="{StaticResource RowIconButton}" Margin="6,0,0,0"
                                                             Click="RemoveAssignment_Click" ToolTip="Remove this assignment">
-                                                        <Viewbox Width="12" Height="12"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                                        <Viewbox Width="12" Height="12"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Style="{StaticResource Icon}"/></Viewbox>
                                                     </Button>
                                                 </Grid>
                                             </Button>
@@ -636,19 +636,7 @@
                                                 <ItemsControl ItemsSource="{Binding GroupResults}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Button Click="GroupResult_Click" Cursor="Hand" HorizontalContentAlignment="Stretch">
-                                                                <Button.Template>
-                                                                    <ControlTemplate TargetType="Button">
-                                                                        <Border x:Name="rb" Background="Transparent">
-                                                                            <ContentPresenter/>
-                                                                        </Border>
-                                                                        <ControlTemplate.Triggers>
-                                                                            <Trigger Property="IsMouseOver" Value="True">
-                                                                                <Setter TargetName="rb" Property="Background" Value="{DynamicResource PrimarySoftBrush}"/>
-                                                                            </Trigger>
-                                                                        </ControlTemplate.Triggers>
-                                                                    </ControlTemplate>
-                                                                </Button.Template>
+                                                            <Button Click="GroupResult_Click" Style="{StaticResource PickerRow}">
                                                                 <TextBlock Text="{Binding DisplayName}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" Margin="12,8"/>
                                                             </Button>
                                                         </DataTemplate>
@@ -676,11 +664,17 @@
                                 <TextBlock Text="Targeted devices" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"/>
                                 <TextBlock Text="{Binding TargetedDevicesText}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,1,0,12"/>
                                 <Border Height="9" CornerRadius="4" Background="{DynamicResource Line2Brush}" Margin="0,0,0,14" ClipToBounds="True">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Border Width="{Binding BarInstalled}" Background="{DynamicResource OkBrush}"/>
-                                        <Border Width="{Binding BarPending}" Background="{DynamicResource WarnBrush}"/>
-                                        <Border Width="{Binding BarFailed}" Background="{DynamicResource BadBrush}"/>
-                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="{Binding SumInstalled, Converter={StaticResource CountToStar}}"/>
+                                            <ColumnDefinition Width="{Binding SumPending, Converter={StaticResource CountToStar}}"/>
+                                            <ColumnDefinition Width="{Binding SumFailed, Converter={StaticResource CountToStar}}"/>
+                                            <ColumnDefinition Width="{Binding SumRemaining, Converter={StaticResource CountToStar}}"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="{DynamicResource OkBrush}"/>
+                                        <Border Grid.Column="1" Background="{DynamicResource WarnBrush}"/>
+                                        <Border Grid.Column="2" Background="{DynamicResource BadBrush}"/>
+                                    </Grid>
                                 </Border>
                                 <ContentControl Content="{Binding SumInstalled}" Tag="Installed" Style="{StaticResource StatRow}"/>
                                 <ContentControl Content="{Binding SumPending}" Tag="Pending" Style="{StaticResource StatRowWarn}"/>
@@ -717,7 +711,7 @@
                                     <Button Style="{StaticResource RowIconButton}" Width="24" Height="24" Margin="5,0,0,0"
                                             Click="CopyAppId_Click" ToolTip="Copy full App ID">
                                         <Viewbox Width="12" Height="12">
-                                            <Path Data="{StaticResource IconFile}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                            <Path Data="{StaticResource IconFile}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
                                         </Viewbox>
                                     </Button>
                                 </StackPanel>
@@ -726,7 +720,7 @@
                             <ContentControl Content="{Binding Detail.LastModifiedFormatted}" Tag="Published" Style="{StaticResource DlRow}"/>
                             <Button Style="{StaticResource PrimaryButton}" Click="ViewInIntune_Click" Margin="0,12,0,0" HorizontalAlignment="Left">
                                 <StackPanel Orientation="Horizontal">
-                                    <Viewbox Width="15" Height="15" Margin="0,0,7,0"><Path Data="{StaticResource IconExternal}" Stroke="White" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                    <Viewbox Width="15" Height="15" Margin="0,0,7,0"><Path Data="{StaticResource IconExternal}" Stroke="{DynamicResource PrimaryFgBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
                                     <TextBlock Text="View in Intune" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
@@ -742,7 +736,7 @@
                             <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
                                     Foreground="{DynamicResource DangerBrush}" Click="Retire_Click">
                                 <StackPanel Orientation="Horizontal">
-                                    <Viewbox Width="15" Height="15" Margin="0,0,8,0"><Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource DangerBrush}" StrokeThickness="1.9" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                    <Viewbox Width="15" Height="15" Margin="0,0,8,0"><Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource DangerBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
                                     <TextBlock Text="Retire from Intune" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
@@ -784,7 +778,7 @@
                                     HorizontalAlignment="Left" Margin="0,6,0,0"/>
                 </StackPanel>
                 <Button Grid.Column="1" Style="{StaticResource RowIconButton}" Click="FlyoutClose_Click" ToolTip="Close" VerticalAlignment="Top">
-                    <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                    <Viewbox Width="13" Height="13"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Style="{StaticResource Icon}"/></Viewbox>
                 </Button>
             </Grid>
 
@@ -812,18 +806,6 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Click="MemberResult_Click" Cursor="Hand" HorizontalContentAlignment="Stretch" ToolTip="Add to group">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="rb" Background="Transparent">
-                                                <ContentPresenter/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="rb" Property="Background" Value="{DynamicResource PrimarySoftBrush}"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
                                     <Grid Margin="12,7">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -859,7 +841,7 @@
                                                    Foreground="{DynamicResource Muted2Brush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                         <Button Grid.Column="2" Style="{StaticResource RowIconButton}" Width="24" Height="24" Margin="4,0,0,0"
                                                 Click="RemoveMember_Click" ToolTip="Remove from group">
-                                            <Viewbox Width="11" Height="11"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/></Viewbox>
+                                            <Viewbox Width="11" Height="11"><Path Data="{StaticResource IconX}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="2.1" Style="{StaticResource Icon}"/></Viewbox>
                                         </Button>
                                     </Grid>
                                 </Border>

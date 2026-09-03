@@ -27,3 +27,6 @@ Thumbs.db
 
 # Reference material, not part of the build
 *.zip
+
+## Test output
+TestResults/

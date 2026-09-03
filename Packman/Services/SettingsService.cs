@@ -1,3 +1,4 @@
+using Packman.Helpers;
 using Packman.Models;
 using System.IO;
 using System.Text.Json;
@@ -82,10 +83,16 @@ public class SettingsService
         groups.NewGroupIntent = AssignmentIntent.Required;
     }
 
-    /// <summary>Writes the settings file. Throws when the file cannot be written.</summary>
+    /// <summary>Where the settings live; shown on the Settings page.</summary>
+    public string SettingsPath => _path;
+
+    /// <summary>
+    /// Writes the settings file through a temp file, so a crash mid-write cannot leave a
+    /// truncated file that the next start quarantines. Throws when the file cannot be written.
+    /// </summary>
     public void Save()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        File.WriteAllText(_path, JsonSerializer.Serialize(Settings, WriteOptions));
+        TextFileIO.Write(_path, JsonSerializer.Serialize(Settings, WriteOptions), new System.Text.UTF8Encoding(false));
     }
 }

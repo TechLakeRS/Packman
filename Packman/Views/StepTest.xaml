@@ -1,6 +1,7 @@
 <UserControl x:Class="Packman.Views.StepTest"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Packman.Views.Controls"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -17,11 +18,7 @@
         <StackPanel Grid.Column="0">
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <DockPanel Margin="0,0,0,14">
-                        <TextBlock DockPanel.Dock="Left" Text="PACKAGE" Style="{StaticResource SectionLabel}"/>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding PackageSourceCaption}" Style="{StaticResource Caption}"/>
-                        <Border Style="{StaticResource Rule}"/>
-                    </DockPanel>
+                    <controls:SectionHeader Title="PACKAGE" Caption="{Binding PackageSourceCaption}" Margin="0,0,0,14"/>
 
                     <StackPanel Visibility="{Binding HasPackage, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="{Binding PackageLabel}" FontSize="13" FontWeight="SemiBold"
@@ -42,11 +39,7 @@
 
             <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                 <StackPanel>
-                    <DockPanel Margin="0,0,0,14">
-                        <TextBlock DockPanel.Dock="Left" Text="TARGET DEVICE" Style="{StaticResource SectionLabel}"/>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding StatusText}" Style="{StaticResource Caption}"/>
-                        <Border Style="{StaticResource Rule}"/>
-                    </DockPanel>
+                    <controls:SectionHeader Title="TARGET DEVICE" Caption="{Binding StatusText}" Margin="0,0,0,14"/>
 
                     <TextBlock Text="Computer Name" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,6,0,0">
@@ -85,11 +78,7 @@
 
             <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                 <StackPanel>
-                    <DockPanel Margin="0,0,0,14">
-                        <TextBlock DockPanel.Dock="Left" Text="TEST ACTIONS" Style="{StaticResource SectionLabel}"/>
-                        <TextBlock DockPanel.Dock="Right" Text="What to run on the target" Style="{StaticResource Caption}"/>
-                        <Border Style="{StaticResource Rule}"/>
-                    </DockPanel>
+                    <controls:SectionHeader Title="TEST ACTIONS" Caption="What to run on the target" Margin="0,0,0,14"/>
 
                     <Button Style="{StaticResource PrimaryButton}" Content="RUN INSTALL" HorizontalAlignment="Stretch"
                             Command="{Binding InstallCommand}"/>
@@ -113,11 +102,7 @@
             <Border Style="{StaticResource Card}" Margin="0,18,0,0"
                     Visibility="{Binding HasDiscoveredRule, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
-                    <DockPanel Margin="0,0,0,14">
-                        <TextBlock DockPanel.Dock="Left" Text="DETECTION RULE" Style="{StaticResource SectionLabel}"/>
-                        <TextBlock DockPanel.Dock="Right" Text="found on the target" Style="{StaticResource Caption}"/>
-                        <Border Style="{StaticResource Rule}"/>
-                    </DockPanel>
+                    <controls:SectionHeader Title="DETECTION RULE" Caption="found on the target" Margin="0,0,0,14"/>
                     <TextBlock Text="{Binding DiscoveredSummary}" FontSize="12.5" TextWrapping="Wrap"
                                FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource InkBrush}"/>
 

@@ -1,5 +1,8 @@
+using Packman.Helpers;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -12,145 +15,98 @@ public partial class IntuneUploadService
     // index is padded to a width that covers the cap.
     private const int MaxBlocks = 50_000;
     private const string BlockIdFormat = "00000";
+    private const int MaxBlockAttempts = 5;
+
+    // SAS URIs from Intune are good for about 15 minutes; renew well inside that.
+    private static readonly TimeSpan SasRenewalInterval = TimeSpan.FromMinutes(7);
+
+    // Per-request timeouts come from a linked token; the client itself never times out.
+    private static readonly HttpClient AzureBlob = new() { Timeout = Timeout.InfiniteTimeSpan };
+
+    private static string FileUrl(string appId, string contentVersionId, string fileId)
+        => $"{GraphClient.MobileApps}/{appId}/microsoft.graph.win32LobApp/contentVersions/{contentVersionId}/files/{fileId}";
 
     private async Task<string> CreateContentVersionAsync(string appId, CancellationToken ct)
     {
-        var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{appId}/microsoft.graph.win32LobApp/contentVersions";
-        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, url);
-        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-        var response = await sharedHttpClient!.SendAsync(request, ct);
-        var responseText = await response.Content.ReadAsStringAsync(ct);
-
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Failed to create content version. Status: {response.StatusCode}, Response: {responseText}");
-
-        var contentVersion = JsonSerializer.Deserialize<JsonElement>(responseText);
-        var contentVersionId = contentVersion.GetProperty("id").GetString();
-        return contentVersionId ?? throw new Exception("Content version ID not returned");
+        var url = $"{GraphClient.MobileApps}/{appId}/microsoft.graph.win32LobApp/contentVersions";
+        var created = (await _graph.PostAsync(url, "{}", "Create content version", ct)).Json;
+        return created.GetSafeString("id") is { Length: > 0 } id ? id : throw new Exception("Content version ID not returned");
     }
 
-    private async Task<string> CreateFileEntryAsync(string appId, string contentVersionId, IntuneWinInfo intuneWinInfo, CancellationToken ct)
+    private async Task<string> CreateFileEntryAsync(string appId, string contentVersionId, IntuneWinInfo intuneWin, CancellationToken ct)
     {
-        var encryptedSize = new FileInfo(intuneWinInfo.EncryptedFilePath).Length;
-
-        var fileBody = new Dictionary<string, object?>
+        var body = new Dictionary<string, object?>
         {
             ["@odata.type"] = "#microsoft.graph.mobileAppContentFile",
-            ["name"] = intuneWinInfo.FileName,
-            ["size"] = intuneWinInfo.UnencryptedContentSize,
-            ["sizeEncrypted"] = encryptedSize,
+            ["name"] = intuneWin.FileName,
+            ["size"] = intuneWin.UnencryptedContentSize,
+            ["sizeEncrypted"] = intuneWin.EncryptedContentSize,
             ["manifest"] = null,
-            ["isDependency"] = false
+            ["isDependency"] = false,
         };
-
-        var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{appId}/microsoft.graph.win32LobApp/contentVersions/{contentVersionId}/files";
-        var json = JsonSerializer.Serialize(fileBody, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, url);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await sharedHttpClient!.SendAsync(request, ct);
-        var responseText = await response.Content.ReadAsStringAsync(ct);
-
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Failed to create file entry. Status: {response.StatusCode}, Response: {responseText}");
-
-        var fileEntry = JsonSerializer.Deserialize<JsonElement>(responseText);
-        var fileId = fileEntry.GetProperty("id").GetString();
-        return fileId ?? throw new Exception("File ID not returned");
+        var url = $"{GraphClient.MobileApps}/{appId}/microsoft.graph.win32LobApp/contentVersions/{contentVersionId}/files";
+        var created = (await _graph.PostAsync(url, body, "Create file entry", ct)).Json;
+        return created.GetSafeString("id") is { Length: > 0 } id ? id : throw new Exception("File ID not returned");
     }
 
-    private async Task<AzureStorageInfo> WaitForAzureStorageUriAsync(string appId, string contentVersionId, string fileId, CancellationToken ct)
+    /// <summary>
+    /// Polls the content file until its uploadState reaches "{stage}Success". "{stage}Pending"
+    /// and an absent state keep waiting; Failed and TimedOut are terminal and throw
+    /// <see cref="UploadStateException"/>; Graph's own 429/5xx are retried by the client.
+    /// </summary>
+    private async Task<JsonElement> WaitForUploadStateAsync(string fileUrl, string stage, TimeSpan timeout, TimeSpan interval, CancellationToken ct)
     {
-        var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{appId}/microsoft.graph.win32LobApp/contentVersions/{contentVersionId}/files/{fileId}";
+        var deadline = DateTime.UtcNow + timeout;
+        var success = stage + "Success";
+        var pending = stage + "Pending";
 
-        for (int attempts = 0; attempts < 120; attempts++) // 20 minutes total
+        while (true)
         {
             ct.ThrowIfCancellationRequested();
-            try
-            {
-                using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, url);
-                var response = await sharedHttpClient!.SendAsync(request, ct);
-                var responseText = await response.Content.ReadAsStringAsync(ct);
 
-                if (!response.IsSuccessStatusCode)
-                    throw new Exception($"Failed to get file info. Status: {response.StatusCode}, Response: {responseText}");
+            var file = (await _graph.GetAsync(fileUrl, $"Read upload state ({stage})", ct)).Json;
+            var state = file.GetSafeString("uploadState");
 
-                var fileInfo = JsonSerializer.Deserialize<JsonElement>(responseText);
+            if (state.Equals(success, StringComparison.OrdinalIgnoreCase))
+                return file;
 
-                if (!fileInfo.TryGetProperty("uploadState", out var uploadStateProp))
-                {
-                    await Task.Delay(10000, ct);
-                    continue;
-                }
+            if (state.EndsWith("Failed", StringComparison.OrdinalIgnoreCase) ||
+                state.EndsWith("TimedOut", StringComparison.OrdinalIgnoreCase))
+                throw new UploadStateException(stage, state);
 
-                var uploadState = uploadStateProp.GetString() ?? "";
+            if (!string.IsNullOrEmpty(state) && !state.Equals(pending, StringComparison.OrdinalIgnoreCase))
+                Debug.WriteLine($"Unexpected upload state '{state}' while waiting for {success}; still waiting.");
 
-                if (uploadState.Equals("AzureStorageUriRequestSuccess", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (fileInfo.TryGetProperty("azureStorageUri", out var azureStorageUriProp))
-                    {
-                        var azureStorageUri = azureStorageUriProp.GetString();
-                        return new AzureStorageInfo { SasUri = azureStorageUri ?? throw new Exception("Azure Storage URI is null") };
-                    }
-                    throw new Exception("Upload state is success but azureStorageUri is missing");
-                }
+            if (DateTime.UtcNow >= deadline)
+                throw new TimeoutException($"Timed out after {timeout.TotalMinutes:0} minutes waiting for {success} (last state: '{state}'). The app exists in Intune without content.");
 
-                if (uploadState.Equals("AzureStorageUriRequestPending", StringComparison.OrdinalIgnoreCase))
-                {
-                    await Task.Delay(10000, ct);
-                    continue;
-                }
-
-                if (uploadState.Equals("AzureStorageUriRequestFailed", StringComparison.OrdinalIgnoreCase))
-                    throw new Exception("Azure Storage URI request failed");
-
-                if (uploadState.Equals("AzureStorageUriRequestTimedOut", StringComparison.OrdinalIgnoreCase))
-                    throw new Exception("Azure Storage URI request timed out");
-
-                if (attempts < 115)
-                {
-                    await Task.Delay(15000, ct);
-                    continue;
-                }
-
-                throw new Exception($"Unknown upload state after many attempts: '{uploadState}'. Check Intune admin center for app status.");
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex) when (!(ex.Message.Contains("upload state") || ex.Message.Contains("Failed to get file info")))
-            {
-                Debug.WriteLine($"Network exception on attempt {attempts + 1}: {ex.Message}");
-                if (attempts < 115)
-                {
-                    await Task.Delay(10000, ct);
-                    continue;
-                }
-                throw;
-            }
+            await Task.Delay(interval, ct);
         }
-
-        throw new Exception("Timeout waiting for Azure Storage URI after 20 minutes. The application was created in Intune but file upload preparation timed out.");
     }
 
-    private async Task UploadFileToAzureStorageAsync(string sasUri, string filePath, IUploadProgress? progress, CancellationToken ct)
+    /// <summary>
+    /// Streams the encrypted payload out of the .intunewin straight into block PUTs, then
+    /// commits the block list. Reports progress in the 60-84 band.
+    /// </summary>
+    private async Task UploadToAzureStorageAsync(string sasUri, string fileUrl, IntuneWinInfo intuneWin,
+        IUploadProgress? progress, UploadLogger log, CancellationToken ct)
     {
-        var fileInfo = new FileInfo(filePath);
-        var totalSize = fileInfo.Length;
-
+        var totalSize = intuneWin.EncryptedContentSize;
         int chunkSize = totalSize > 5L * 1024 * 1024 * 1024 ? 4 * 1024 * 1024 : 6 * 1024 * 1024;
         var totalChunks = (int)Math.Ceiling((double)totalSize / chunkSize);
 
         if (totalChunks > MaxBlocks)
             throw new Exception($"Package is too large to upload: it would need {totalChunks:N0} blocks and Azure allows {MaxBlocks:N0}.");
 
-        progress?.UpdateProgress(65, $"Preparing upload ({FormatBytes(totalSize)})...");
+        progress?.UpdateProgress(60, $"Uploading package to Azure ({ByteSize.Format(totalSize)})...");
 
-        using var azureHttpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        using var archive = ZipFile.OpenRead(intuneWin.IntuneWinPath);
+        var entry = archive.GetEntry(intuneWin.ContentEntryName)
+            ?? throw new FileNotFoundException($"Payload entry '{intuneWin.ContentEntryName}' is missing from the .intunewin.");
+        using var payload = entry.Open();
+
         var blockIds = new List<string>(totalChunks);
-        var sasRenewalTimer = Stopwatch.StartNew();
+        var sasTimer = Stopwatch.StartNew();
         var currentSasUri = sasUri;
 
         // One buffer for the run: a fresh 6 MB array per chunk goes straight to the LOH.
@@ -163,392 +119,179 @@ public partial class IntuneUploadService
             var blockId = Convert.ToBase64String(Encoding.ASCII.GetBytes(chunkIndex.ToString(BlockIdFormat)));
             blockIds.Add(blockId);
 
-            long startPosition = (long)chunkIndex * chunkSize;
-            int bytesToRead = (int)Math.Min(chunkSize, totalSize - startPosition);
-
-            fileStream.Position = startPosition;
-            var totalBytesRead = 0;
-            while (totalBytesRead < bytesToRead)
+            int bytesToRead = (int)Math.Min(chunkSize, totalSize - (long)chunkIndex * chunkSize);
+            int read = 0;
+            while (read < bytesToRead)
             {
-                var bytesRead = await fileStream.ReadAsync(buffer.AsMemory(totalBytesRead, bytesToRead - totalBytesRead), ct);
-                if (bytesRead == 0)
-                    break;
-                totalBytesRead += bytesRead;
+                var n = await payload.ReadAsync(buffer.AsMemory(read, bytesToRead - read), ct);
+                if (n == 0) throw new EndOfStreamException($"Payload ended after {(long)chunkIndex * chunkSize + read:N0} of {totalSize:N0} bytes.");
+                read += n;
             }
 
-            var percentComplete = (int)((long)chunkIndex * 100 / totalChunks);
-            var progressPercentage = 65 + (int)((chunkIndex + 1.0) / totalChunks * 15);
-            progress?.UpdateProgress(progressPercentage, $"Uploading chunk {chunkIndex + 1}/{totalChunks} ({percentComplete}%)");
+            var percent = (int)((long)chunkIndex * 100 / totalChunks);
+            var band = 60 + (int)((chunkIndex + 1.0) / totalChunks * 22);
+            progress?.UpdateProgress(band, $"Uploading chunk {chunkIndex + 1}/{totalChunks} ({percent}%)");
 
-            if (chunkIndex < totalChunks - 1 && sasRenewalTimer.ElapsedMilliseconds >= 420000)
+            if (chunkIndex < totalChunks - 1 && sasTimer.Elapsed >= SasRenewalInterval)
             {
-                progress?.UpdateProgress(progressPercentage, "Renewing SAS token...");
-                try
-                {
-                    currentSasUri = await RenewSasUriAsync(ct);
-                    sasRenewalTimer.Restart();
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"SAS renewal failed, continuing with current token: {ex.Message}");
-                }
+                progress?.UpdateProgress(band, "Renewing upload URL...");
+                currentSasUri = await RenewSasUriAsync(fileUrl, log, ct);
+                sasTimer.Restart();
             }
 
             var chunkUri = $"{currentSasUri}&comp=block&blockid={Uri.EscapeDataString(blockId)}";
-            await UploadChunkWithRetryAsync(azureHttpClient, chunkUri, buffer, totalBytesRead, chunkIndex, totalChunks, ct);
+            await PutBlockAsync(chunkUri, buffer, read, chunkIndex, totalChunks, ct);
         }
 
-        progress?.UpdateProgress(82, "Finalizing Azure upload...");
-        await CommitBlockListWithRetryAsync(azureHttpClient, currentSasUri, blockIds, ct);
+        progress?.UpdateProgress(83, "Finalizing Azure upload...");
+        await PutBlockListAsync(currentSasUri, blockIds, ct);
         progress?.UpdateProgress(84, "Package uploaded to Azure");
     }
 
-    private async Task UploadChunkWithRetryAsync(
-        HttpClient client, string chunkUri, byte[] buffer, int length, int chunkIndex, int totalChunks, CancellationToken ct)
+    private static async Task PutBlockAsync(string chunkUri, byte[] buffer, int length, int chunkIndex, int totalChunks, CancellationToken ct)
     {
-        const int maxRetries = 5;
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        for (int attempt = 1; ; attempt++)
         {
             ct.ThrowIfCancellationRequested();
+
+            HttpStatusCode? status = null;
+            string failure;
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Put, chunkUri);
                 request.Content = new ByteArrayContent(buffer, 0, length);
-                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain") { CharSet = "iso-8859-1" };
+                request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
                 request.Headers.Add("x-ms-blob-type", "BlockBlob");
 
                 var timeout = chunkIndex == totalChunks - 1 ? TimeSpan.FromMinutes(15) : TimeSpan.FromMinutes(5 + attempt);
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(timeout);
-                var response = await client.SendAsync(request, cts.Token);
 
-                if (response.IsSuccessStatusCode)
-                    return;
+                using var response = await AzureBlob.SendAsync(request, cts.Token);
+                if (response.IsSuccessStatusCode) return;
 
-                var errorText = await response.Content.ReadAsStringAsync(ct);
-                Debug.WriteLine($"Chunk {chunkIndex + 1} failed (attempt {attempt}/{maxRetries}): {response.StatusCode} {errorText}");
+                status = response.StatusCode;
+                failure = $"{(int)response.StatusCode} {await response.Content.ReadAsStringAsync(ct)}";
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (OperationCanceledException) { failure = "timed out"; }
+            catch (HttpRequestException ex) { failure = ex.Message; }
 
-                if ((int)response.StatusCode >= 400 && (int)response.StatusCode < 500
-                    && response.StatusCode != System.Net.HttpStatusCode.RequestTimeout
-                    && (int)response.StatusCode != 429)
-                {
-                    throw new Exception($"Client error: {response.StatusCode} - {errorText}");
-                }
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (TaskCanceledException)
-            {
-                Debug.WriteLine($"Chunk {chunkIndex + 1} timed out (attempt {attempt}/{maxRetries})");
-            }
-            catch (HttpRequestException ex)
-            {
-                Debug.WriteLine($"Network error on chunk {chunkIndex + 1} (attempt {attempt}/{maxRetries}): {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Unexpected error on chunk {chunkIndex + 1} (attempt {attempt}/{maxRetries}): {ex.Message}");
-                if (attempt == maxRetries)
-                    throw;
-            }
+            Debug.WriteLine($"Block {chunkIndex + 1}/{totalChunks} attempt {attempt}/{MaxBlockAttempts} failed: {failure}");
 
-            if (attempt < maxRetries)
-            {
-                var baseDelay = Math.Pow(2, attempt);
-                var jitter = Random.Shared.NextDouble();
-                await Task.Delay(TimeSpan.FromSeconds(baseDelay + baseDelay * jitter), ct);
-            }
-            else
-            {
-                throw new Exception($"Failed to upload chunk {chunkIndex + 1} after {maxRetries} attempts");
-            }
+            // A 4xx other than 408/429 will not get better on retry: an expired SAS, a bad block.
+            if (status is { } s && (int)s is >= 400 and < 500 && s != HttpStatusCode.RequestTimeout && (int)s != 429)
+                throw new Exception($"Azure Storage rejected block {chunkIndex + 1}: {failure}");
+
+            if (attempt >= MaxBlockAttempts)
+                throw new Exception($"Failed to upload block {chunkIndex + 1} after {MaxBlockAttempts} attempts: {failure}");
+
+            var baseDelay = Math.Pow(2, attempt);
+            await Task.Delay(TimeSpan.FromSeconds(baseDelay + baseDelay * Random.Shared.NextDouble()), ct);
         }
     }
 
-    private async Task CommitBlockListWithRetryAsync(HttpClient client, string sasUri, List<string> blockIds, CancellationToken ct)
+    private static async Task PutBlockListAsync(string sasUri, List<string> blockIds, CancellationToken ct)
     {
-        var blockListXml = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\"?><BlockList>");
+        var xml = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\"?><BlockList>");
         foreach (var blockId in blockIds)
-            blockListXml.Append("<Latest>").Append(blockId).Append("</Latest>");
-        blockListXml.Append("</BlockList>");
-        var body = blockListXml.ToString();
+            xml.Append("<Latest>").Append(blockId).Append("</Latest>");
+        xml.Append("</BlockList>");
+        var body = xml.ToString();
 
-        const int maxRetries = 5;
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        for (int attempt = 1; ; attempt++)
         {
             ct.ThrowIfCancellationRequested();
+
+            string failure;
             try
             {
-                var finalizeUri = $"{sasUri}&comp=blocklist";
-                using var request = new HttpRequestMessage(HttpMethod.Put, finalizeUri);
+                using var request = new HttpRequestMessage(HttpMethod.Put, $"{sasUri}&comp=blocklist");
                 request.Content = new StringContent(body, Encoding.UTF8);
                 request.Content.Headers.ContentType = null;
 
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(TimeSpan.FromMinutes(10));
-                var response = await client.SendAsync(request, cts.Token);
 
-                if (response.IsSuccessStatusCode)
-                    return;
+                using var response = await AzureBlob.SendAsync(request, cts.Token);
+                if (response.IsSuccessStatusCode) return;
+                failure = $"{(int)response.StatusCode} {await response.Content.ReadAsStringAsync(ct)}";
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (OperationCanceledException) { failure = "timed out"; }
+            catch (HttpRequestException ex) { failure = ex.Message; }
 
-                var errorText = await response.Content.ReadAsStringAsync(ct);
-                Debug.WriteLine($"Block list commit failed (attempt {attempt}/{maxRetries}): {response.StatusCode} {errorText}");
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (TaskCanceledException)
-            {
-                Debug.WriteLine($"Block list commit timed out (attempt {attempt}/{maxRetries})");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error committing block list (attempt {attempt}/{maxRetries}): {ex.Message}");
-            }
+            Debug.WriteLine($"Block list commit attempt {attempt}/{MaxBlockAttempts} failed: {failure}");
+            if (attempt >= MaxBlockAttempts)
+                throw new Exception($"Failed to commit block list after {MaxBlockAttempts} attempts: {failure}");
 
-            if (attempt < maxRetries)
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt) * 2), ct);
-            else
-                throw new Exception($"Failed to commit block list after {maxRetries} attempts");
+            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt) * 2), ct);
         }
     }
 
-    private static string FormatBytes(long bytes)
+    /// <summary>Asks Intune for a fresh SAS URI. One retry; after that the upload cannot continue anyway.</summary>
+    private async Task<string> RenewSasUriAsync(string fileUrl, UploadLogger log, CancellationToken ct)
     {
-        if (bytes >= 1073741824) return $"{bytes / 1073741824.0:F2} GB";
-        if (bytes >= 1048576) return $"{bytes / 1048576.0:F2} MB";
-        if (bytes >= 1024) return $"{bytes / 1024.0:F2} KB";
-        return $"{bytes} bytes";
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await _graph.PostAsync($"{fileUrl}/renewUpload", "{}", "Renew upload URL", ct);
+                var file = await WaitForUploadStateAsync(fileUrl, "azureStorageUriRenewal", TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(10), ct);
+                var renewed = file.GetSafeString("azureStorageUri");
+                if (string.IsNullOrEmpty(renewed))
+                    throw new UploadStateException("the renewed Azure Storage URI", "azureStorageUriRenewalSuccess without a URI");
+                log.Info("Upload URL renewed");
+                return renewed;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) when (attempt == 1)
+            {
+                log.Warning($"Upload URL renewal failed, retrying once: {ex.Message}");
+            }
+        }
     }
 
-    private async Task CommitFileAsync(string appId, string contentVersionId, string fileId, EncryptionInfo encryptionInfo, CancellationToken ct)
+    private async Task CommitFileAsync(string fileUrl, EncryptionInfo encryption, CancellationToken ct)
     {
-        var commitBody = new Dictionary<string, object>
+        var body = new Dictionary<string, object>
         {
             ["fileEncryptionInfo"] = new Dictionary<string, object>
             {
-                ["encryptionKey"] = encryptionInfo.EncryptionKey ?? "",
-                ["macKey"] = encryptionInfo.MacKey ?? "",
-                ["initializationVector"] = encryptionInfo.InitializationVector ?? "",
-                ["mac"] = encryptionInfo.Mac ?? "",
-                ["profileIdentifier"] = encryptionInfo.ProfileIdentifier ?? "ProfileVersion1",
-                ["fileDigest"] = encryptionInfo.FileDigest ?? "",
-                ["fileDigestAlgorithm"] = encryptionInfo.FileDigestAlgorithm ?? "SHA256"
-            }
+                ["encryptionKey"] = encryption.EncryptionKey,
+                ["macKey"] = encryption.MacKey,
+                ["initializationVector"] = encryption.InitializationVector,
+                ["mac"] = encryption.Mac,
+                ["profileIdentifier"] = encryption.ProfileIdentifier,
+                ["fileDigest"] = encryption.FileDigest,
+                ["fileDigestAlgorithm"] = encryption.FileDigestAlgorithm,
+            },
         };
-
-        var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{appId}/microsoft.graph.win32LobApp/contentVersions/{contentVersionId}/files/{fileId}/commit";
-        var json = JsonSerializer.Serialize(commitBody, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, WriteIndented = true });
-
-        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, url);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await sharedHttpClient!.SendAsync(request, ct);
-        var responseText = await response.Content.ReadAsStringAsync(ct);
-
-        if (!response.IsSuccessStatusCode)
-            throw new Exception($"Failed to commit file. Status: {response.StatusCode}, Response: {responseText}");
-    }
-
-    private async Task WaitForFileProcessingAsync(string appId, string contentVersionId, string fileId, string stage, CancellationToken ct)
-    {
-        var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{appId}/microsoft.graph.win32LobApp/contentVersions/{contentVersionId}/files/{fileId}";
-        var successState = $"{stage}Success";
-        var pendingState = $"{stage}Pending";
-
-        for (int attempts = 0; attempts < 120; attempts++)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, url);
-            var response = await sharedHttpClient!.SendAsync(request, ct);
-            var responseText = await response.Content.ReadAsStringAsync(ct);
-
-            if (!response.IsSuccessStatusCode)
-                throw new Exception($"Failed to get file processing status. Status: {response.StatusCode}, Response: {responseText}");
-
-            var fileInfo = JsonSerializer.Deserialize<JsonElement>(responseText);
-
-            if (!fileInfo.TryGetProperty("uploadState", out var uploadStateProp))
-            {
-                await Task.Delay(5000, ct);
-                continue;
-            }
-
-            var uploadState = uploadStateProp.GetString() ?? "";
-
-            if (uploadState.Equals(successState, StringComparison.OrdinalIgnoreCase))
-                return;
-
-            if (uploadState.Equals(pendingState, StringComparison.OrdinalIgnoreCase))
-            {
-                await Task.Delay(5000, ct);
-                continue;
-            }
-
-            if (uploadState.Equals($"{stage}Failed", StringComparison.OrdinalIgnoreCase))
-                throw new Exception($"File processing failed for stage: {stage}. State: {uploadState}");
-
-            if (uploadState.Equals($"{stage}TimedOut", StringComparison.OrdinalIgnoreCase))
-                throw new Exception($"File processing timed out for stage: {stage}. State: {uploadState}");
-
-            if (attempts < 115)
-            {
-                await Task.Delay(10000, ct);
-                continue;
-            }
-
-            throw new Exception($"Unknown file processing state after many attempts: '{uploadState}'. Check Intune admin center.");
-        }
-
-        throw new Exception($"Timeout waiting for file processing stage: {stage} after 10 minutes");
+        await _graph.PostAsync($"{fileUrl}/commit", body, "Commit file", ct);
     }
 
     private async Task CommitAppAsync(string appId, string contentVersionId, CancellationToken ct)
     {
-        var commitBody = new Dictionary<string, object>
+        var body = new Dictionary<string, object>
         {
             ["@odata.type"] = "#microsoft.graph.win32LobApp",
-            ["committedContentVersion"] = contentVersionId
+            ["committedContentVersion"] = contentVersionId,
         };
 
-        var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{appId}";
-        var json = JsonSerializer.Serialize(commitBody, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        using var request = await CreateAuthenticatedRequestAsync(new HttpMethod("PATCH"), url);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        var sw = Stopwatch.StartNew();
-        var response = await sharedHttpClient!.SendAsync(request, ct);
-        sw.Stop();
-
-        if (response.IsSuccessStatusCode)
-            return;
-
-        var responseText = await response.Content.ReadAsStringAsync(ct);
-        LogGraphFailureDiagnostics("CommitApp (PATCH)", request, response, sw, responseText);
+        var url = $"{GraphClient.MobileApps}/{appId}";
+        var response = await _graph.PatchAsync(url, body, "Publish app", ct, throwOnError: false);
+        if (response.IsSuccess) return;
 
         // A gateway 5xx often means the backend finished but exceeded the sync timeout;
         // read the committed version back before calling it a failure.
-        if ((int)response.StatusCode >= 500 && (int)response.StatusCode < 600)
+        if (response.StatusCode >= 500)
         {
             await Task.Delay(TimeSpan.FromSeconds(30), ct);
-            var actual = await TryGetCommittedVersionAsync(appId, ct);
-            if (actual.GetCommitted == contentVersionId)
+            var app = await _graph.GetAsync(url, "Verify publish", ct, throwOnError: false);
+            if (app.IsSuccess && app.Json.GetSafeString("committedContentVersion") == contentVersionId)
                 return;
         }
 
-        throw new Exception($"Failed to commit app. Status: {response.StatusCode}, Response: {responseText}");
-    }
-
-    private readonly record struct VerifyResult(string? GetCommitted, bool VerifyFailed, string? FailureReason);
-
-    private async Task<VerifyResult> TryGetCommittedVersionAsync(string appId, CancellationToken ct)
-    {
-        try
-        {
-            var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{appId}";
-            using var req = await CreateAuthenticatedRequestAsync(HttpMethod.Get, url);
-            var resp = await sharedHttpClient!.SendAsync(req, ct);
-            var body = await resp.Content.ReadAsStringAsync(ct);
-
-            if (!resp.IsSuccessStatusCode)
-                return new VerifyResult(null, true, $"HTTP {(int)resp.StatusCode}");
-
-            using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.TryGetProperty("committedContentVersion", out var v))
-                return new VerifyResult(v.ValueKind == JsonValueKind.String ? v.GetString() : null, false, null);
-            return new VerifyResult(null, false, null);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            return new VerifyResult(null, true, $"{ex.GetType().Name}: {ex.Message}");
-        }
-    }
-
-    private static void LogGraphFailureDiagnostics(
-        string operation, HttpRequestMessage request, HttpResponseMessage response, Stopwatch stopwatch, string responseBody)
-    {
-        Debug.WriteLine($"=== GRAPH FAILURE: {operation} ===");
-        Debug.WriteLine($"  Method/URL: {request.Method} {request.RequestUri}");
-        Debug.WriteLine($"  Status: {(int)response.StatusCode} {response.StatusCode}");
-        Debug.WriteLine($"  Duration: {stopwatch.Elapsed.TotalSeconds:F1}s");
-
-        foreach (var name in new[] { "request-id", "client-request-id", "x-ms-ags-diagnostic", "Retry-After", "Date" })
-        {
-            if (response.Headers.TryGetValues(name, out var values))
-                Debug.WriteLine($"  {name}: {string.Join(", ", values)}");
-        }
-
-        Debug.WriteLine($"  Body: {responseBody}");
-    }
-
-    private static void CleanupTempFiles(IntuneWinInfo intuneWinInfo)
-    {
-        try
-        {
-            if (Directory.Exists(intuneWinInfo.TempDirectory))
-                Directory.Delete(intuneWinInfo.TempDirectory, true);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Failed to cleanup temp files: {ex.Message}");
-        }
-    }
-
-    private async Task<string> RenewSasUriAsync(CancellationToken ct)
-    {
-        var renewUrl = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{_currentAppId}/microsoft.graph.win32LobApp/contentVersions/{_currentContentVersionId}/files/{_currentFileId}/renewUpload";
-
-        using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Post, renewUrl);
-        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
-        var response = await sharedHttpClient!.SendAsync(request, ct);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var responseText = await response.Content.ReadAsStringAsync(ct);
-            throw new Exception($"Failed to renew SAS URI. Status: {response.StatusCode}, Response: {responseText}");
-        }
-
-        return await WaitForNewSasUriAfterRenewalAsync(ct);
-    }
-
-    private async Task<string> WaitForNewSasUriAfterRenewalAsync(CancellationToken ct)
-    {
-        var url = $"https://graph.microsoft.com/beta/deviceAppManagement/mobileApps/{_currentAppId}/microsoft.graph.win32LobApp/contentVersions/{_currentContentVersionId}/files/{_currentFileId}";
-
-        for (int attempts = 0; attempts < 30; attempts++)
-        {
-            ct.ThrowIfCancellationRequested();
-
-            using var request = await CreateAuthenticatedRequestAsync(HttpMethod.Get, url);
-            var response = await sharedHttpClient!.SendAsync(request, ct);
-            var responseText = await response.Content.ReadAsStringAsync(ct);
-
-            if (!response.IsSuccessStatusCode)
-                throw new Exception($"Failed to get renewed SAS URI. Status: {response.StatusCode}, Response: {responseText}");
-
-            var fileInfo = JsonSerializer.Deserialize<JsonElement>(responseText);
-
-            if (fileInfo.TryGetProperty("uploadState", out var uploadStateProp) &&
-                (uploadStateProp.GetString() ?? "").Equals("AzureStorageUriRenewalSuccess", StringComparison.OrdinalIgnoreCase) &&
-                fileInfo.TryGetProperty("azureStorageUri", out var azureStorageUriProp))
-            {
-                var newSasUri = azureStorageUriProp.GetString();
-                if (!string.IsNullOrEmpty(newSasUri))
-                    return newSasUri;
-            }
-
-            await Task.Delay(10000, ct);
-        }
-
-        throw new Exception("Timeout waiting for SAS URI renewal");
+        throw response.ToException("Publish app");
     }
 }

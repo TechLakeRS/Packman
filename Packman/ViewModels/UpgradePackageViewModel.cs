@@ -137,6 +137,20 @@ public class UpgradePackageViewModel : ObservableObject
         }
     }
 
+    /// <summary>Clears the form for the next package.</summary>
+    public void Reset()
+    {
+        ExistingPackagePath = "";
+        NewVersion = "";
+        NewSourcePath = "";
+        PackageDisplayName = "";
+        PackageDisplayVersion = "";
+        PackageDisplayContext = "";
+        StatusText = "";
+        LoadedMetadata = null;
+        HasLoadedPackage = false;
+    }
+
     public bool CanUpgrade =>
         HasLoadedPackage &&
         Directory.Exists(ExistingPackagePath) &&

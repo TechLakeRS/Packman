@@ -5,6 +5,7 @@ using System.IO;
 
 namespace Packman.Services;
 
+/// <summary>Creates a new PSADT v4 package from the template: copy, add sources, fill in the script.</summary>
 public class PSADTGenerator
 {
     private readonly string _baseOutputPath;
@@ -18,8 +19,8 @@ public class PSADTGenerator
 
     public PackageValidationResult ValidatePackageCreation(ApplicationInfo appInfo)
     {
-        var appFolderName = $"{appInfo.Manufacturer.Replace(" ", "_")}_{appInfo.Name.Replace(" ", "_")}";
-        var packagePath = Path.Combine(_baseOutputPath, appFolderName, appInfo.Version);
+        var appFolderName = PackagePaths.AppFolderName(appInfo.Manufacturer, appInfo.Name);
+        var packagePath = PackagePaths.VersionFolder(_baseOutputPath, appFolderName, appInfo.Version);
         return new PackageValidationResult
         {
             PackageExists = Directory.Exists(packagePath),
@@ -30,31 +31,49 @@ public class PSADTGenerator
         };
     }
 
-    public async Task<string> CreatePackageAsync(ApplicationInfo appInfo,
+    public async Task<PackageCreationResult> CreatePackageAsync(ApplicationInfo appInfo,
         bool overwriteExisting = false, CancellationToken cancellationToken = default)
     {
-        var appFolderName = $"{appInfo.Manufacturer.Replace(" ", "_")}_{appInfo.Name.Replace(" ", "_")}";
-        var packagePath = Path.Combine(_baseOutputPath, appFolderName, appInfo.Version);
+        var appFolderName = PackagePaths.AppFolderName(appInfo.Manufacturer, appInfo.Name);
+        var packagePath = PackagePaths.VersionFolder(_baseOutputPath, appFolderName, appInfo.Version);
+
+        // Fail on a bad template before anything on the share is touched.
+        var template = ResolveTemplatePath();
 
         if (Directory.Exists(packagePath))
         {
             if (!overwriteExisting)
                 throw new InvalidOperationException(
                     $"Package version {appInfo.Version} already exists for {appFolderName}.");
-            Directory.Delete(packagePath, true);
+
+            PackagePaths.DeleteInside(_baseOutputPath, packagePath);
+            // Deletes on a share settle a moment after the call returns.
             await Task.Delay(200, cancellationToken);
         }
 
-        Directory.CreateDirectory(Path.Combine(_baseOutputPath, appFolderName));
-        await CopyTemplateFolderAsync(packagePath, cancellationToken);
+        try
+        {
+            await Task.Run(() =>
+            {
+                DirectoryCopy.Copy(template, Path.Combine(packagePath, "Application"), cancellationToken);
+                // Created up front so new and upgraded packages share one layout.
+                Directory.CreateDirectory(Path.Combine(packagePath, "Intune"));
+                Directory.CreateDirectory(Path.Combine(packagePath, "Icon"));
+                CopySourceFiles(appInfo.SourcesPath, packagePath, cancellationToken);
+            }, cancellationToken);
 
-        if (!string.IsNullOrWhiteSpace(appInfo.SourcesPath))
-            await CopySourceFilesAsync(appInfo.SourcesPath, packagePath, cancellationToken);
+            var warnings = ModifyScript(packagePath, appInfo);
 
-        await ModifyScriptAsync(packagePath, appInfo, cancellationToken);
-
-        Debug.WriteLine($"Package created at: {packagePath}");
-        return packagePath;
+            Debug.WriteLine($"Package created at: {packagePath}");
+            return new PackageCreationResult(packagePath, warnings);
+        }
+        catch
+        {
+            // Never leave a half-built version folder behind; it would block the next attempt.
+            try { PackagePaths.DeleteInside(_baseOutputPath, packagePath); }
+            catch (Exception cleanup) { Debug.WriteLine($"Could not remove the half-built package: {cleanup.Message}"); }
+            throw;
+        }
     }
 
     // Accepts either the .ps1 path or the folder holding it.
@@ -65,140 +84,96 @@ public class PSADTGenerator
         {
             if (p.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase) && File.Exists(p))
                 return Path.GetDirectoryName(p)!;
-            if (Directory.Exists(p) && File.Exists(Path.Combine(p, "Invoke-AppDeployToolkit.ps1")))
+            if (Directory.Exists(p) && File.Exists(Path.Combine(p, PsadtLayout.ScriptName)))
                 return p;
         }
 
         throw new DirectoryNotFoundException(
             $"PSADT template not found. Searched: '{_templatePath}'. " +
-            "Set the PSADT Template Path in Settings > Network Paths to the PSADT folder containing Invoke-AppDeployToolkit.ps1.");
+            $"Set the PSADT Template Path in Settings > Network Paths to the PSADT folder containing {PsadtLayout.ScriptName}.");
     }
 
-    private async Task CopyTemplateFolderAsync(string packagePath, CancellationToken ct)
+    // SourcesPath is a file, a ';'-separated list of files, or a folder.
+    private static void CopySourceFiles(string sourcesPath, string packagePath, CancellationToken ct)
     {
-        var template = ResolveTemplatePath();
-        await Task.Run(() =>
-        {
-            Directory.CreateDirectory(packagePath);
-            CopyDir(template, Path.Combine(packagePath, "Application"));
-            // Created up front so new and upgraded packages share one layout.
-            Directory.CreateDirectory(Path.Combine(packagePath, "Intune"));
-            Directory.CreateDirectory(Path.Combine(packagePath, "Icon"));
-        }, ct);
-    }
+        if (string.IsNullOrWhiteSpace(sourcesPath)) return;
 
-    private async Task CopySourceFilesAsync(string sourcesPath, string packagePath, CancellationToken ct)
-    {
         var dest = Path.Combine(packagePath, "Application", "Files");
         Directory.CreateDirectory(dest);
-        await Task.Run(() =>
+
+        if (sourcesPath.Contains(';'))
         {
-            if (sourcesPath.Contains(';'))
+            foreach (var p in sourcesPath.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                foreach (var p in sourcesPath.Split(';', StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var t = p.Trim();
-                    if (File.Exists(t)) File.Copy(t, Path.Combine(dest, Path.GetFileName(t)), true);
-                }
+                ct.ThrowIfCancellationRequested();
+                if (File.Exists(p)) File.Copy(p, Path.Combine(dest, Path.GetFileName(p)), true);
             }
-            else if (File.Exists(sourcesPath))
-                File.Copy(sourcesPath, Path.Combine(dest, Path.GetFileName(sourcesPath)), true);
-            else if (Directory.Exists(sourcesPath))
-                CopyDir(sourcesPath, dest);
-        }, ct);
+        }
+        else if (File.Exists(sourcesPath))
+            File.Copy(sourcesPath, Path.Combine(dest, Path.GetFileName(sourcesPath)), true);
+        else if (Directory.Exists(sourcesPath))
+            DirectoryCopy.Copy(sourcesPath, dest, ct);
     }
 
-    private async Task ModifyScriptAsync(string packagePath, ApplicationInfo appInfo, CancellationToken ct)
+    private static IReadOnlyList<string> ModifyScript(string packagePath, ApplicationInfo appInfo)
     {
-        var scriptPath = Path.Combine(packagePath, "Application", "Invoke-AppDeployToolkit.ps1");
+        var scriptPath = Path.Combine(packagePath, "Application", PsadtLayout.ScriptName);
         if (!File.Exists(scriptPath))
-            throw new FileNotFoundException($"Invoke-AppDeployToolkit.ps1 not found in: {packagePath}");
+            throw new FileNotFoundException($"{PsadtLayout.ScriptName} not found in: {packagePath}");
 
-        var content = await File.ReadAllTextAsync(scriptPath, ct);
-        content = UpdateMetadata(content, appInfo);
-        content = InjectInstallCommands(content, appInfo);
-        await File.WriteAllTextAsync(scriptPath, content, ct);
-    }
+        var script = PsadtScript.Load(scriptPath);
+        var warnings = new List<string>();
 
-    private string UpdateMetadata(string content, ApplicationInfo appInfo)
-    {
-        var lines = content.Split('\n').ToList();
-        for (int i = 0; i < lines.Count; i++)
+        // The template may carry the upstream signature; the edits below invalidate it anyway.
+        script.StripSignatureBlock();
+
+        void Set(string key, string value)
         {
-            var line = lines[i].Trim();
-            if (line.StartsWith("AppVendor") && line.Contains("="))
-                lines[i] = $"    AppVendor = '{Q(appInfo.Manufacturer)}'";
-            else if (line.StartsWith("AppName") && line.Contains("=") && !line.Contains("AppNameWithVersion"))
-                lines[i] = $"    AppName = '{Q(appInfo.Name)}'";
-            else if (line.StartsWith("AppVersion") && line.Contains("="))
-                lines[i] = $"    AppVersion = '{Q(appInfo.Version)}'";
-            else if (line.StartsWith("AppArch") && line.Contains("="))
-                lines[i] = $"    AppArch = '{Q(appInfo.Architecture)}'";
-            else if (line.StartsWith("AppScriptDate") && line.Contains("="))
-                lines[i] = $"    AppScriptDate = '{DateTime.Now:MM/dd/yyyy}'";
-            else if (line.StartsWith("AppScriptAuthor") && line.Contains("="))
-                lines[i] = $"    AppScriptAuthor = '{Q(string.IsNullOrWhiteSpace(appInfo.Author) ? Environment.UserName : appInfo.Author)}'";
-            else if (line.StartsWith("RequireAdmin") && line.Contains("="))
-                lines[i] = $"    RequireAdmin = ${(appInfo.InstallContext.Equals("User", StringComparison.OrdinalIgnoreCase) ? "false" : "true")}";
-        }
-        return string.Join('\n', lines);
-    }
-
-    private string InjectInstallCommands(string content, ApplicationInfo appInfo)
-    {
-        var lines = content.Split('\n').ToList();
-        var sourceFileName = !string.IsNullOrEmpty(appInfo.SourcesPath)
-            ? Path.GetFileName(appInfo.SourcesPath) : null;
-
-        int installIdx = FindSection(lines, "Installation");
-        if (installIdx > 0)
-        {
-            string code = appInfo.PackageType == "MSI"
-                ? $"\n## MSI Installation\nStart-ADTMsiProcess -Action 'Install' -FilePath \"$($adtSession.DirFiles)\\{D(sourceFileName ?? appInfo.Name + ".msi")}\""
-                : $"\n## EXE Installation\nStart-ADTProcess -FilePath \"$($adtSession.DirFiles)\\{D(sourceFileName ?? "setup.exe")}\" -ArgumentList '<silent flags>'";
-            Insert(lines, installIdx, code);
+            if (!script.SetSessionValue(key, value))
+                warnings.Add($"{key} is not in the template's $adtSession block; set it by hand.");
         }
 
-        int uninstallIdx = FindSection(lines, "Uninstallation");
-        if (uninstallIdx > 0)
-        {
-            string code = appInfo.PackageType == "MSI"
-                ? $"\n## Uninstall MSI\nStart-ADTMsiProcess -Action 'Uninstall' -FilePath '{Q(string.IsNullOrEmpty(appInfo.MsiProductCode) ? "{ProductCode}" : appInfo.MsiProductCode)}'"
-                : $"\n## Uninstall EXE\nStart-ADTProcess -FilePath \"$($adtSession.DirFiles)\\{D(sourceFileName ?? "setup.exe")}\" -ArgumentList '<uninstall flags>'";
-            Insert(lines, uninstallIdx, code);
-        }
+        Set("AppVendor", appInfo.Manufacturer);
+        Set("AppName", appInfo.Name);
+        Set("AppVersion", appInfo.Version);
+        Set("AppArch", appInfo.Architecture);
+        Set("AppScriptDate", PsadtScript.TodayStamp);
+        Set("AppScriptAuthor", string.IsNullOrWhiteSpace(appInfo.Author) ? Environment.UserName : appInfo.Author);
 
-        return string.Join('\n', lines);
+        var userContext = appInfo.InstallContext.Equals("User", StringComparison.OrdinalIgnoreCase);
+        if (!script.SetSessionBool("RequireAdmin", !userContext))
+            warnings.Add("RequireAdmin is not in the template's $adtSession block; set it by hand.");
+
+        var msi = appInfo.PackageType == "MSI";
+        var installer = ResolveInstallerName(appInfo, Path.Combine(packagePath, "Application", "Files"), msi)
+                        ?? (msi ? appInfo.Name + ".msi" : "setup.exe");
+
+        if (!script.InsertAfterSection(PsadtScript.InstallSection,
+                "", msi ? "## MSI Installation" : "## EXE Installation", PsadtScript.InstallCommand(msi, installer)))
+            warnings.Add($"No '<Perform {PsadtScript.InstallSection} tasks here>' marker in the template; add the install command by hand.");
+
+        if (!script.InsertAfterSection(PsadtScript.UninstallSection,
+                "", msi ? "## Uninstall MSI" : "## Uninstall EXE", PsadtScript.UninstallCommand(msi, installer, appInfo.MsiProductCode)))
+            warnings.Add($"No '<Perform {PsadtScript.UninstallSection} tasks here>' marker in the template; add the uninstall command by hand.");
+
+        script.Save();
+        return warnings;
     }
 
-    private static string Q(string? value) => PowerShellLiteral.SingleQuoted(value);
-    private static string D(string? value) => PowerShellLiteral.DoubleQuoted(value);
-
-    private int FindSection(List<string> lines, string name)
+    // A single source file is referenced by its own name; a list or folder by the first
+    // installer that landed in Files\.
+    private static string? ResolveInstallerName(ApplicationInfo appInfo, string filesFolder, bool msi)
     {
-        for (int i = 0; i < lines.Count; i++)
-        {
-            if (lines[i].Contains($"<Perform {name} tasks here>") ||
-                lines[i].Contains($"## {name}") ||
-                lines[i].Contains($"## <{name}>"))
-                return i + 1;
-        }
-        return -1;
-    }
+        var sources = appInfo.SourcesPath;
+        if (!string.IsNullOrWhiteSpace(sources) && !sources.Contains(';') && File.Exists(sources))
+            return Path.GetFileName(sources);
 
-    private void Insert(List<string> lines, int index, string code)
-    {
-        var codeLines = code.Split('\n');
-        for (int i = 0; i < codeLines.Length; i++)
-            lines.Insert(index + i, codeLines[i]);
-    }
+        if (!Directory.Exists(filesFolder)) return null;
 
-    private void CopyDir(string src, string dst)
-    {
-        Directory.CreateDirectory(dst);
-        foreach (var f in Directory.GetFiles(src))
-            File.Copy(f, Path.Combine(dst, Path.GetFileName(f)), true);
-        foreach (var d in Directory.GetDirectories(src))
-            CopyDir(d, Path.Combine(dst, Path.GetFileName(d)));
+        var names = Directory.EnumerateFiles(filesFolder).Select(Path.GetFileName).OfType<string>().ToList();
+        var preferred = msi ? ".msi" : ".exe";
+        return names.FirstOrDefault(n => n.EndsWith(preferred, StringComparison.OrdinalIgnoreCase))
+            ?? names.FirstOrDefault(n => n.EndsWith(".msi", StringComparison.OrdinalIgnoreCase)
+                                       || n.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
     }
 }

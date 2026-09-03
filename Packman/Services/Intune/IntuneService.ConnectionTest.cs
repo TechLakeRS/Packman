@@ -1,6 +1,3 @@
-using System.Net;
-using System.Net.Http;
-
 namespace Packman.Services;
 
 public sealed class ConnectionCheck
@@ -19,12 +16,16 @@ public sealed class ConnectionTestResult
 
 public partial class IntuneService
 {
-    /// <summary>Probes one endpoint per required scope to confirm sign-in and consent.</summary>
-    public async Task<ConnectionTestResult> TestConnectionAsync()
+    /// <summary>
+    /// Probes one read endpoint per scope family to confirm sign-in and consent. The
+    /// probes only read, so they prove the ReadWrite scopes were consented rather than
+    /// exercising the writes themselves.
+    /// </summary>
+    public async Task<ConnectionTestResult> TestConnectionAsync(CancellationToken ct = default)
     {
         try
         {
-            await _tokenProvider();
+            await _graph.GetTokenAsync();
         }
         catch (Exception ex)
         {
@@ -37,9 +38,10 @@ public partial class IntuneService
 
         var checks = new List<ConnectionCheck>
         {
-            await ProbeAsync("Intune apps · DeviceManagementApps.ReadWrite.All", $"{Base}?$top=1"),
-            await ProbeAsync("Entra groups · Group.Read.All", "https://graph.microsoft.com/beta/groups?$top=1&$select=id"),
-            await ProbeAsync("Entra devices · Device.Read.All", "https://graph.microsoft.com/beta/devices?$top=1&$select=id"),
+            await ProbeAsync("Intune apps · DeviceManagementApps.ReadWrite.All", $"{Base}?$top=1&$select=id", ct),
+            await ProbeAsync("Entra groups · Group.ReadWrite.All", $"{GraphClient.Groups}?$top=1&$select=id", ct),
+            await ProbeAsync("Entra devices · Device.Read.All", $"{GraphClient.Devices}?$top=1&$select=id", ct),
+            await ProbeAsync("Entra users · User.ReadBasic.All", $"{GraphClient.Users}?$top=1&$select=id", ct),
         };
 
         var ok = checks.All(c => c.Ok);
@@ -53,18 +55,17 @@ public partial class IntuneService
         };
     }
 
-    private async Task<ConnectionCheck> ProbeAsync(string name, string url)
+    private async Task<ConnectionCheck> ProbeAsync(string name, string url, CancellationToken ct)
     {
         try
         {
-            using var request = await AuthRequestAsync(HttpMethod.Get, url);
-            var response = await Http.SendAsync(request);
-            if (response.IsSuccessStatusCode)
+            var response = await _graph.GetAsync(url, name, ct, throwOnError: false);
+            if (response.IsSuccess)
                 return new ConnectionCheck { Name = name, Ok = true, Detail = "OK" };
 
-            var detail = response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized
+            var detail = response.StatusCode is 401 or 403
                 ? "Access denied — scope not consented"
-                : $"HTTP {(int)response.StatusCode}";
+                : $"HTTP {response.StatusCode}";
             return new ConnectionCheck { Name = name, Ok = false, Detail = detail };
         }
         catch (Exception ex)

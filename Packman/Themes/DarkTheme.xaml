@@ -10,7 +10,6 @@
     <Color x:Key="ShellColor">#202020</Color>
     <!-- Content surface: nearly opaque so text on it stays readable over Mica. -->
     <Color x:Key="SurfaceColor">#D9202020</Color>
-    <Color x:Key="PaneColor">#00000000</Color>
     <!-- Flyouts float over arbitrary content, so this one stays opaque. -->
     <Color x:Key="FlyoutColor">#2C2C2C</Color>
     <Color x:Key="CardColor">#0FFFFFFF</Color>
@@ -67,7 +66,6 @@
     <Color x:Key="PrimarySoftColor">#16E0A050</Color>
     <Color x:Key="PrimaryDimColor">#28E0A050</Color>
     <Color x:Key="PrimaryLineColor">#66E0A050</Color>
-    <Color x:Key="PrimaryGlowColor">#75E0A050</Color>
     <!-- Amber as text, an icon or a hairline rather than a fill. Same value as
          the fill here; the light theme has to darken it to stay legible. -->
     <Color x:Key="AccentTextColor">#E0A050</Color>
@@ -76,14 +74,11 @@
     <Color x:Key="CodeTxtColor">#F0FFFFFF</Color>
     <Color x:Key="CodeBarTxtColor">#C8FFFFFF</Color>
     <Color x:Key="CodeCommentColor">#8BFFFFFF</Color>
-    <Color x:Key="CodeKeywordColor">#E0A050</Color>
-    <Color x:Key="CodeStringColor">#6CCB5F</Color>
 
     <!-- Brushes -->
     <SolidColorBrush x:Key="BgBrush" Color="{StaticResource BgColor}"/>
     <SolidColorBrush x:Key="ShellBrush" Color="{StaticResource ShellColor}"/>
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
-    <SolidColorBrush x:Key="PaneBrush" Color="{StaticResource PaneColor}"/>
     <SolidColorBrush x:Key="FlyoutBrush" Color="{StaticResource FlyoutColor}"/>
     <SolidColorBrush x:Key="CardBrush" Color="{StaticResource CardColor}"/>
     <SolidColorBrush x:Key="Card2Brush" Color="{StaticResource Card2Color}"/>
@@ -129,18 +124,14 @@
     <SolidColorBrush x:Key="PrimarySoftBrush" Color="{StaticResource PrimarySoftColor}"/>
     <SolidColorBrush x:Key="PrimaryDimBrush" Color="{StaticResource PrimaryDimColor}"/>
     <SolidColorBrush x:Key="PrimaryLineBrush" Color="{StaticResource PrimaryLineColor}"/>
-    <SolidColorBrush x:Key="PrimaryGlowBrush" Color="{StaticResource PrimaryGlowColor}"/>
     <SolidColorBrush x:Key="AccentTextBrush" Color="{StaticResource AccentTextColor}"/>
 
     <SolidColorBrush x:Key="CodeBgBrush" Color="{StaticResource CodeBgColor}"/>
     <SolidColorBrush x:Key="CodeTxtBrush" Color="{StaticResource CodeTxtColor}"/>
     <SolidColorBrush x:Key="CodeBarTxtBrush" Color="{StaticResource CodeBarTxtColor}"/>
     <SolidColorBrush x:Key="CodeCommentBrush" Color="{StaticResource CodeCommentColor}"/>
-    <SolidColorBrush x:Key="CodeKeywordBrush" Color="{StaticResource CodeKeywordColor}"/>
-    <SolidColorBrush x:Key="CodeStringBrush" Color="{StaticResource CodeStringColor}"/>
 
     <!-- The logo mark is a flat block. -->
-    <SolidColorBrush x:Key="LogoGradientBrush" Color="{StaticResource PrimaryColor}"/>
 
     <sys:Boolean x:Key="IsDarkTheme">True</sys:Boolean>
 </ResourceDictionary>

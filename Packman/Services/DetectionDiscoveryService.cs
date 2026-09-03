@@ -104,9 +104,11 @@ public class DetectionDiscoveryService
 
             string localDir = ToLocalPath(foundDir.FullName, computerName);
             var versionInfo = FileVersionInfo.GetVersionInfo(foundExe.FullName);
+            // FileVersion is free text ("1, 0, 0, 1", "12.0 build 3"); Intune compares a.b.c.d.
+            var fileVersion = NormalizedFileVersion(versionInfo);
 
             result.AppName = string.IsNullOrEmpty(versionInfo.ProductName) ? appName : versionInfo.ProductName;
-            result.AppVersion = versionInfo.FileVersion ?? appVersion;
+            result.AppVersion = fileVersion ?? appVersion;
             result.Publisher = versionInfo.CompanyName ?? "";
             result.InstallLocation = localDir;
 
@@ -120,7 +122,7 @@ public class DetectionDiscoveryService
                 Check32BitOn64System = true
             });
 
-            if (!string.IsNullOrEmpty(versionInfo.FileVersion))
+            if (fileVersion != null)
             {
                 result.SuggestedRules.Add(new DetectionRule
                 {
@@ -128,7 +130,7 @@ public class DetectionDiscoveryService
                     Path = localDir,
                     FileOrFolderName = foundExe.Name,
                     DetectionType = "version",
-                    DetectionValue = versionInfo.FileVersion,
+                    DetectionValue = fileVersion,
                     Operator = "greaterThanOrEqual",
                     CheckVersion = true,
                     Check32BitOn64System = true
@@ -246,8 +248,23 @@ public class DetectionDiscoveryService
         return terms.Distinct(StringComparer.OrdinalIgnoreCase).OrderByDescending(t => t.Length).ToList();
     }
 
-    private static string ToLocalPath(string uncPath, string computerName)
-        => uncPath.Replace($@"\\{computerName}\C$", "C:", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Local path as Intune should see it. A folder under the test user's profile becomes
+    /// %LOCALAPPDATA%, so the rule works for every user rather than the one who tested.
+    /// </summary>
+    internal static string ToLocalPath(string uncPath, string computerName)
+    {
+        var local = uncPath.Replace($@"\\{computerName}\C$", "C:", StringComparison.OrdinalIgnoreCase);
+        var profile = Regex.Match(local, @"^C:\\Users\\[^\\]+\\AppData\\Local(?<rest>\\.*)?$", RegexOptions.IgnoreCase);
+        return profile.Success ? "%LOCALAPPDATA%" + profile.Groups["rest"].Value : local;
+    }
+
+    /// <summary>"a.b.c.d" from the numeric version parts, or null when the file has none.</summary>
+    internal static string? NormalizedFileVersion(FileVersionInfo info)
+    {
+        if (string.IsNullOrWhiteSpace(info.FileVersion)) return null;
+        return $"{info.FileMajorPart}.{info.FileMinorPart}.{info.FileBuildPart}.{info.FilePrivatePart}";
+    }
 
     private static List<DirectoryInfo> SafeGetDirectories(DirectoryInfo dir)
     {
