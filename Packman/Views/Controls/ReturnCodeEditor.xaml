@@ -1,0 +1,37 @@
+<UserControl x:Class="Packman.Views.Controls.ReturnCodeEditor"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:Packman"
+    xmlns:controls="clr-namespace:Packman.Views.Controls"
+    xmlns:models="clr-namespace:Packman.Models">
+    <ItemsControl ItemsSource="{Binding ReturnCodes}">
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90"/><ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/><ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="150"/><ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Style="{StaticResource MonoField}" AutomationProperties.Name="Exit code"
+                            Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Grid.Column="2" Style="{StaticResource TextField}" AutomationProperties.Name="Return code description"
+                            local:PlaceholderText.Text="Description (optional)" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ComboBox Grid.Column="4" AutomationProperties.Name="Return code outcome" SelectedValuePath="Tag"
+                            SelectedValue="{Binding Type, Mode=TwoWay}">
+                            <ComboBoxItem Content="Success" Tag="{x:Static models:ReturnCodeType.Success}"/>
+                            <ComboBoxItem Content="Soft reboot" Tag="{x:Static models:ReturnCodeType.SoftReboot}"/>
+                            <ComboBoxItem Content="Hard reboot" Tag="{x:Static models:ReturnCodeType.HardReboot}"/>
+                            <ComboBoxItem Content="Retry" Tag="{x:Static models:ReturnCodeType.Retry}"/>
+                            <ComboBoxItem Content="Failed" Tag="{x:Static models:ReturnCodeType.Failed}"/>
+                        </ComboBox>
+                        <Button Grid.Column="6" Style="{StaticResource RowIconButton}" Command="{Binding RemoveCommand}"
+                            ToolTip="Remove return code" Content="×" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+</UserControl>

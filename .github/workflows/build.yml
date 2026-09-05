@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/**"]
   pull_request:
 
 jobs:
@@ -31,3 +31,9 @@ jobs:
         with:
           name: test-results
           path: Packman.Tests/TestResults/*.trx
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-previews
+          path: Packman.Tests/bin/Release/net10.0-windows/UiPreviews/*.png

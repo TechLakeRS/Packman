@@ -234,10 +234,10 @@ public class UploadStepViewModel : ObservableObject
 
     public string DeployModeHint => _selectedDeployMode switch
     {
-        "Interactive" => "Always shows the PSADT dialogs.",
-        "NonInteractive" => "Shows dialogs but never waits for the user.",
+        "Interactive" => "For attended testing. Intune deployments must not require user interaction.",
+        "NonInteractive" => "Does not wait for user input; PSADT may show progress when a user session is available.",
         "Silent" => "No dialogs at all.",
-        _ => "PSADT decides: dialogs when a user is logged on, silent otherwise.",
+        _ => "PSADT selects the mode from the session and toolkit configuration. Use Silent for unattended Intune deployment.",
     };
 
     public string InstallCommandPreview => WithDeployMode(_settingsService.Settings.IntuneDefaults.InstallCommand);
@@ -339,11 +339,33 @@ public class UploadStepViewModel : ObservableObject
             _groupsSeededFor = packagePath;
     }
 
+    public string PerPackageGroupsSummary
+    {
+        get
+        {
+            var config = _settingsService.Settings.GroupAssignment;
+            var app = _create.BuildApplicationInfo();
+            var groups = new List<string>();
+            if (config.CreateGroupPerPackage)
+                groups.Add($"{GroupAssignmentNamer.Build(config.GroupNameTemplate, app.Manufacturer, app.Name, app.Version)} · {config.NewGroupIntent}");
+            if (config.CreateUninstallGroupPerPackage)
+                groups.Add($"{GroupAssignmentNamer.Build(config.UninstallGroupNameTemplate, app.Manufacturer, app.Name, app.Version)} · Uninstall");
+            return groups.Count == 0 ? "No per-package groups will be created." : "Create or reuse on publish:\n" + string.Join("\n", groups);
+        }
+    }
+
+    public string RequirementsSummary =>
+        $"Disk: {Constraint(MinFreeDiskSpaceMB, "MB")} · Memory: {Constraint(MinMemoryMB, "MB")} · " +
+        $"Processors: {Constraint(MinProcessors, "")} · CPU: {Constraint(MinCpuSpeedMHz, "MHz")}";
+
+    private static string Constraint(string value, string unit) =>
+        string.IsNullOrWhiteSpace(value) ? "No minimum" : $"{value} {unit}".Trim();
+
     /// <summary>Refreshes the Review step without touching the edited fields.</summary>
     public void RefreshReview()
     {
         RaiseAll(nameof(IsSignedIn), nameof(IsNotSignedIn), nameof(SignedInUser), nameof(TenantName),
-                 nameof(InstallCommandPreview), nameof(UninstallCommandPreview));
+                 nameof(InstallCommandPreview), nameof(UninstallCommandPreview), nameof(PerPackageGroupsSummary), nameof(RequirementsSummary));
         RefreshDetectionSummary();
     }
 

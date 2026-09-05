@@ -138,6 +138,8 @@ public partial class IntuneUploadService
     /// <summary>Signs the script, runs IntuneWinAppUtil and reads the result. Progress 10-30.</summary>
     private async Task<IntuneWinInfo> BuildIntuneWinAsync(string packagePath, IUploadProgress? progress, UploadLogger log, CancellationToken ct)
     {
+        Report(progress, log, 5, "Checking PSADT runtime and deployment script...");
+        PackagePreflight.EnsureReady(packagePath);
         Report(progress, log, 10, "Signing application files...");
         await SignApplicationFilesAsync(packagePath, progress, log, ct);
 

@@ -43,7 +43,11 @@ public sealed class MainViewModel : ObservableObject
     public bool IsUpgradeMode
     {
         get => _isUpgradeMode;
-        set { if (Set(ref _isUpgradeMode, value)) OnPropertyChanged(nameof(PrimaryLabel)); }
+        set
+        {
+            if (!Set(ref _isUpgradeMode, value)) return;
+            RaiseAll(nameof(PrimaryLabel), nameof(StepHint));
+        }
     }
 
     public RelayCommand BackCommand { get; }
@@ -74,6 +78,7 @@ public sealed class MainViewModel : ObservableObject
             if (value == UploadStep) Upload.RefreshFromPackage();
             if (value == ReviewStep) Upload.RefreshReview();
             OnPropertyChanged(nameof(PrimaryLabel));
+            OnPropertyChanged(nameof(StepHint));
             OnPropertyChanged(nameof(IsLastStep));
             OnPropertyChanged(nameof(StepPosition));
             OnPropertyChanged(nameof(ShowPrimaryKeyHint));
@@ -121,8 +126,8 @@ public sealed class MainViewModel : ObservableObject
 
     public string ToolActionLabel => _activeTool switch
     {
-        PackageTool.EditScript => "OPEN IN VS CODE",
-        PackageTool.RemoteTest => "RUN INSTALL",
+        PackageTool.EditScript => "Open in VS Code",
+        PackageTool.RemoteTest => "Run install",
         _ => "",
     };
 
@@ -147,13 +152,20 @@ public sealed class MainViewModel : ObservableObject
         {
             if (CurrentStepIndex == GenerateStep)
             {
-                if (HasPackage) return "CONTINUE TO UPLOAD";
-                return IsUpgradeMode ? "UPGRADE PACKAGE" : "GENERATE PACKAGE";
+                if (HasPackage) return "Continue to configure";
+                return IsUpgradeMode ? "Upgrade package" : "Generate package";
             }
-            if (CurrentStepIndex == UploadStep) return "CONTINUE TO REVIEW";
-            return "BUILD & UPLOAD";
+            if (CurrentStepIndex == UploadStep) return "Review deployment";
+            return "Build & publish";
         }
     }
+
+    public string StepHint => CurrentStepIndex switch
+    {
+        GenerateStep => HasPackage ? "Package ready. Review the script and test before publishing." : "Creates files on your share. Nothing is uploaded yet.",
+        UploadStep => "Configure detection and assignments. Publish after review.",
+        _ => "Build the .intunewin and publish to your connected tenant."
+    };
 
     public bool IsLastStep => CurrentStepIndex == Steps.Count - 1;
 
@@ -180,9 +192,9 @@ public sealed class MainViewModel : ObservableObject
 
         Steps = new ObservableCollection<StepViewModel>
         {
-            new(GenerateStep, "Generate"),
-            new(UploadStep,   "Upload"),
-            new(ReviewStep,   "Review"),
+            new(GenerateStep, "Package"),
+            new(UploadStep,   "Configure"),
+            new(ReviewStep,   "Review & publish"),
         };
 
         BackCommand     = new RelayCommand(() => CurrentStepIndex--, () => CurrentStepIndex > 0);
@@ -240,6 +252,7 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(PackageName));
         OnPropertyChanged(nameof(PackagePathShort));
         OnPropertyChanged(nameof(PrimaryLabel));
+        OnPropertyChanged(nameof(StepHint));
         OpenEditToolCommand.RaiseCanExecuteChanged();
         OpenTestToolCommand.RaiseCanExecuteChanged();
         OpenPackageFolderCommand.RaiseCanExecuteChanged();

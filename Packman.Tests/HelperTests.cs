@@ -87,7 +87,12 @@ public class SmallHelperTests
     [InlineData(512, "512 B")]
     [InlineData(1536, "1.5 KB")]
     [InlineData(5L * 1024 * 1024 * 1024, "5 GB")]
-    public void ByteSize_formats(long bytes, string expected) => Assert.Equal(expected, ByteSize.Format(bytes));
+    public void ByteSize_formats(long bytes, string expected)
+    {
+        // Size labels follow the user's decimal separator, including comma locales.
+        var localized = expected.Replace(".", System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+        Assert.Equal(localized, ByteSize.Format(bytes));
+    }
 
     [Fact]
     public void RequirementInfo_parse_ignores_blank_and_non_positive()

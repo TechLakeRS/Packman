@@ -1,0 +1,26 @@
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:Packman" xmlns:controls="clr-namespace:Packman.Views.Controls" x:Class="Packman.Views.Controls.NetworkPathsSettings">
+    <Border Background="Transparent" BorderThickness="0" Padding="0">
+        <StackPanel>
+            <!-- Card header -->
+            <StackPanel Margin="0,0,0,14">
+                <controls:SectionHeader Title="Network paths"/>
+                <TextBlock Text="File share locations for package output and PSADT template" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+            <!-- Intune Applications output path -->
+            <TextBlock Text="Intune Applications Path" Style="{StaticResource FieldLabel}"/>
+            <Grid Margin="0,7,0,0">
+                <TextBox AutomationProperties.Name="Intune Applications Path" Style="{StaticResource TextField}" Text="{Binding IntuneApplicationsPath, UpdateSourceTrigger=PropertyChanged}" local:PlaceholderText.Text="\\server\share\IntuneApps"/>
+            </Grid>
+            <!-- PSADT Template path -->
+            <TextBlock Text="PSADT Template Path" Style="{StaticResource FieldLabel}" Margin="0,16,0,0"/>
+            <Grid Margin="0,7,0,0">
+                <TextBox AutomationProperties.Name="PSADT Template Path" Style="{StaticResource TextField}" Text="{Binding PSADTTemplatePath, UpdateSourceTrigger=PropertyChanged}" local:PlaceholderText.Text="\\server\share\PSADTTemplate"/>
+            </Grid>
+            <!-- IntuneWinAppUtil path -->
+            <TextBlock Text="IntuneWinAppUtil Path" Style="{StaticResource FieldLabel}" Margin="0,16,0,0"/>
+            <Grid Margin="0,7,0,0">
+                <TextBox AutomationProperties.Name="IntuneWinAppUtil Path" Style="{StaticResource TextField}" Text="{Binding IntuneWinAppUtilPath, UpdateSourceTrigger=PropertyChanged}" local:PlaceholderText.Text="\\server\share\Tools\IntuneWinAppUtil.exe"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

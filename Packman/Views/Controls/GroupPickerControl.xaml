@@ -33,8 +33,8 @@
                     <KeyBinding Key="Enter" Command="{Binding SearchGroupsCommand}"/>
                 </TextBox.InputBindings>
             </TextBox>
-            <Button Style="{StaticResource BrowseButton}" HorizontalAlignment="Right" VerticalAlignment="Stretch"
-                    Margin="0,6,6,6" Command="{Binding SearchGroupsCommand}">
+            <Button Style="{StaticResource MiniButton}" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                    Margin="0,2,2,2" Command="{Binding SearchGroupsCommand}">
                 <TextBlock Text="Search" VerticalAlignment="Center"/>
             </Button>
         </Grid>
@@ -56,7 +56,7 @@
         <ItemsControl ItemsSource="{Binding GroupResults}" Margin="0,8,0,0">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Button HorizontalContentAlignment="Stretch" Margin="0,0,0,6" Cursor="Hand"
+                    <Button FocusVisualStyle="{StaticResource FocusVisual}" AutomationProperties.Name="{Binding DisplayName}" HorizontalContentAlignment="Stretch" Margin="0,0,0,6" Cursor="Hand"
                             Command="{Binding DataContext.AddGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                             CommandParameter="{Binding}">
                         <Button.Template>
@@ -76,28 +76,18 @@
             </ItemsControl.ItemTemplate>
         </ItemsControl>
 
-        <!-- Selected chips -->
-        <ItemsControl ItemsSource="{Binding SelectedGroups}" Margin="0,4,0,0">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
+        <!-- Each row keeps its own assignment intent. -->
+        <ItemsControl ItemsSource="{Binding SelectedGroups}" Margin="0,12,0,0">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border Background="{DynamicResource PrimaryDimBrush}" BorderBrush="{DynamicResource AccentTextBrush}" BorderThickness="1"
-                            Padding="11,6" Margin="0,0,8,8" CornerRadius="4">
-                        <StackPanel Orientation="Horizontal">
-                            <Viewbox Width="13" Height="13" Margin="0,0,7,0">
-                                <Path Data="{StaticResource IconGroup}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
-                            </Viewbox>
-                            <TextBlock Text="{Binding ChipText}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                            <Button Margin="9,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0" Padding="0" ToolTip="Remove"
-                                    Command="{Binding DataContext.RemoveGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    CommandParameter="{Binding}">
-                                <Viewbox Width="11" Height="11">
-                                    <Path Data="{StaticResource IconX}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="2.2" Style="{StaticResource Icon}"/>
-                                </Viewbox>
-                            </Button>
-                        </StackPanel>
+                    <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Padding="0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding GroupName}" Style="{StaticResource SubText}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <TextBlock Grid.Column="1" Text="{Binding StatusLabel}" Style="{StaticResource SubText}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <Button Grid.Column="2" Style="{StaticResource RowIconButton}" Content="×" ToolTip="Remove assignment"
+                                Command="{Binding DataContext.RemoveGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
+                        </Grid>
                     </Border>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -105,7 +95,7 @@
 
         <TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="{DynamicResource MutedBrush}">
             <Run Text="Next group is added as "/>
-            <Run Text="{Binding IntentLabel, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
+            <Run Text="{Binding IntentLabel, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
             <Run Text="."/>
         </TextBlock>
     </StackPanel>

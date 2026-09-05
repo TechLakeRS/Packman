@@ -1,0 +1,29 @@
+<UserControl x:Class="Packman.Views.Controls.PublishStatusControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:Packman"
+    xmlns:controls="clr-namespace:Packman.Views.Controls"
+    >
+    <Border Style="{StaticResource Card}">
+        <StackPanel>
+            <TextBlock Text="{Binding Title}" Style="{StaticResource H2}" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding StatusText}" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+            <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressValue, Mode=OneWay}" Margin="0,20,0,0" AutomationProperties.Name="Publishing progress"/>
+            <controls:PublishStepList Margin="0,20,0,0"/>
+            <TextBlock Text="{Binding ResultText}" Margin="0,18,0,0" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource SubText}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFailed}" Value="True"><Setter Property="Foreground" Value="{DynamicResource BadBrush}"/></DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <Button Style="{StaticResource GhostButton}" Content="Cancel upload" HorizontalAlignment="Left" Margin="0,18,0,0"
+                Command="{Binding CancelCommand}" Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}"
+                ToolTip="Stops publishing and attempts to remove an incomplete app. Check the result for cleanup details."/>
+            <Button Style="{StaticResource PrimaryButton}" Content="Done" HorizontalAlignment="Left" Margin="0,18,0,0"
+                Command="{Binding DoneCommand}" Visibility="{Binding IsComplete, Converter={StaticResource BoolToVis}}"/>
+        </StackPanel>
+    </Border>
+</UserControl>

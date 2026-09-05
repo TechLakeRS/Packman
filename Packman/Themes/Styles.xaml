@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:local="clr-namespace:Packman">
+                    xmlns:local="clr-namespace:Packman"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
 
     <!-- ═══════════════ Type ═══════════════ -->
     <!-- Segoe UI Variable for UI, Cascadia where columns have to line up, bundled
@@ -53,7 +54,7 @@
     <Style x:Key="H1" TargetType="{x:Type TextBlock}">
         <Setter Property="FontFamily" Value="{StaticResource UIFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FontSize" Value="26"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style x:Key="H2" TargetType="{x:Type TextBlock}">
@@ -102,7 +103,7 @@
     <Style x:Key="SectionLabel" TargetType="{x:Type TextBlock}">
         <Setter Property="FontFamily" Value="{StaticResource LabelFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
@@ -111,7 +112,7 @@
     <Style x:Key="Caption" TargetType="{x:Type TextBlock}">
         <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource Dim2Brush}"/>
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
@@ -137,7 +138,7 @@
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="18,8"/>
-        <Setter Property="MinHeight" Value="34"/>
+        <Setter Property="MinHeight" Value="40"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Template">
@@ -171,7 +172,7 @@
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="16,7"/>
-        <Setter Property="MinHeight" Value="34"/>
+        <Setter Property="MinHeight" Value="40"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -194,6 +195,12 @@
         </Setter>
     </Style>
 
+    <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BadLineBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource BadSoftBrush}"/>
+    </Style>
+
     <!-- Top-bar text action (DOCS / ALERTS) -->
     <Style x:Key="BarButton" TargetType="{x:Type Button}">
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
@@ -201,8 +208,8 @@
         <Setter Property="Foreground" Value="{DynamicResource Muted2Brush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="4,6"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
@@ -233,8 +240,8 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Width" Value="26"/>
-        <Setter Property="Height" Value="26"/>
+        <Setter Property="Width" Value="30"/>
+        <Setter Property="Height" Value="30"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -329,8 +336,8 @@
         <Setter Property="CaretBrush" Value="{DynamicResource PrimaryBrush}"/>
         <Setter Property="SelectionBrush" Value="{DynamicResource PrimaryDimBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="FontSize" Value="12.5"/>
-        <Setter Property="Height" Value="36"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Height" Value="40"/>
         <Setter Property="Padding" Value="11,0"/>
         <Setter Property="TextAlignment" Value="Left"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -376,7 +383,7 @@
     <Style x:Key="FieldLabel" TargetType="{x:Type TextBlock}">
         <Setter Property="FontFamily" Value="{StaticResource UIFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
-        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Margin" Value="0,0,0,7"/>
     </Style>
@@ -394,7 +401,7 @@
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
-        <Setter Property="MinHeight" Value="38"/>
+        <Setter Property="MinHeight" Value="42"/>
         <Setter Property="Margin" Value="4,1"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -434,8 +441,8 @@
         <Setter Property="FontFamily" Value="{StaticResource UIFontFamily}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource Muted2Brush}"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="14,9"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
@@ -482,7 +489,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="FontFamily" Value="{StaticResource UIFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource Muted2Brush}"/>
-        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="16,11"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -553,14 +560,14 @@
         <Setter Property="AutomationProperties.Name"
                 Value="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
-        <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}"/>
+        <Setter Property="FontFamily" Value="{StaticResource UIFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="Background" Value="{DynamicResource CardBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="14"/>
         <Setter Property="Padding" Value="11,0"/>
-        <Setter Property="Height" Value="36"/>
+        <Setter Property="Height" Value="40"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -575,10 +582,15 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="26"/>
                                 </Grid.ColumnDefinitions>
-                                <ContentPresenter Grid.Column="0" Margin="{TemplateBinding Padding}"
+                                <ContentPresenter x:Name="SelectionPresenter" Grid.Column="0" Margin="{TemplateBinding Padding}"
                                                   Content="{TemplateBinding SelectionBoxItem}"
                                                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                   VerticalAlignment="Center"/>
+                                <TextBox x:Name="PART_EditableTextBox" Grid.Column="0" Style="{x:Null}" Visibility="Collapsed"
+                                    Background="Transparent" BorderThickness="0" Padding="{TemplateBinding Padding}"
+                                    Foreground="{TemplateBinding Foreground}" CaretBrush="{DynamicResource AccentTextBrush}"
+                                    FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}"
+                                    VerticalContentAlignment="Center" IsReadOnly="{TemplateBinding IsReadOnly}"/>
                                 <Viewbox Grid.Column="1" Width="11" Height="11" VerticalAlignment="Center" HorizontalAlignment="Center">
                                     <Path Data="M4 8l6 6 6-6" Stroke="{DynamicResource Dim2Brush}" StrokeThickness="1.8"
                                           Fill="Transparent" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
@@ -586,7 +598,7 @@
                                 <!-- Style="{x:Null}" is load-bearing: without it this inherits WPF UI's
                                  implicit ToggleButton style, which swallows the click and
                                  kills the drop-down. -->
-                                <ToggleButton Style="{x:Null}" Grid.ColumnSpan="2" Background="Transparent" BorderThickness="0"
+                                <ToggleButton x:Name="DropDownToggle" Style="{x:Null}" Focusable="False" Grid.ColumnSpan="2" Background="Transparent" BorderThickness="0"
                                              IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                                     <ToggleButton.Template>
                                         <ControlTemplate TargetType="{x:Type ToggleButton}">
@@ -596,7 +608,7 @@
                                 </ToggleButton>
                             </Grid>
                         </Border>
-                        <Popup IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True"
+                        <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True"
                                Placement="Bottom" PopupAnimation="Fade">
                             <!-- FlyoutBrush, not CardBrush: this floats over arbitrary
                                  content, and the card layers are translucent. -->
@@ -610,6 +622,14 @@
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="SelectionPresenter" Property="Visibility" Value="Collapsed"/>
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="DropDownToggle" Property="Grid.Column" Value="1"/>
+                            <Setter TargetName="DropDownToggle" Property="Grid.ColumnSpan" Value="1"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter TargetName="bd" Property="Opacity" Value="0.5"/></Trigger>
+
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource Edge2Brush}"/>
                         </Trigger>
@@ -626,7 +646,7 @@
     <Style x:Key="ColHead" TargetType="{x:Type TextBlock}">
         <Setter Property="FontFamily" Value="{StaticResource LabelFontFamily}"/>
         <Setter Property="Foreground" Value="{DynamicResource Dim2Brush}"/>
-        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Margin" Value="0,0,14,0"/>
@@ -667,8 +687,8 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource Muted2Brush}"/>
-        <Setter Property="Width" Value="26"/>
-        <Setter Property="Height" Value="26"/>
+        <Setter Property="Width" Value="30"/>
+        <Setter Property="Height" Value="30"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -693,7 +713,7 @@
         <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource DimBrush}"/>
-        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontSize" Value="12"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalAlignment" Value="Left"/>
         <Setter Property="Template">
@@ -725,10 +745,15 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="{TemplateBinding Tag}" FontFamily="{StaticResource UIFontFamily}"
                                        FontSize="11.5" Foreground="{DynamicResource Muted2Brush}" VerticalAlignment="Center"/>
-                            <ContentPresenter Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="14,0,0,0"
-                                              TextElement.Foreground="{DynamicResource TextBrush}"
-                                              TextElement.FontFamily="{StaticResource UIFontFamily}"
-                                              TextElement.FontWeight="SemiBold" TextElement.FontSize="12"/>
+                            <ContentPresenter Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="18,0,0,0"
+                                TextElement.Foreground="{DynamicResource TextBrush}" TextElement.FontSize="13"
+                                TextElement.FontFamily="{StaticResource UIFontFamily}">
+                                <ContentPresenter.Resources>
+                                    <DataTemplate DataType="{x:Type sys:String}">
+                                        <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Right"/>
+                                    </DataTemplate>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
                         </Grid>
                     </Border>
                 </ControlTemplate>
@@ -747,9 +772,15 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="{TemplateBinding Tag}" FontFamily="{StaticResource UIFontFamily}"
                                        FontSize="11.5" Foreground="{DynamicResource Muted2Brush}" VerticalAlignment="Center"/>
-                            <ContentPresenter Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="14,0,0,0"
-                                              TextElement.Foreground="{DynamicResource TextBrush}"
-                                              TextElement.FontFamily="{StaticResource MonoFontFamily}" TextElement.FontSize="12"/>
+                            <ContentPresenter Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="18,0,0,0"
+                                TextElement.Foreground="{DynamicResource TextBrush}" TextElement.FontSize="13"
+                                TextElement.FontFamily="{StaticResource MonoFontFamily}">
+                                <ContentPresenter.Resources>
+                                    <DataTemplate DataType="{x:Type sys:String}">
+                                        <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Right"/>
+                                    </DataTemplate>
+                                </ContentPresenter.Resources>
+                            </ContentPresenter>
                         </Grid>
                     </Border>
                 </ControlTemplate>

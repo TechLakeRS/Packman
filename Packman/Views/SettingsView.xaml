@@ -12,23 +12,22 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- ══ Page header ══════════════════════════════════════════════ -->
         <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center">
                 <TextBlock Text="Settings" Style="{StaticResource H1}"/>
-                <TextBlock Text="{Binding SettingsPath, StringFormat='Stored in {0}'}"
+                <TextBlock Text="Connections, package paths and deployment defaults"
                            Style="{StaticResource SubText}" Margin="0,5,0,0"/>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <!-- Save status -->
-                <TextBlock Text="{Binding SaveStatus}" FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5"
-                           Foreground="{DynamicResource OkBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                 <!-- Reset -->
-                <Button Style="{StaticResource GhostButton}" Content="RESET" Command="{Binding ResetCommand}" Margin="0,0,8,0"/>
+                <Button Style="{StaticResource GhostButton}" Content="Reset" Command="{Binding ResetCommand}" Margin="0,0,8,0"/>
                 <!-- Save Settings -->
-                <Button Style="{StaticResource PrimaryButton}" Content="SAVE SETTINGS" Command="{Binding SaveCommand}"/>
+                <Button Style="{StaticResource PrimaryButton}" Content="Save settings" Command="{Binding SaveCommand}"/>
             </StackPanel>
         </Grid>
 
@@ -36,73 +35,17 @@
 
         <!-- ══ Sections + content ═══════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="0,22,0,0">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="206"/>
+                <ColumnDefinition Width="190"/>
                 <ColumnDefinition Width="28"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0">
-                <RadioButton x:Name="TabAuth" Style="{StaticResource SectionItem}" GroupName="SettingsTabs" IsChecked="True">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="Authentication" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </RadioButton>
-                <RadioButton x:Name="TabCodeSign" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="Code Signing" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </RadioButton>
-                <RadioButton x:Name="TabNetworkPaths" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="Network Paths" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </RadioButton>
-                <RadioButton x:Name="TabGroupAssignment" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="Group Assignment" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </RadioButton>
-                <RadioButton x:Name="TabIntuneDefaults" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="Intune Defaults" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </RadioButton>
-                <RadioButton x:Name="TabAppearance" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="Appearance" VerticalAlignment="Center"/>
-                    </DockPanel>
-                </RadioButton>
-                <!-- Planned sections -->
-                <RadioButton Style="{StaticResource SectionItem}" GroupName="SettingsTabs" IsEnabled="False">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="WDAC Hyper-V" VerticalAlignment="Center"/>
-                        <TextBlock DockPanel.Dock="Right" Text="SOON" VerticalAlignment="Center"
-                                   FontFamily="{StaticResource LabelFontFamily}" FontSize="10" FontWeight="Medium"
-                                   Foreground="{DynamicResource Dim2Brush}"/>
-                    </DockPanel>
-                </RadioButton>
-                <RadioButton Style="{StaticResource SectionItem}" GroupName="SettingsTabs" IsEnabled="False">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="GitLab" VerticalAlignment="Center"/>
-                        <TextBlock DockPanel.Dock="Right" Text="SOON" VerticalAlignment="Center"
-                                   FontFamily="{StaticResource LabelFontFamily}" FontSize="10" FontWeight="Medium"
-                                   Foreground="{DynamicResource Dim2Brush}"/>
-                    </DockPanel>
-                </RadioButton>
-                <RadioButton Style="{StaticResource SectionItem}" GroupName="SettingsTabs" IsEnabled="False">
-                    <DockPanel LastChildFill="False" Width="182">
-                        <TextBlock DockPanel.Dock="Left" Text="Key Vault Caching" VerticalAlignment="Center"/>
-                        <TextBlock DockPanel.Dock="Right" Text="SOON" VerticalAlignment="Center"
-                                   FontFamily="{StaticResource LabelFontFamily}" FontSize="10" FontWeight="Medium"
-                                   Foreground="{DynamicResource Dim2Brush}"/>
-                    </DockPanel>
-                </RadioButton>
-
-        <!-- ══ First-run setup banner ═══════════════════════════════════ -->
-        <Border Background="{DynamicResource WarnSoftBrush}"
+<!-- ══ First-run setup banner ═══════════════════════════════════ -->
+        <Border Grid.ColumnSpan="3" Background="{DynamicResource WarnSoftBrush}"
                 BorderBrush="{DynamicResource WarnBrush}" BorderThickness="2,0,0,0"
-                Padding="12,11" Margin="0,16,0,0" CornerRadius="4"
+                Padding="12,11" Margin="0,0,0,20" CornerRadius="4"
                 Visibility="{Binding ShowFirstRunBanner, Converter={StaticResource BoolToVis}}">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -114,8 +57,8 @@
                     <Path Data="{StaticResource IconBulb}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
                 </Viewbox>
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="12.5">
-                    <Run Text="First-run setup" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                    <Run Text="  Set the three network paths and sign in, then save. This hint goes away once the paths are filled in."
+                    <Run Text="First-run setup" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                    <Run Text="  Set the package output folder, full PSADT v4 template and IntuneWinAppUtil path. Sign in to Intune, then save."
                          Foreground="{DynamicResource MutedBrush}"/>
                 </TextBlock>
                 <Button Grid.Column="2" Style="{StaticResource RowIconButton}" Command="{Binding DismissFirstRunCommand}"
@@ -126,913 +69,55 @@
                 </Button>
             </Grid>
         </Border>
-            </StackPanel>
+            <ScrollViewer Grid.Column="0" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
+                <RadioButton x:Name="TabAuth" Style="{StaticResource SectionItem}" GroupName="SettingsTabs" IsChecked="True">
+                    <DockPanel LastChildFill="False" Width="160">
+                        <TextBlock DockPanel.Dock="Left" Text="Authentication" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </RadioButton>
+                <RadioButton x:Name="TabCodeSign" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                    <DockPanel LastChildFill="False" Width="160">
+                        <TextBlock DockPanel.Dock="Left" Text="Code Signing" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </RadioButton>
+                <RadioButton x:Name="TabNetworkPaths" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                    <DockPanel LastChildFill="False" Width="160">
+                        <TextBlock DockPanel.Dock="Left" Text="Network Paths" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </RadioButton>
+                <RadioButton x:Name="TabGroupAssignment" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                    <DockPanel LastChildFill="False" Width="160">
+                        <TextBlock DockPanel.Dock="Left" Text="Group Assignment" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </RadioButton>
+                <RadioButton x:Name="TabIntuneDefaults" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                    <DockPanel LastChildFill="False" Width="160">
+                        <TextBlock DockPanel.Dock="Left" Text="Intune Defaults" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </RadioButton>
+                <RadioButton x:Name="TabAppearance" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                    <DockPanel LastChildFill="False" Width="160">
+                        <TextBlock DockPanel.Dock="Left" Text="Appearance" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </RadioButton>
+            </StackPanel></ScrollViewer>
 
         <!-- ══ Tab content ══════════════════════════════════════════════ -->
-        <ScrollViewer Grid.Column="2" Margin="0"
+        <ScrollViewer Grid.Column="2" Grid.Row="1" Margin="0"
                       VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
 
-                    <!-- Authentication card -->
-                    <Border Background="Transparent" BorderThickness="0" Padding="0"
-                            Visibility="{Binding IsChecked, ElementName=TabAuth, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
+                    <controls:AuthenticationSettings Visibility="{Binding IsChecked, ElementName=TabAuth, Converter={StaticResource BoolToVis}}"/>
 
-                            <!-- Card header -->
-<StackPanel Margin="0,0,0,14">
-    <controls:SectionHeader Title="AUTHENTICATION"/>
-    <TextBlock Text="How Packman connects to Microsoft Intune &amp; Entra ID" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
-</StackPanel>
+                    <controls:AppearanceSettings Visibility="{Binding IsChecked, ElementName=TabAppearance, Converter={StaticResource BoolToVis}}"/>
 
-                            <!-- Auth mode tab bar (Interactive | App Registration) -->
-                            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                    BorderThickness="1" CornerRadius="4" Padding="4">
-                                <UniformGrid Rows="1">
-                                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="AuthModeGroup"
-                                                 IsChecked="{Binding IsInteractive}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Viewbox Width="14" Height="14">
-                                                <Path Data="{StaticResource IconUser}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
-                                            </Viewbox>
-                                            <TextBlock Text="Interactive" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </RadioButton>
-                                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="AuthModeGroup" Margin="4,0,0,0"
-                                                 IsChecked="{Binding IsAppRegistration}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Viewbox Width="14" Height="14">
-                                                <Path Data="{StaticResource IconShield}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
-                                            </Viewbox>
-                                            <TextBlock Text="App Registration" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </RadioButton>
-                                </UniformGrid>
-                            </Border>
+                    <controls:CodeSigningSettings Visibility="{Binding IsChecked, ElementName=TabCodeSign, Converter={StaticResource BoolToVis}}"/>
 
-                            <!-- Interactive panel -->
-                            <StackPanel Margin="0,18,0,0"
-                                        Visibility="{Binding IsInteractive, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Tenant ID" Style="{StaticResource FieldLabel}"/>
-                                <Grid Margin="0,7,0,0">
-                                    <TextBox AutomationProperties.Name="Tenant ID" Style="{StaticResource TextField}"
-                                             Text="{Binding TenantId, UpdateSourceTrigger=PropertyChanged}"
-                                             local:PlaceholderText.Text="contoso.onmicrosoft.com or tenant GUID"/>
-                                </Grid>
+                    <controls:NetworkPathsSettings Visibility="{Binding IsChecked, ElementName=TabNetworkPaths, Converter={StaticResource BoolToVis}}"/>
 
-                                <!-- Browser sign-in row -->
-                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="16,14" Margin="0,14,0,0">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <Border Grid.Column="0" Width="38" Height="38" CornerRadius="4" Background="{DynamicResource PrimaryDimBrush}" Margin="0,0,14,0">
-                                            <Viewbox Width="16" Height="16">
-                                                <Path Data="{StaticResource IconGrid}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
-                                            </Viewbox>
-                                        </Border>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="Browser sign-in" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                                            <TextBlock Text="You'll be redirected to Microsoft to authenticate" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                        <!-- Not signed in status -->
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0"
-                                                    Visibility="{Binding IsNotSignedIn, Converter={StaticResource BoolToVis}}">
-                                            <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" Fill="{DynamicResource MarkBrush}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Not signed in" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <!-- Signed in status -->
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,14,0"
-                                                    Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
-                                            <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" Fill="{DynamicResource OkBrush}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="{Binding SignedInUser}" FontSize="12.5" Foreground="{DynamicResource OkBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        </StackPanel>
-                                        <!-- Sign in button -->
-                                        <Button Grid.Column="3" Style="{StaticResource PrimaryButton}"
-                                                Command="{Binding SignInCommand}"
-                                                Visibility="{Binding IsNotSignedIn, Converter={StaticResource BoolToVis}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Viewbox Width="14" Height="14" Margin="0,0,7,0">
-                                                    <Path Data="{StaticResource IconChevR}" Stroke="{DynamicResource PrimaryFgBrush}" StrokeThickness="2.2" Style="{StaticResource Icon}"/>
-                                                </Viewbox>
-                                                <TextBlock Text="Sign in" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                        <!-- Sign out button -->
-                                        <Button Grid.Column="3" Style="{StaticResource GhostButton}"
-                                                Command="{Binding SignOutCommand}"
-                                                Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="Sign out" VerticalAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                </Border>
-                            </StackPanel>
+                    <controls:GroupAssignmentSettings Visibility="{Binding IsChecked, ElementName=TabGroupAssignment, Converter={StaticResource BoolToVis}}"/>
 
-                            <!-- App Registration panel -->
-                            <StackPanel Margin="0,18,0,0"
-                                        Visibility="{Binding IsAppRegistration, Converter={StaticResource BoolToVis}}">
-
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="20"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <!-- Tenant ID -->
-                                    <StackPanel Grid.Column="0">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="Tenant ID" Style="{StaticResource FieldLabel}"/>
-                                            <TextBlock Text=" *" Foreground="{DynamicResource AccentTextBrush}" FontSize="12.5" FontWeight="Bold"/>
-                                        </StackPanel>
-                                        <Grid Margin="0,7,0,0">
-                                            <TextBox AutomationProperties.Name="Tenant ID" Style="{StaticResource TextField}"
-                                                     Text="{Binding TenantId, UpdateSourceTrigger=PropertyChanged}"
-                                                     local:PlaceholderText.Text="00000000-0000-0000-0000-000000000000"/>
-                                        </Grid>
-                                    </StackPanel>
-
-                                    <!-- Application (Client) ID -->
-                                    <StackPanel Grid.Column="2">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="Application (Client) ID" Style="{StaticResource FieldLabel}"/>
-                                            <TextBlock Text=" *" Foreground="{DynamicResource AccentTextBrush}" FontSize="12.5" FontWeight="Bold"/>
-                                        </StackPanel>
-                                        <Grid Margin="0,7,0,0">
-                                            <TextBox AutomationProperties.Name="Application (Client) ID" Style="{StaticResource TextField}"
-                                                     Text="{Binding ClientId, UpdateSourceTrigger=PropertyChanged}"
-                                                     local:PlaceholderText.Text="Application (Client) ID"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Grid>
-
-                                <!-- Certificate source -->
-                                <TextBlock Text="Certificate" Style="{StaticResource FieldLabel}" Margin="0,18,0,7"/>
-                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left">
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="AuthCertSource"
-                                                     IsChecked="{Binding AuthUseStoreCert}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Viewbox Width="13" Height="13">
-                                                    <Path Data="{StaticResource IconBook}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
-                                                </Viewbox>
-                                                <TextBlock Text="Select from store" Margin="7,0,0,0" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </RadioButton>
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="AuthCertSource" Margin="3,0,0,0"
-                                                     IsChecked="{Binding AuthUseManualThumbprint}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Viewbox Width="13" Height="13">
-                                                    <Path Data="{StaticResource IconCode}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
-                                                </Viewbox>
-                                                <TextBlock Text="Enter thumbprint" Margin="7,0,0,0" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </RadioButton>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Store cert picker -->
-                                <ComboBox AutomationProperties.Name="Certificate" Margin="0,10,0,0"
-                                          ItemsSource="{Binding AvailableCertificates}"
-                                          SelectedItem="{Binding SelectedAuthCert}"
-                                          Visibility="{Binding AuthUseStoreCert, Converter={StaticResource BoolToVis}}">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Margin="0,2">
-                                                <TextBlock Text="{Binding FriendlyName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="{Binding Thumbprint}" FontSize="11" Foreground="{DynamicResource MutedBrush}" FontFamily="{StaticResource MonoFontFamily}" TextTrimming="CharacterEllipsis"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-
-                                <!-- Manual thumbprint -->
-                                <Grid Margin="0,10,0,0"
-                                      Visibility="{Binding AuthUseManualThumbprint, Converter={StaticResource BoolToVis}}">
-                                    <TextBox Style="{StaticResource TextField}" FontFamily="{StaticResource MonoFontFamily}"
-                                             Text="{Binding AuthThumbprint, UpdateSourceTrigger=PropertyChanged}"
-                                             local:PlaceholderText.Text="40-char SHA-1 thumbprint"/>
-                                </Grid>
-
-                                <TextBlock FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="0,10,0,0" TextWrapping="Wrap">
-                                    <Run Text="Certificate must be installed in the"/>
-                                    <Run Text=" CurrentUser\My " FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                    <Run Text="store on this machine."/>
-                                </TextBlock>
-
-                            </StackPanel>
-
-                            <!-- Connection test (both auth modes) -->
-                            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                    BorderThickness="1" CornerRadius="4" Padding="16,14" Margin="0,16,0,0">
-                                <StackPanel>
-                                    <Grid>
-                                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <TextBlock Text="Connection test" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                                            <TextBlock Text="Verify the sign-in reaches Intune and the required Graph scopes are consented"
-                                                       FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
-                                        </StackPanel>
-                                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right"
-                                                Command="{Binding TestConnectionCommand}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Viewbox Width="14" Height="14" Margin="0,0,7,0">
-                                                    <Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource TextBrush}" StrokeThickness="2" Style="{StaticResource Icon}"/>
-                                                </Viewbox>
-                                                <TextBlock Text="Test connection" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </Grid>
-
-                                    <!-- Per-scope results -->
-                                    <ItemsControl ItemsSource="{Binding ConnectionChecks}" Margin="0,12,0,0">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Margin="0,3">
-                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                                                        <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" VerticalAlignment="Center" Margin="0,0,9,0">
-                                                            <Rectangle.Style>
-                                                                <Style TargetType="Rectangle">
-                                                                    <Setter Property="Fill" Value="{DynamicResource BadBrush}"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding Ok}" Value="True">
-                                                                            <Setter Property="Fill" Value="{DynamicResource OkBrush}"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Rectangle.Style>
-                                                        </Rectangle>
-                                                        <TextBlock Text="{Binding Name}" FontSize="12.5" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                                    </StackPanel>
-                                                    <TextBlock Text="{Binding Detail}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                                               FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-
-                                    <!-- Summary -->
-                                    <TextBlock Text="{Binding ConnectionStatus}" FontSize="12.5" Margin="0,10,0,0" TextWrapping="Wrap"
-                                               Visibility="{Binding HasConnectionStatus, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding ConnectionOk}" Value="True">
-                                                        <Setter Property="Foreground" Value="{DynamicResource OkBrush}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                            </Border>
-
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Appearance card -->
-                    <Border Background="Transparent" BorderThickness="0" Padding="0"
-                            Visibility="{Binding IsChecked, ElementName=TabAppearance, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-
-                            <!-- Card header -->
-                            <StackPanel Margin="0,0,0,14">
-                                <controls:SectionHeader Title="APPEARANCE"/>
-                                <TextBlock Text="How Packman looks on this machine" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
-                            </StackPanel>
-
-                            <!-- Theme (System | Dark | Light) -->
-                            <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                    BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal">
-                                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="ThemeGroup"
-                                                 Content="System" IsChecked="{Binding IsThemeSystem}"/>
-                                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="ThemeGroup"
-                                                 Content="Dark" IsChecked="{Binding IsThemeDark}"/>
-                                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="ThemeGroup"
-                                                 Content="Light" IsChecked="{Binding IsThemeLight}"/>
-                                </StackPanel>
-                            </Border>
-
-                            <TextBlock Text="Applies straight away and is remembered. System follows the Windows app-theme setting. Both palettes share one set of tokens, so every surface, de-emphasis step and status colour keeps its role — and each text tone clears WCAG AA against its panel."
-                                       Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,14,0,0" MaxWidth="560" HorizontalAlignment="Left"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Code Signing card -->
-                    <Border Background="Transparent" BorderThickness="0" Padding="0"
-                            Visibility="{Binding IsChecked, ElementName=TabCodeSign, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-
-                            <!-- Card header -->
-                            <Grid Margin="0,0,0,18">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Width="42" Height="42" CornerRadius="4" Background="{DynamicResource PrimaryDimBrush}">
-                                    <Viewbox Width="20" Height="20">
-                                        <Path Data="{StaticResource IconShield}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
-                                    </Viewbox>
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="13,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="Code Signing" Style="{StaticResource H2}"/>
-                                    <TextBlock Text="Authenticode certificate used to sign packaged applications" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <!-- Enable / Disable toggle -->
-                                <Border Grid.Column="2" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="4" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="CodeSignEnable"
-                                                     IsChecked="{Binding CodeSigningDisabled}">
-                                            <TextBlock Text="Disabled" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="CodeSignEnable" Margin="3,0,0,0"
-                                                     IsChecked="{Binding CodeSigningEnabled}">
-                                            <TextBlock Text="Enabled" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <!-- Disabled placeholder -->
-                            <TextBlock Visibility="{Binding CodeSigningDisabled, Converter={StaticResource BoolToVis}}"
-                                       FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
-                                       Text="Code signing is disabled. Packages will not be Authenticode-signed."/>
-
-                            <!-- Enabled: cert source + fields -->
-                            <StackPanel Visibility="{Binding CodeSigningEnabled, Converter={StaticResource BoolToVis}}">
-
-                                <!-- Cert source toggle -->
-                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left" Margin="0,0,0,14">
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="CodeSignCertSource"
-                                                     IsChecked="{Binding CodeSignUseStoreCert}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Viewbox Width="13" Height="13">
-                                                    <Path Data="{StaticResource IconBook}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
-                                                </Viewbox>
-                                                <TextBlock Text="Select from store" Margin="7,0,0,0" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </RadioButton>
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="CodeSignCertSource" Margin="3,0,0,0"
-                                                     IsChecked="{Binding CodeSignUseManualThumbprint}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <Viewbox Width="13" Height="13">
-                                                    <Path Data="{StaticResource IconCode}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
-                                                </Viewbox>
-                                                <TextBlock Text="Enter manually" Margin="7,0,0,0" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </RadioButton>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Store picker -->
-                                <ComboBox AutomationProperties.Name="Certificate store" Margin="0,0,0,14"
-                                          ItemsSource="{Binding AvailableCertificates}"
-                                          SelectedItem="{Binding SelectedCodeSignCert}"
-                                          Visibility="{Binding CodeSignUseStoreCert, Converter={StaticResource BoolToVis}}">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Margin="0,2">
-                                                <TextBlock Text="{Binding FriendlyName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="{Binding Thumbprint}" FontSize="11" Foreground="{DynamicResource MutedBrush}" FontFamily="{StaticResource MonoFontFamily}" TextTrimming="CharacterEllipsis"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-
-                                <!-- Manual fields: Certificate Name + Subject + Thumbprint + Timestamp -->
-                                <Grid Visibility="{Binding CodeSignUseManualThumbprint, Converter={StaticResource BoolToVis}}">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="20"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="16"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-
-                                    <!-- Row 0: Name + Subject -->
-                                    <StackPanel Grid.Column="0" Grid.Row="0">
-                                        <TextBlock Text="Certificate Name" Style="{StaticResource FieldLabel}"/>
-                                        <Grid Margin="0,7,0,0">
-                                            <TextBox AutomationProperties.Name="Certificate Name" Style="{StaticResource TextField}"
-                                                     Text="{Binding CodeSignCertName, UpdateSourceTrigger=PropertyChanged}"
-                                                     local:PlaceholderText.Text="Friendly name"/>
-                                        </Grid>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" Grid.Row="0">
-                                        <TextBlock Text="Certificate Subject" Style="{StaticResource FieldLabel}"/>
-                                        <Grid Margin="0,7,0,0">
-                                            <TextBox AutomationProperties.Name="Certificate Subject" Style="{StaticResource TextField}"
-                                                     Text="{Binding CodeSignCertSubject, UpdateSourceTrigger=PropertyChanged}"
-                                                     local:PlaceholderText.Text="CN=Company, O=..."/>
-                                        </Grid>
-                                    </StackPanel>
-
-                                    <!-- Row 2: Thumbprint + Timestamp -->
-                                    <StackPanel Grid.Column="0" Grid.Row="2">
-                                        <TextBlock Text="Certificate Thumbprint" Style="{StaticResource FieldLabel}"/>
-                                        <Grid Margin="0,7,0,0">
-                                            <TextBox AutomationProperties.Name="Certificate Thumbprint" Style="{StaticResource TextField}" FontFamily="{StaticResource MonoFontFamily}"
-                                                     Text="{Binding CodeSignThumbprint, UpdateSourceTrigger=PropertyChanged}"
-                                                     local:PlaceholderText.Text="SHA-1 thumbprint"/>
-                                        </Grid>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" Grid.Row="2">
-                                        <TextBlock Text="Timestamp Server" Style="{StaticResource FieldLabel}"/>
-                                        <Grid Margin="0,7,0,0">
-                                            <TextBox AutomationProperties.Name="Timestamp Server" Style="{StaticResource TextField}"
-                                                     Text="{Binding CodeSignTimestampServer, UpdateSourceTrigger=PropertyChanged}"
-                                                     local:PlaceholderText.Text="http://timestamp.digicert.com"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Grid>
-
-                                <!-- Timestamp for store mode -->
-                                <StackPanel Margin="0,0,0,0"
-                                            Visibility="{Binding CodeSignUseStoreCert, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="Timestamp Server" Style="{StaticResource FieldLabel}"/>
-                                    <Grid Margin="0,7,0,0">
-                                        <TextBox AutomationProperties.Name="Timestamp Server" Style="{StaticResource TextField}"
-                                                 Text="{Binding CodeSignTimestampServer, UpdateSourceTrigger=PropertyChanged}"
-                                                 local:PlaceholderText.Text="http://timestamp.digicert.com"/>
-                                    </Grid>
-                                </StackPanel>
-
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Network Paths card -->
-                    <Border Background="Transparent" BorderThickness="0" Padding="0"
-                            Visibility="{Binding IsChecked, ElementName=TabNetworkPaths, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-
-                            <!-- Card header -->
-<StackPanel Margin="0,0,0,14">
-    <controls:SectionHeader Title="NETWORK PATHS"/>
-    <TextBlock Text="File share locations for package output and PSADT template" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
-</StackPanel>
-
-                            <!-- Intune Applications output path -->
-                            <TextBlock Text="Intune Applications Path" Style="{StaticResource FieldLabel}"/>
-                            <Grid Margin="0,7,0,0">
-                                <TextBox AutomationProperties.Name="Intune Applications Path" Style="{StaticResource TextField}"
-                                         Text="{Binding IntuneApplicationsPath, UpdateSourceTrigger=PropertyChanged}"
-                                         local:PlaceholderText.Text="\\server\share\IntuneApps"/>
-                            </Grid>
-
-                            <!-- PSADT Template path -->
-                            <TextBlock Text="PSADT Template Path" Style="{StaticResource FieldLabel}" Margin="0,16,0,0"/>
-                            <Grid Margin="0,7,0,0">
-                                <TextBox AutomationProperties.Name="PSADT Template Path" Style="{StaticResource TextField}"
-                                         Text="{Binding PSADTTemplatePath, UpdateSourceTrigger=PropertyChanged}"
-                                         local:PlaceholderText.Text="\\server\share\PSADTTemplate"/>
-                            </Grid>
-
-                            <!-- IntuneWinAppUtil path -->
-                            <TextBlock Text="IntuneWinAppUtil Path" Style="{StaticResource FieldLabel}" Margin="0,16,0,0"/>
-                            <Grid Margin="0,7,0,0">
-                                <TextBox AutomationProperties.Name="IntuneWinAppUtil Path" Style="{StaticResource TextField}"
-                                         Text="{Binding IntuneWinAppUtilPath, UpdateSourceTrigger=PropertyChanged}"
-                                         local:PlaceholderText.Text="\\server\share\Tools\IntuneWinAppUtil.exe"/>
-                            </Grid>
-
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Group Assignment card -->
-                    <Border Background="Transparent" BorderThickness="0" Padding="0"
-                            Visibility="{Binding IsChecked, ElementName=TabGroupAssignment, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-
-                            <!-- Card header -->
-<StackPanel Margin="0,0,0,14">
-    <controls:SectionHeader Title="GROUP ASSIGNMENT"/>
-    <TextBlock Text="Assign uploaded packages to Entra ID groups automatically" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
-</StackPanel>
-
-                            <!-- ── Per-package group ──────────────────────────── -->
-                            <Grid Margin="0,0,0,14">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Create an install group for each package" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                                    <TextBlock Text="A security group is created (or reused if it already exists) on upload and assigned to the app" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <!-- On / Off toggle -->
-                                <Border Grid.Column="1" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="4" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="GroupPerPackage"
-                                                     IsChecked="{Binding CreateGroupPerPackageDisabled}">
-                                            <TextBlock Text="Off" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="GroupPerPackage" Margin="3,0,0,0"
-                                                     IsChecked="{Binding CreateGroupPerPackage}">
-                                            <TextBlock Text="On" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <!-- Naming template + intent (only when On) -->
-                            <StackPanel Visibility="{Binding CreateGroupPerPackage, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Install group name template" Style="{StaticResource FieldLabel}"/>
-                                <Grid Margin="0,7,0,0">
-                                    <TextBox AutomationProperties.Name="Install group name template" Style="{StaticResource TextField}" FontFamily="{StaticResource MonoFontFamily}"
-                                             Text="{Binding GroupNameTemplate, UpdateSourceTrigger=PropertyChanged}"
-                                             local:PlaceholderText.Text="%vendor%_%appName%_%appVersion%_Install"/>
-                                </Grid>
-                                <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap">
-                                    <Run Text="Tokens:"/>
-                                    <Run Text=" %vendor% " FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                    <Run Text="%appName% " FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                    <Run Text="%appVersion%" FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                    <Run Text="  ·  Mix in any literal text, e.g."/>
-                                    <Run Text=" %vendor%_%appName%_%appVersion%_Install" FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                    <LineBreak/>
-                                    <Run Text="Example: "/>
-                                    <Run Text="{Binding GroupNamePreview, Mode=OneWay}" Foreground="{DynamicResource AccentTextBrush}" FontFamily="{StaticResource MonoFontFamily}"/>
-                                </TextBlock>
-
-                                <!-- Assignment intent for the new group -->
-                                <TextBlock Text="Assignment type" Style="{StaticResource FieldLabel}" Margin="0,14,0,7"/>
-                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left">
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="NewGroupIntent"
-                                                     IsChecked="{Binding NewGroupAvailable}">
-                                            <TextBlock Text="Available" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="NewGroupIntent" Margin="3,0,0,0"
-                                                     IsChecked="{Binding NewGroupRequired}">
-                                            <TextBlock Text="Required" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-
-                            <!-- Divider -->
-                            <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,18,0,18"/>
-
-                            <!-- ── Per-package uninstall group ─────────────────── -->
-                            <Grid Margin="0,0,0,14">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                    <TextBlock Text="Create an uninstall group for each package" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                                    <TextBlock Text="A second security group assigned with the Uninstall intent, so a device can be removed by group membership" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <!-- On / Off toggle -->
-                                <Border Grid.Column="1" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                        BorderThickness="1" CornerRadius="4" Padding="4" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="UninstallGroupPerPackage"
-                                                     IsChecked="{Binding CreateUninstallGroupPerPackageDisabled}">
-                                            <TextBlock Text="Off" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="UninstallGroupPerPackage" Margin="3,0,0,0"
-                                                     IsChecked="{Binding CreateUninstallGroupPerPackage}">
-                                            <TextBlock Text="On" VerticalAlignment="Center"/>
-                                        </RadioButton>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <StackPanel Visibility="{Binding CreateUninstallGroupPerPackage, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Uninstall group name template" Style="{StaticResource FieldLabel}"/>
-                                <Grid Margin="0,7,0,0">
-                                    <TextBox AutomationProperties.Name="Uninstall group name template" Style="{StaticResource TextField}" FontFamily="{StaticResource MonoFontFamily}"
-                                             Text="{Binding UninstallGroupNameTemplate, UpdateSourceTrigger=PropertyChanged}"
-                                             local:PlaceholderText.Text="%vendor%_%appName%_%appVersion%_Uninstall"/>
-                                </Grid>
-                                <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap">
-                                    <Run Text="Always assigned with the Uninstall intent."/>
-                                    <LineBreak/>
-                                    <Run Text="Example: "/>
-                                    <Run Text="{Binding UninstallGroupNamePreview, Mode=OneWay}" Foreground="{DynamicResource AccentTextBrush}" FontFamily="{StaticResource MonoFontFamily}"/>
-                                </TextBlock>
-                            </StackPanel>
-
-                            <!-- Divider -->
-                            <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,18,0,18"/>
-
-                            <!-- ── Existing groups ────────────────────────────── -->
-                            <TextBlock Text="Always assign these existing groups" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Every upload is also assigned to the groups listed below" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,12"/>
-
-                            <!-- Add group row -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid Grid.Column="0">
-                                    <TextBox AutomationProperties.Name="Group name to add" Style="{StaticResource TextField}"
-                                             Text="{Binding NewGroupNameInput, UpdateSourceTrigger=PropertyChanged}"
-                                             local:PlaceholderText.Text="Entra ID group display name"/>
-                                </Grid>
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Command="{Binding AddGroupCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Viewbox Width="14" Height="14" Margin="0,0,7,0">
-                                            <Path Data="{StaticResource IconPlus}" Stroke="{DynamicResource TextBrush}" StrokeThickness="2" Style="{StaticResource Icon}"/>
-                                        </Viewbox>
-                                        <TextBlock Text="Add" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-
-                            <!-- Group rows -->
-                            <ItemsControl ItemsSource="{Binding ExistingGroups}" Margin="0,12,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                                BorderThickness="1" CornerRadius="4" Padding="14,10" Margin="0,0,0,8">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="{Binding GroupName}" VerticalAlignment="Center"
-                                                           FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
-                                                <!-- Intent toggle -->
-                                                <Border Grid.Column="1" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                                        BorderThickness="1" CornerRadius="4" Padding="3" Margin="0,0,10,0" VerticalAlignment="Center">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <RadioButton Style="{StaticResource ContextToggle}"
-                                                                     IsChecked="{Binding IsAvailable}">
-                                                            <TextBlock Text="Available" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                        <RadioButton Style="{StaticResource ContextToggle}" Margin="3,0,0,0"
-                                                                     IsChecked="{Binding IsRequired}">
-                                                            <TextBlock Text="Required" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                        <RadioButton Style="{StaticResource ContextToggle}" Margin="3,0,0,0"
-                                                                     IsChecked="{Binding IsUninstall}">
-                                                            <TextBlock Text="Uninstall" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                    </StackPanel>
-                                                </Border>
-                                                <!-- Remove -->
-                                                <Button Grid.Column="2" Style="{StaticResource RowIconButton}" Command="{Binding RemoveCommand}"
-                                                        VerticalAlignment="Center" ToolTip="Remove">
-                                                    <Viewbox Width="15" Height="15">
-                                                        <Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
-                                                    </Viewbox>
-                                                </Button>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Intune Defaults card -->
-                    <Border Background="Transparent" BorderThickness="0" Padding="0"
-                            Visibility="{Binding IsChecked, ElementName=TabIntuneDefaults, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-
-                            <!-- Card header -->
-<StackPanel Margin="0,0,0,14">
-    <controls:SectionHeader Title="INTUNE DEFAULTS"/>
-    <TextBlock Text="App details, requirements and return codes applied to every package unless changed on the Create Package page" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
-</StackPanel>
-
-                            <!-- ── App details ────────────────────────────────── -->
-                            <TextBlock Text="App details" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Sent with every Win32 app created in Intune" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,12"/>
-
-                            <TextBlock Text="App title template" Style="{StaticResource FieldLabel}"/>
-                            <TextBox AutomationProperties.Name="App title template" Style="{StaticResource TextField}" Margin="0,7,0,0" FontFamily="{StaticResource MonoFontFamily}"
-                                     Text="{Binding DisplayNameTemplate, UpdateSourceTrigger=PropertyChanged}"
-                                     local:PlaceholderText.Text="%vendor% %appName% %appVersion%"/>
-                            <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,8,0,0" TextWrapping="Wrap">
-                                <Run Text="Tokens:"/>
-                                <Run Text=" %vendor% " FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text="%appName% " FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text="%appVersion%" FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource TextBrush}"/>
-                                <Run Text="  ·  Still editable per upload."/>
-                                <LineBreak/>
-                                <Run Text="Example: "/>
-                                <Run Text="{Binding DisplayNamePreview, Mode=OneWay}" Foreground="{DynamicResource AccentTextBrush}" FontFamily="{StaticResource MonoFontFamily}"/>
-                            </TextBlock>
-
-                            <Grid Margin="0,16,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Install command" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Install command" Style="{StaticResource TextField}" Margin="0,7,0,0" FontFamily="{StaticResource MonoFontFamily}"
-                                             local:PlaceholderText.Text="Invoke-AppDeployToolkit.exe Install"
-                                             Text="{Binding DefaultInstallCommand, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Uninstall command" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Uninstall command" Style="{StaticResource TextField}" Margin="0,7,0,0" FontFamily="{StaticResource MonoFontFamily}"
-                                             local:PlaceholderText.Text="Invoke-AppDeployToolkit.exe Uninstall"
-                                             Text="{Binding DefaultUninstallCommand, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <Grid Margin="0,16,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Privacy URL" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Privacy URL" Style="{StaticResource TextField}" Margin="0,7,0,0"
-                                             local:PlaceholderText.Text="https://contoso.com/privacy"
-                                             Text="{Binding DefaultPrivacyUrl, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Information URL" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Information URL" Style="{StaticResource TextField}" Margin="0,7,0,0"
-                                             local:PlaceholderText.Text="https://contoso.com/apps"
-                                             Text="{Binding DefaultInformationUrl, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Divider -->
-                            <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,18,0,18"/>
-
-                            <!-- ── Device requirements ────────────────────────── -->
-                            <TextBlock Text="Device requirements" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Leave a field blank for no constraint" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,12"/>
-
-                            <TextBlock Text="Minimum operating system" Style="{StaticResource FieldLabel}"/>
-                            <ComboBox AutomationProperties.Name="Minimum operating system" Margin="0,7,0,0" Height="42" VerticalContentAlignment="Center"
-                                      ItemsSource="{Binding OperatingSystems}"
-                                      SelectedItem="{Binding DefaultOperatingSystem, Mode=TwoWay}"/>
-
-                            <Grid Margin="0,16,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Minimum free disk space (MB)" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Minimum free disk space (MB)" Style="{StaticResource TextField}" Margin="0,7,0,0"
-                                             local:PlaceholderText.Text="any"
-                                             Text="{Binding DefaultMinFreeDiskSpaceMB, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Minimum memory (MB)" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Minimum memory (MB)" Style="{StaticResource TextField}" Margin="0,7,0,0"
-                                             local:PlaceholderText.Text="any"
-                                             Text="{Binding DefaultMinMemoryMB, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <Grid Margin="0,16,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="12"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Minimum number of processors" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Minimum number of processors" Style="{StaticResource TextField}" Margin="0,7,0,0"
-                                             local:PlaceholderText.Text="any"
-                                             Text="{Binding DefaultMinProcessors, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Minimum CPU speed (MHz)" Style="{StaticResource FieldLabel}"/>
-                                    <TextBox AutomationProperties.Name="Minimum CPU speed (MHz)" Style="{StaticResource TextField}" Margin="0,7,0,0"
-                                             local:PlaceholderText.Text="any"
-                                             Text="{Binding DefaultMinCpuSpeedMHz, UpdateSourceTrigger=PropertyChanged}"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <!-- Divider -->
-                            <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,18,0,18"/>
-
-                            <!-- ── Return codes ───────────────────────────────── -->
-                            <Grid>
-                                <StackPanel>
-                                    <TextBlock Text="Return codes" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                                    <TextBlock Text="How Intune interprets the installer exit codes" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                        Command="{Binding RestoreDefaultReturnCodesCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Viewbox Width="14" Height="14" Margin="0,0,7,0">
-                                            <Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource TextBrush}" StrokeThickness="2" Style="{StaticResource Icon}"/>
-                                        </Viewbox>
-                                        <TextBlock Text="Restore standard codes" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-
-                            <!-- Add return code row -->
-                            <Grid Margin="0,12,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid Grid.Column="0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="130"/>
-                                        <ColumnDefinition Width="10"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBox Grid.Column="0" Style="{StaticResource TextField}" FontFamily="{StaticResource MonoFontFamily}"
-                                             Text="{Binding NewReturnCodeInput, UpdateSourceTrigger=PropertyChanged}"
-                                             local:PlaceholderText.Text="Exit code, e.g. 1707"/>
-                                    <TextBox Grid.Column="2" Style="{StaticResource TextField}"
-                                             Text="{Binding NewReturnCodeDescription, UpdateSourceTrigger=PropertyChanged}"
-                                             local:PlaceholderText.Text="Description (optional)"/>
-                                </Grid>
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Command="{Binding AddReturnCodeCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Viewbox Width="14" Height="14" Margin="0,0,7,0">
-                                            <Path Data="{StaticResource IconPlus}" Stroke="{DynamicResource TextBrush}" StrokeThickness="2" Style="{StaticResource Icon}"/>
-                                        </Viewbox>
-                                        <TextBlock Text="Add" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-
-                            <!-- Return code rows -->
-                            <ItemsControl ItemsSource="{Binding ReturnCodes}" Margin="0,12,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                                BorderThickness="1" CornerRadius="4" Padding="14,10" Margin="0,0,0,8">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
-                                                    <TextBlock Text="{Binding Code}" FontSize="13" FontWeight="SemiBold"
-                                                               FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource InkBrush}"/>
-                                                    <TextBox Style="{StaticResource TextField}" Margin="0,6,0,0" Height="30" FontSize="12"
-                                                             Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                                                             local:PlaceholderText.Text="Description (shown in Packman only)"/>
-                                                </StackPanel>
-                                                <!-- Outcome toggle -->
-                                                <Border Grid.Column="1" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource LineBrush}"
-                                                        BorderThickness="1" CornerRadius="4" Padding="3" Margin="0,0,10,0" VerticalAlignment="Center">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <RadioButton Style="{StaticResource ContextToggle}" IsChecked="{Binding IsSuccess}">
-                                                            <TextBlock Text="Success" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                        <RadioButton Style="{StaticResource ContextToggle}" Margin="3,0,0,0" IsChecked="{Binding IsSoftReboot}">
-                                                            <TextBlock Text="Soft reboot" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                        <RadioButton Style="{StaticResource ContextToggle}" Margin="3,0,0,0" IsChecked="{Binding IsHardReboot}">
-                                                            <TextBlock Text="Hard reboot" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                        <RadioButton Style="{StaticResource ContextToggle}" Margin="3,0,0,0" IsChecked="{Binding IsRetry}">
-                                                            <TextBlock Text="Retry" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                        <RadioButton Style="{StaticResource ContextToggle}" Margin="3,0,0,0" IsChecked="{Binding IsFailed}">
-                                                            <TextBlock Text="Failed" VerticalAlignment="Center"/>
-                                                        </RadioButton>
-                                                    </StackPanel>
-                                                </Border>
-                                                <!-- Remove -->
-                                                <Button Grid.Column="2" Style="{StaticResource RowIconButton}" Command="{Binding RemoveCommand}"
-                                                        VerticalAlignment="Center" ToolTip="Remove">
-                                                    <Viewbox Width="15" Height="15">
-                                                        <Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
-                                                    </Viewbox>
-                                                </Button>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-
-                        </StackPanel>
-                    </Border>
+                    <controls:IntuneDefaultsSettings Visibility="{Binding IsChecked, ElementName=TabIntuneDefaults, Converter={StaticResource BoolToVis}}"/>
 
                     <!-- bottom padding -->
                     <Border Height="16"/>
@@ -1040,5 +125,7 @@
                 </StackPanel>
         </ScrollViewer>
         </Grid>
+        <TextBlock Grid.Row="2" Text="{Binding SaveStatus}" Style="{StaticResource SubText}" Margin="218,14,0,0"
+            TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
     </Grid>
 </UserControl>

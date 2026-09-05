@@ -24,6 +24,10 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(UseWindowsDesktopFramework)' == 'true'">
+    <DefineConstants>$(DefineConstants);WINDOWS_DESKTOP_TESTS</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(UseWindowsDesktopFramework)' == 'true'">
     <FrameworkReference Include="Microsoft.WindowsDesktop.App" />
   </ItemGroup>

@@ -23,7 +23,7 @@ Code signing, group-assignment defaults, Intune defaults and the theme are optio
 
 ## 2. Generate the package
 
-**Create Package** → drag your **MSI or EXE** onto the Sources Path field. Name, manufacturer,
+**Create Package** → drag your **MSI or EXE** onto the Source installer field. Name, manufacturer,
 version and icon are filled from the installer; correct anything you disagree with, pick
 **x64/x86** and **SYSTEM/USER**, then **GENERATE PACKAGE**.
 
@@ -48,14 +48,14 @@ detection rule into the publish step.
 
 ## 5. Publish
 
-**CONTINUE TO UPLOAD**, then:
+**Continue to configure**, then:
 
 1. Check the **Name in Intune**.
 2. Confirm the **detection method** — MSI packages default to the product code; anything else needs
    a path.
 3. Pick a **deploy mode** if *Auto* is not what you want.
 4. Add **assignment** groups, each with its own intent (Required / Available / Uninstall).
-5. **CONTINUE TO REVIEW**, check the summary, **BUILD & UPLOAD**.
+5. **Review deployment**, check the summary, **Build & publish**.
 
 → [Publishing to Intune](README.md#publishing-to-intune)
 
