@@ -11,7 +11,7 @@
     <StackPanel>
         <!-- Mode toggle + upload cross-link -->
         <Grid Margin="0,0,0,20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <Border Style="{StaticResource SegmentGroup}">
+            <Border Style="{StaticResource SegmentGroup}" IsEnabled="{Binding CanEditPackageInputs}">
                 <StackPanel Orientation="Horizontal">
                     <RadioButton Style="{StaticResource ModeToggle}" GroupName="GenMode" Content="Create new"
                                  IsChecked="{Binding IsUpgradeMode, Mode=TwoWay, Converter={StaticResource InverseBool}}"/>
@@ -28,6 +28,19 @@
             </TextBlock>
         </Grid>
 
+        <Border Style="{StaticResource Card}" Margin="0,0,0,20"
+            Visibility="{Binding HasPackage, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Start a new package" Style="{StaticResource GhostButton}"
+                    Command="{Binding NewPackageCommand}" Margin="18,0,0,0"/>
+                <StackPanel>
+                    <TextBlock Text="Package generated" Style="{StaticResource H2}"/>
+                    <TextBlock Text="Installer details are saved in this package. To change them, start a new package."
+                        Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <!-- ═══ CREATE NEW ═══ -->
         <StackPanel Visibility="{Binding IsUpgradeMode, Converter={StaticResource InverseBoolToVis}}">
             <StackPanel Margin="0,0,0,14">
@@ -37,7 +50,7 @@
 
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
-            <Border Style="{StaticResource Card}" Padding="22,20,22,22">
+            <Border x:Name="SourceFields" Style="{StaticResource Card}" Padding="22,20,22,22" IsEnabled="{Binding CanEditPackageInputs}">
                 <StackPanel>
                     <!-- Sources path: browse sits inside the field, hint sits under it -->
                     <StackPanel Margin="0,0,0,24">
@@ -229,7 +242,7 @@
                 <TextBlock Text="create a new version, reusing the existing install logic" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <Border Style="{StaticResource Card}" Padding="22,20,22,22">
+            <Border Style="{StaticResource Card}" IsEnabled="{Binding CanEditPackageInputs}" Padding="22,20,22,22">
                 <StackPanel>
                     <TextBlock Text="Existing Package Folder" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,6,0,0">

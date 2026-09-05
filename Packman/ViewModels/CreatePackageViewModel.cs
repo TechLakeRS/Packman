@@ -24,7 +24,7 @@ public class CreatePackageViewModel : ObservableObject
     public string SourcesPath
     {
         get => _sourcesPath;
-        set => Set(ref _sourcesPath, value);
+        set { if (Set(ref _sourcesPath, value)) CurrentMsiInfo = null; }
     }
 
     public string AppName
@@ -106,7 +106,9 @@ public class CreatePackageViewModel : ObservableObject
     public void LoadFromFile(string filePath)
     {
         SourcesPath = filePath;
-        var ext = Path.GetExtension(filePath).ToLower();
+        // A different source must not inherit the previous MSI's detection metadata.
+        CurrentMsiInfo = null;
+        var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
         if (ext == ".msi")
         {

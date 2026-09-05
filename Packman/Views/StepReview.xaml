@@ -9,7 +9,8 @@
             <Border Style="{StaticResource Card}" Margin="0,0,0,20">
                 <StackPanel>
                     <TextBlock Text="Destination tenant" Style="{StaticResource FieldLabel}"/>
-                    <TextBlock Text="{Binding Upload.TenantName}" Style="{StaticResource H2}"/>
+                    <TextBlock Text="{Binding Upload.TenantName}" Style="{StaticResource H2}"
+                        Visibility="{Binding Upload.IsSignedIn, Converter={StaticResource BoolToVis}}"/>
                     <TextBlock Text="{Binding ConnectionStatusText}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                 </StackPanel>
             </Border>

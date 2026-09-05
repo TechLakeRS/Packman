@@ -133,6 +133,7 @@ public sealed class MainViewModel : ObservableObject
 
     // ── Package state surfaced to the Generate screen ───────────────────
     public bool HasPackage => !string.IsNullOrEmpty(CreatePackage.CurrentPackagePath);
+    public bool CanEditPackageInputs => !HasPackage && !CreatePackage.IsGenerating && !Upgrade.IsBusy;
 
     /// <summary>Trailing folder name, for the tool breadcrumb.</summary>
     public string PackageName
@@ -224,14 +225,20 @@ public sealed class MainViewModel : ObservableObject
         CreatePackage.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(CreatePackageViewModel.IsGenerating))
+            {
                 PrimaryCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(CanEditPackageInputs));
+            }
             if (e.PropertyName == nameof(CreatePackageViewModel.CurrentPackagePath))
                 RaisePackageDependents();
         };
         Upgrade.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(UpgradePackageViewModel.IsBusy))
+            {
                 PrimaryCommand.RaiseCanExecuteChanged();
+                OnPropertyChanged(nameof(CanEditPackageInputs));
+            }
         };
         Upload.Publish.PropertyChanged += (_, e) =>
         {
@@ -249,6 +256,7 @@ public sealed class MainViewModel : ObservableObject
     private void RaisePackageDependents()
     {
         OnPropertyChanged(nameof(HasPackage));
+        OnPropertyChanged(nameof(CanEditPackageInputs));
         OnPropertyChanged(nameof(PackageName));
         OnPropertyChanged(nameof(PackagePathShort));
         OnPropertyChanged(nameof(PrimaryLabel));

@@ -12,9 +12,9 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Create an install group for each package" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                    <TextBlock Text="A security group is created (or reused if it already exists) on upload and assigned to the app" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock TextWrapping="Wrap" Text="Create an install group for each package" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                    <TextBlock TextWrapping="Wrap" Text="A security group is created (or reused if it already exists) on upload and assigned to the app" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
                 <!-- On / Off toggle -->
                 <Border Grid.Column="1" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="4" VerticalAlignment="Center">
@@ -66,9 +66,9 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Create an uninstall group for each package" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                    <TextBlock Text="A second security group assigned with the Uninstall intent, so a device can be removed by group membership" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock TextWrapping="Wrap" Text="Create an uninstall group for each package" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                    <TextBlock TextWrapping="Wrap" Text="A second security group assigned with the Uninstall intent, so a device can be removed by group membership" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
                 <!-- On / Off toggle -->
                 <Border Grid.Column="1" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="4" VerticalAlignment="Center">

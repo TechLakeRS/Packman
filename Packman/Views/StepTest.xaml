@@ -79,28 +79,6 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,18,0,0">
-                <StackPanel>
-                    <controls:SectionHeader Title="Test actions" Caption="What to run on the target" Margin="0,0,0,14"/>
-
-                    <Button Style="{StaticResource PrimaryButton}" Content="Run install" HorizontalAlignment="Stretch"
-                            Command="{Binding InstallCommand}"/>
-                    <Button Style="{StaticResource GhostButton}" Content="Run uninstall" HorizontalAlignment="Stretch"
-                            Margin="0,8,0,0" Command="{Binding UninstallCommand}"/>
-                    <Button Style="{StaticResource GhostButton}" Content="Discover detection rule" HorizontalAlignment="Stretch"
-                            Margin="0,8,0,0" Command="{Binding DetectCommand}"
-                            ToolTip="Search the target for the installed executable and build a detection rule from it."/>
-
-                    <StackPanel Margin="0,14,0,0" Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Style="{StaticResource Caption}">
-                            <Run Text="copying package —"/><Run Text=" "/><Run Text="{Binding CopyPercent, Mode=OneWay}"/><Run Text="%"/>
-                        </TextBlock>
-                        <ProgressBar Height="4" Margin="0,6,0,0" Minimum="0" Maximum="100"
-                                     Value="{Binding CopyPercent, Mode=OneWay}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-
             <!-- Detection rule discovered on the target -->
             <Border Style="{StaticResource Card}" Margin="0,18,0,0"
                     Visibility="{Binding HasDiscoveredRule, Converter={StaticResource BoolToVis}}">
@@ -123,8 +101,34 @@
             </Border>
         </StackPanel>
 
-        <!-- Console -->
-        <Border Grid.Column="2" Style="{StaticResource Card}">
+        <!-- Actions stay beside device setup, above the live output. -->
+        <StackPanel Grid.Column="2">
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <controls:SectionHeader Title="Test actions" Margin="0,0,0,14"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource PrimaryButton}" Content="Run install" HorizontalAlignment="Stretch"
+                                Command="{Binding InstallCommand}"/>
+                        <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Run uninstall" HorizontalAlignment="Stretch"
+                                Command="{Binding UninstallCommand}"/>
+                    </Grid>
+                    <Button Style="{StaticResource GhostButton}" Content="Discover detection rule" HorizontalAlignment="Stretch"
+                            Margin="0,8,0,0" Command="{Binding DetectCommand}"
+                            ToolTip="Search the target for the installed executable and build a detection rule from it."/>
+
+                    <StackPanel Margin="0,14,0,0" Visibility="{Binding IsCopying, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource Caption}">
+                            <Run Text="copying package —"/><Run Text=" "/><Run Text="{Binding CopyPercent, Mode=OneWay}"/><Run Text="%"/>
+                        </TextBlock>
+                        <ProgressBar Height="4" Margin="0,6,0,0" Minimum="0" Maximum="100"
+                                     Value="{Binding CopyPercent, Mode=OneWay}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        <Border Style="{StaticResource Card}" Margin="0,18,0,0">
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
                     <TextBlock DockPanel.Dock="Left" Text="Live output" Style="{StaticResource SectionLabel}"/>
@@ -172,5 +176,6 @@
                 </Border>
             </DockPanel>
         </Border>
+        </StackPanel>
     </Grid>
 </UserControl>

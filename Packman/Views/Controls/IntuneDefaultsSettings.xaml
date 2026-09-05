@@ -92,11 +92,12 @@
             <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,18,0,18"/>
             <!-- ── Return codes ───────────────────────────────── -->
             <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="Return codes" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                    <TextBlock Text="How Intune interprets the installer exit codes" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                    <TextBlock Text="How Intune interprets the installer exit codes" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
-                <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding RestoreDefaultReturnCodesCommand}">
+                <Button Grid.Column="2" Style="{StaticResource GhostButton}" HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding RestoreDefaultReturnCodesCommand}">
                     <StackPanel Orientation="Horizontal">
                         <Viewbox Width="14" Height="14" Margin="0,0,7,0">
                             <Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource TextBrush}" StrokeThickness="2" Style="{StaticResource Icon}"/>
@@ -118,7 +119,7 @@
                         <ColumnDefinition Width="10"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox Grid.Column="0" Style="{StaticResource TextField}" FontFamily="{StaticResource MonoFontFamily}" Text="{Binding NewReturnCodeInput, UpdateSourceTrigger=PropertyChanged}" local:PlaceholderText.Text="Exit code, e.g. 1707"/>
+                    <TextBox Grid.Column="0" Style="{StaticResource TextField}" FontFamily="{StaticResource MonoFontFamily}" Text="{Binding NewReturnCodeInput, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="New exit code" local:PlaceholderText.Text="e.g. 1707"/>
                     <TextBox Grid.Column="2" Style="{StaticResource TextField}" Text="{Binding NewReturnCodeDescription, UpdateSourceTrigger=PropertyChanged}" local:PlaceholderText.Text="Description (optional)"/>
                 </Grid>
                 <Button Grid.Column="2" Style="{StaticResource GhostButton}" Command="{Binding AddReturnCodeCommand}">

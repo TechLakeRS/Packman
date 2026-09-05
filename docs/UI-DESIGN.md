@@ -4,7 +4,7 @@ The UI centers on the working sequence: select an installer, prepare its PSADT p
 
 ## Design changes
 
-- Package: source selection precedes the fields it can populate. An adjacent summary reflects edits; generated packages retain script, test and folder actions. Upgrade remains a separate mode that preserves prior script edits.
+- Package: source selection precedes the fields it can populate. An adjacent summary reflects edits; generated packages retain script, test and folder actions. Installer fields lock while generating and after generation, so a changed form cannot misrepresent an already-built package; Start a new package resets them. Upgrade remains a separate mode that preserves prior script edits.
 - Configure: detection and assignment sections use the full content width. Requirements and return codes are expandable. The middle step explicitly makes no changes in Intune.
 - Review: shows tenant, package, command lines, detection, audience, per-package group creation, requirements and return codes, with direct routes to edit or test. Publish errors remain visible.
 - Applications: search is separate from filters, names have a bounded width for ellipsis, and rows have more vertical space.
@@ -19,7 +19,7 @@ The UI centers on the working sequence: select an installer, prepare its PSADT p
 
 ## Packaging and Intune behavior
 
-No UI action publishes while merely configuring a package. The shared build pipeline validates the PSADT launcher, script and module manifest before signing or invoking IntuneWinAppUtil. Script parsing detects syntax errors and exact generated EXE flag placeholders without executing the script. This does not verify vendor switches, dependencies, signatures, device requirements or successful installation; remote and pilot testing remain necessary.
+No UI action publishes while merely configuring a package. The shared build pipeline validates the PSADT launcher, script and module manifest before signing or invoking IntuneWinAppUtil. Selecting a different installer clears the previous MSI product code. Script parsing detects syntax errors and exact generated EXE flag placeholders without executing the script. This does not verify vendor switches, dependencies, signatures, device requirements or successful installation; remote and pilot testing remain necessary.
 
 System/User execution context, MSI/file/registry detection, requirements, return-code mappings, group intents, signing, content upload, supersedence and the existing cleanup/error handling remain supported. Intune installation must complete without user input. The UI explains the distinction between attended testing and unattended deployment; it does not silently rewrite saved commands.
 

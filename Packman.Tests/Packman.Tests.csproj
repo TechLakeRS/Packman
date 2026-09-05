@@ -7,7 +7,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <!-- The tests only touch the pure helpers (script editing, paths, Graph payloads).
+    <!-- Pure helper tests cover script editing, paths and Graph payloads; Windows also runs WPF layout tests.
          On Windows the project carries its own WindowsDesktop framework reference: NuGet
          only prunes the framework-provided packages (System.CodeDom, System.DirectoryServices,
          ...) it can see on the project itself, and the vendored packages/ folder does not

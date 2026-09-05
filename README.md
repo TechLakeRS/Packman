@@ -76,7 +76,7 @@ In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start; this file is 
 - Live PSADT console output, colour-coded, with copy progress while the package is staged.
 - **Install**, **Uninstall**; exit codes `0` / `3010` / `1641` treated as success.
 - Optional cleanup of the staged copy on the target after each run.
-- Recent target machines remembered (last 8), with a ping **CHECK**.
+- Recent target machines remembered (last 8), with a **Ping** action.
 - **Detection-rule discovery** — after a successful install Packman searches the target for the
   executable that was actually installed and proposes a file/version rule, which can be pushed
   straight into the publish step.
@@ -378,25 +378,26 @@ WinRM is only the transport — the install itself runs from a one-shot **schedu
 remote session runs as the connecting admin and would not match Intune's identity.
 
 1. **Package** — pre-filled with the package the wizard just generated. On the standalone
-   **Remote Test** page (sidebar) there is no wizard package, so **BROWSE FOR PACKAGE** and pick one
+   **Remote Test** page (sidebar) there is no wizard package, so **Browse for package** and pick one
    built earlier; name and version are read back out of its script.
-2. **Computer Name** — type it or pick a recent one, then **CHECK** to ping it.
+2. **Computer Name** — type it or pick a recent one, then **Ping** to check reachability.
 3. **Run Context**:
    - **SYSTEM** (default) — runs as `NT AUTHORITY\SYSTEM`, the identity the Intune Management
-     Extension uses. This is the one that matches production: SYSTEM has a different `%TEMP%` and
+     Extension uses for a System-context deployment. SYSTEM has a different `%TEMP%` and
      HKCU, and reaches network shares as the *machine* account, so a package that works under your
      own login can still fail here.
    - **USER** — runs in the logged-on user's session, so their profile and HKCU apply and the PSADT
-     dialogs are visible. Somebody must be logged on.
+     dialogs can be visible when the deployment mode permits interaction. Somebody must be logged on.
+   Choose the context that matches the app’s configured Intune install behavior.
 4. Optionally tick **Delete the staged package from the target after the run** (off by default, so
    a re-run only copies what changed). The setting is remembered.
-5. **RUN INSTALL** copies the package to `C:\Temp\Packman\...` over the admin share, registers the
-   task, and streams PSADT's output into the console. **RUN UNINSTALL** does the same with
+5. **Run install** copies the package to `C:\Temp\Packman\...` over the admin share, registers the
+   task, and streams PSADT's output into the console. **Run uninstall** does the same with
    `-DeploymentType Uninstall`.
 6. After a successful install Packman waits for the registry to settle and searches the target for
    the executable that was installed, proposing a **detection rule** from its real path and
-   version. **DISCOVER DETECTION RULE** re-runs that search on its own.
-7. **USE FOR PUBLISH** pushes that rule into the wizard's Configure step. This is only available for
+   version. **Discover detection rule** re-runs that search on its own.
+7. **Use for publishing** pushes that rule into the wizard's Configure step. This is only available for
    the wizard's own package — a package picked from the share has no publish step to feed.
 
 Exit codes `0`, `3010` and `1641` count as success (the latter two mean *reboot required*).
@@ -423,7 +424,7 @@ every field here is pre-filled from Settings and then editable for this one pack
    | **File version** | path + file name + version to compare (`>=`) | non-MSI packages: the version is pre-filled from the package, the path is yours to supply |
    | **Registry key** | hive + key path + optional value name | — |
 
-   If you ran a remote test, **USE FOR PUBLISH** will have filled a file/version rule in from the
+   If you ran a remote test, **Use for publishing** will have filled a file/version rule in from the
    real install. Packman refuses to upload an incomplete rule — Intune would accept it and then
    never detect the app, so a Required assignment would reinstall forever.
 
@@ -550,8 +551,8 @@ session — **Refresh** forces a re-fetch, and it reports progress while paging 
 
 ### Application detail
 
-The header carries **Republish content**, **Edit script**, **View in Intune** and copy buttons for the
-App ID. Three tabs:
+The header carries **Republish content** and **Edit script**. The sidebar has **View in Intune**,
+the App ID with a copy action, and **Delete from Intune**. Three tabs:
 
 **Overview** — publisher, version, category, package type, size, dates, publishing state,
 description, and the current assignments (read-only here; *Manage in Deployment* jumps to the tab
@@ -568,8 +569,9 @@ matching `<Vendor>_<AppName>\<Version>` folder and runs an integrity check:
 | `Icon\…` | icon archived with the package |
 
 From here you can **copy the path**, **open the folder**, or **edit the script** in VS Code / ISE.
-The tab also shows the **install and uninstall command lines** (with copy buttons) and the
-**detection rules**, which you can edit here:
+
+**Deployment** — **install and uninstall command lines** (with copy buttons), editable
+**detection rules**, requirements and assignment groups. The detection editor supports:
 
 - **Add rule** — MSI, File or Registry.
 - Inline edit of path, file/folder or value name, detection type (exists, does not exist, version,
@@ -579,16 +581,16 @@ The tab also shows the **install and uninstall command lines** (with copy button
 - Saving PATCHes the whole rule array back to Intune; devices re-evaluate at their next check-in.
 - **PowerShell script** detection rules are shown but cannot be edited in Packman.
 
-**Deployment** — requirements (install context, restart behaviour, max install time, disk space),
-the **assignment groups**, and the deployment status rollup: targeted devices with an
-installed / pending / failed bar plus not-installed and not-applicable counts.
+Requirements show install context, restart behavior, maximum install time and disk space.
+The sidebar shows the deployment rollup: targeted devices with an installed / pending / failed
+bar plus not-installed and not-applicable counts. Assignment actions include:
 
 - Add an assignment: pick Required / Available / Uninstall, search Entra, add.
 - Remove an assignment.
 - Click a group to open the **members** slide-over: the first 100 members, a search box over devices
   and users, and add/remove. Membership changes affect **every** app assigned to that group — the
   panel says so. Built-in targets (All Devices / All Users) have no member list.
-- **Delete from Intune** (bottom of the tab) removes the app and its assignments from the tenant
+- **Delete from Intune** (sidebar) removes the app and its assignments from the tenant
   after a confirmation. It cannot be undone; devices keep their installed copy.
 
 ---
@@ -666,7 +668,7 @@ Known limits, so you do not go looking:
 
 **Wizard and testing**
 
-- The Remote Test **USE FOR PUBLISH** button only works for the package the wizard generated. A
+- The Remote Test **Use for publishing** button only works for the package the wizard generated. A
   package browsed from the share has no publish step to feed.
 - The remote test runs **Install** and **Uninstall** only — there is no Repair button.
 - Remote testing needs WinRM enabled on the target, firewall access, and administrative rights (the
@@ -700,7 +702,7 @@ Known limits, so you do not go looking:
 | *Sign in to Intune on the Settings page first.* | Sign in, then **Test connection**, before uploading. |
 | Connection test shows a red scope | That scope has not been consented. For interactive sign-in, have an admin consent; for app registration, add the application permission and grant consent. |
 | *Detection needs a path and a file name.* | The upload is blocked deliberately — Intune would accept an incomplete rule and then never detect the app. |
-| The app installs but Intune keeps reinstalling it | The detection rule does not match reality. Remote-test the package and use **DISCOVER DETECTION RULE**, or fix the rule on the app's Package tab. |
+| The app installs but Intune keeps reinstalling it | The detection rule does not match reality. Remote-test the package and use **Discover detection rule**, or fix the rule on the app's Deployment tab. |
 | An EXE package "succeeds" but installs nothing | The `<silent flags>` placeholder was never replaced. Open the script and put the installer's real silent switches in. |
 | The in-app editor shows a plain note instead of code | The Edge **WebView2 Runtime** is missing. Install it, or use **Open in VS Code**. |
 | Remote test: *WinRM connection failed* | Run `Enable-PSRemoting -Force` on the target and allow WinRM through its firewall. |

@@ -237,15 +237,15 @@
                                                 Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="12"/>
                                     </Grid>
                                 </Border>
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <Button Style="{StaticResource GhostButton}" Click="OpenFolder_Click" IsEnabled="{Binding HasSource}">
+                                <DockPanel Margin="0,12,0,0">
+                                    <Button DockPanel.Dock="Left" Style="{StaticResource GhostButton}" VerticalAlignment="Top" Click="OpenFolder_Click" IsEnabled="{Binding HasSource}">
                                         <StackPanel Orientation="Horizontal">
                                             <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/></Viewbox>
                                             <TextBlock Text="Open folder" Margin="7,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
-                                        <Viewbox Width="13" Height="13">
+                                    <DockPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                        <Viewbox DockPanel.Dock="Left" Width="13" Height="13">
                                             <Viewbox.Style>
                                                 <Style TargetType="Viewbox">
                                                     <Style.Triggers>
@@ -257,7 +257,7 @@
                                             </Viewbox.Style>
                                             <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.4" Style="{StaticResource Icon}"/>
                                         </Viewbox>
-                                        <TextBlock Text="{Binding SourceHintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SourceHintText}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="{DynamicResource OkBrush}"/>
@@ -269,8 +269,8 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                    </StackPanel>
-                                </StackPanel>
+                                    </DockPanel>
+                                </DockPanel>
                             </StackPanel>
                         </Border>
 
@@ -516,37 +516,37 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                                 <TextBlock Text="Saving patches the app in Intune; devices re-evaluate detection at their next check-in."
-                                           FontSize="12" Foreground="{DynamicResource Muted2Brush}" Margin="0,12,0,0"/>
+                                           FontSize="12" Foreground="{DynamicResource Muted2Brush}" Margin="0,12,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
-                        <!-- Requirements: four short facts in one sweep -->
+                        <!-- Requirements: readable at the minimum window width -->
                         <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                             <StackPanel>
                                 <TextBlock Text="Requirements" Style="{StaticResource H2}" Margin="0,0,0,12"/>
-                                <UniformGrid Columns="4">
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                <UniformGrid Columns="2" Margin="0,0,-10,-10">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="Install context" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.InstallContext}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Install context" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.InstallContext}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="Restart behavior" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.RestartBehaviorText}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Restart behavior" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.RestartBehaviorText}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="Maximum install time" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.MaxRunTimeText}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Maximum install time" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.MaxRunTimeText}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="Disk space" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.MinDiskSpaceText}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Disk space" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.MinDiskSpaceText}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
                                 </UniformGrid>
