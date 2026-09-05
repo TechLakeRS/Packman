@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem in the community app.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "For security issues, use private vulnerability reporting. Please redact tenant details, credentials and personal data from logs and screenshots."
+  - type: input
+    id: version
+    attributes:
+      label: Packman version or commit
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows and .NET versions
+    validations:
+      required: true
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Affected workflow
+      options:
+        - Create or upgrade a package
+        - Edit a script
+        - Configure or publish to Intune
+        - Application detail or assignments
+        - Remote Test
+        - Settings or authentication
+        - Build or startup
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the installer type and PSADT version when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots

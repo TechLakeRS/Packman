@@ -8,7 +8,23 @@ package on your share, lets you edit the deploy script, test the install on a re
 the `.intunewin`, and publishes it to your tenant over Microsoft Graph — detection rules,
 requirements, return codes, group assignment, code signing and supersedence included.
 
-In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start; this file is the full reference.
+**Community edition · Apache 2.0 · Windows / .NET 10**
+
+In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start. See [Contributing](CONTRIBUTING.md),
+[the Community / Pro roadmap](ROADMAP.md) and [private security reporting](SECURITY.md).
+Existing packaging and Intune workflows stay in the free community edition. Key Vault authentication,
+WDAC catalog generation and GitLab pipelines are planned commercial integrations.
+
+![Package creation in the light theme](docs/images/create-package-light.png)
+
+<details>
+<summary>Application deployment in the dark theme</summary>
+
+![Application deployment in the dark theme](docs/images/application-deployment-dark.png)
+
+</details>
+
+These are native Windows CI renders with sample data; they do not show a live tenant deployment.
 
 ---
 
@@ -40,8 +56,8 @@ In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start; this file is 
 
 - Create a PSADT v4 package from an **MSI** or **EXE** — browse or drag-and-drop the file.
 - **Metadata read straight out of the installer**: app name, manufacturer, version and the app
-  icon; plus MSI product code, product version and upgrade code for an MSI. Every field stays
-  editable — Packman fills in what it can and never overwrites what you typed.
+  icon; plus MSI product code, product version and upgrade code for an MSI. Fields are editable before generation; afterward, **Start a new package** resets the form.
+  Packman fills in empty fields without replacing your edits.
 - **Architecture** (x64 / x86) and **install context** (SYSTEM / USER) written into the script
   (`AppArch`, `RequireAdmin`).
 - Script metadata rewritten automatically: vendor, name, version, arch, script date, author.
@@ -143,8 +159,15 @@ In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start; this file is 
 
 ## Build and run
 
+Successful [Windows CI runs](https://github.com/TechLakeRS/Packman/actions/workflows/build.yml)
+provide a **Packman-community-windows** artifact. Extract the entire archive and launch
+`Packman.exe` after installing the runtimes listed under Requirements. CI artifacts are development builds,
+not a separately signed installer or stable release. The complete PSADT runtime and
+IntuneWinAppUtil still need to be configured in Settings.
+
 ```bash
-git clone <repo-url>
+git clone https://github.com/TechLakeRS/Packman.git
+cd Packman
 ```
 
 ```bash
@@ -155,10 +178,10 @@ dotnet build Packman.sln
 dotnet run --project Packman/Packman.csproj
 ```
 
-Or open `Packman.sln` in Visual Studio 2022 and run.
+Or open `Packman.sln` in a Visual Studio installation with .NET 10 support and run.
 
-The tests cover the parts that do not need Windows or a tenant (script editing, package paths,
-Graph payloads):
+Tests cover script editing, package paths, Graph payloads, preflight and signing failures.
+Windows runs also render the views in both themes using sample data:
 
 ```
 dotnet test Packman.sln
@@ -245,7 +268,8 @@ turns green and reads *Connected to Microsoft Intune · you@tenant* once signed 
 
 Enable to Authenticode-sign the package files before the `.intunewin` is built. Pick the signing
 certificate from the store (or enter a thumbprint) and a **timestamp server** (defaults to
-DigiCert). Signing runs in-process — no temporary PFX is written.
+DigiCert). Signing runs in-process — no temporary PFX is written. If signing is enabled and the
+certificate or signing operation fails, publishing stops before building or uploading content.
 
 ### Network Paths
 
@@ -752,7 +776,7 @@ packages/         vendored .nupkg files for offline restore
 
 ## License
 
-[Apache License 2.0](LICENSE) — Copyright 2026 TechLakeRS.
+[Apache License 2.0](LICENSE) — Copyright 2026 TechLakeRS. Bundled components retain their own terms; see [third-party notices](THIRD-PARTY-NOTICES.md).
 
 
 ## UI design and validation

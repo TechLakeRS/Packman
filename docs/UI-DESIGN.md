@@ -21,7 +21,7 @@ The UI centers on the working sequence: select an installer, prepare its PSADT p
 
 No UI action publishes while merely configuring a package. The shared build pipeline validates the PSADT launcher, script and module manifest before signing or invoking IntuneWinAppUtil. Selecting a different installer clears the previous MSI product code. Script parsing detects syntax errors and exact generated EXE flag placeholders without executing the script. This does not verify vendor switches, dependencies, signatures, device requirements or successful installation; remote and pilot testing remain necessary.
 
-System/User execution context, MSI/file/registry detection, requirements, return-code mappings, group intents, signing, content upload, supersedence and the existing cleanup/error handling remain supported. Intune installation must complete without user input. The UI explains the distinction between attended testing and unattended deployment; it does not silently rewrite saved commands.
+System/User execution context, MSI/file/registry detection, requirements, return-code mappings, group intents, signing, content upload, supersedence and the existing cleanup/error handling remain supported. If code signing is enabled, a certificate or signing failure stops publishing before content is built or uploaded. Intune installation must complete without user input. The UI explains the distinction between attended testing and unattended deployment; it does not silently rewrite saved commands.
 
 Sources reviewed on 2026-09-06:
 
@@ -33,6 +33,6 @@ The existing scope limits remain: wizard detection uses one rule; standalone pub
 
 ## Verification
 
-The solution can be cross-compiled with .NET 10 and `EnableWindowsTargeting=true`. The non-Windows test path needs the additional packages described in the test project; the repository's offline feed is unchanged. The pure regression suite covers package generation/upgrades, Graph payloads and preflight behavior.
+The solution can be cross-compiled with .NET 10 and `EnableWindowsTargeting=true`. The non-Windows test path needs the additional packages described in the test project; the repository's offline feed is unchanged. The pure regression suite covers package generation/upgrades, Graph payloads, preflight behavior and required signing failures.
 
 Windows CI additionally loads and renders representative views, all Settings sections, Application Detail tabs and the editable computer dropdown in both palettes. It exports PNG previews as the `ui-previews` artifact. These layout tests do not authenticate, upload, test a remote device or execute a deployment script. Manual Windows validation should include keyboard navigation, 125%/150% display scaling, long tenant/group names, an actual MSI/EXE package, install/uninstall on a test device, and a pilot Intune assignment.

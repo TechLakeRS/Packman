@@ -10,6 +10,9 @@
     <AssemblyName>Packman</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>1.1.0</Version>
+    <Authors>TechLakeRS</Authors>
+    <RepositoryUrl>https://github.com/TechLakeRS/Packman</RepositoryUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,6 +35,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\third-party\**\*" Link="third-party\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fonts\*-OFL.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fonts\README.md" CopyToOutputDirectory="PreserveNewest" />
     <!-- Bundled PSADT v4 template, copied next to the executable -->
     <None Include="PSADT\**\*" Exclude="PSADT\**\.gitkeep" CopyToOutputDirectory="PreserveNewest" />
     <!-- Monaco editor assets for the in-app script editor -->

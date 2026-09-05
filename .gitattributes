@@ -4,3 +4,13 @@
 
 # Embedded fonts.
 *.ttf binary
+
+# The inventory verifies notice bytes against the original NuGet archives.
+third-party/nuget-notices/** -text -whitespace
+third-party/nuget-packages.json text eol=lf
+
+# Retain upstream license formatting verbatim.
+Packman/Fonts/*-OFL.txt -text -whitespace
+Packman/MonacoEditor/LICENSE -text -whitespace
+Packman/MonacoEditor/ThirdPartyNotices.txt -text -whitespace
+Packman/PSADT/COPYING.* -text -whitespace

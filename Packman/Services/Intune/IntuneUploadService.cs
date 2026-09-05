@@ -26,13 +26,13 @@ public sealed class UploadStateException : Exception
 public partial class IntuneUploadService
 {
     private readonly GraphClient _graph;
-    private readonly NativeCodeSigner? _signer;
+    private readonly IFileSigner? _signer;
     private readonly string _converterPath;
 
     /// <summary>Whether the half-built app was removed after a failure or cancel. Null when nothing had been created.</summary>
     public bool? RollbackSucceeded { get; private set; }
 
-    public IntuneUploadService(Func<Task<string>> tokenProvider, NativeCodeSigner? signer, string converterPath)
+    public IntuneUploadService(Func<Task<string>> tokenProvider, IFileSigner? signer, string converterPath)
     {
         _graph = new GraphClient(tokenProvider);
         _signer = signer;
