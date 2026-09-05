@@ -79,11 +79,11 @@
             <!-- Tabs: Overview / Package / Deployment -->
             <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Margin="0,0,0,20">
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Overview"
+                    <RadioButton Style="{StaticResource DetailTab}" Content="Overview"
                                  IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=overview}"/>
-                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Package"
+                    <RadioButton Style="{StaticResource DetailTab}" Content="Package"
                                  IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=package}"/>
-                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Deployment"
+                    <RadioButton Style="{StaticResource DetailTab}" Content="Deployment"
                                  IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=deployment}"/>
                 </StackPanel>
             </Border>

@@ -13,9 +13,9 @@
         <Grid Margin="0,0,0,20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <Border Style="{StaticResource SegmentGroup}" IsEnabled="{Binding CanEditPackageInputs}">
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="GenMode" Content="Create new"
+                    <RadioButton Style="{StaticResource ModeToggle}" Content="Create new"
                                  IsChecked="{Binding IsUpgradeMode, Mode=TwoWay, Converter={StaticResource InverseBool}}"/>
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="GenMode" Content="Upgrade existing"
+                    <RadioButton Style="{StaticResource ModeToggle}" Content="Upgrade existing"
                                  IsChecked="{Binding IsUpgradeMode, Mode=TwoWay}"/>
                 </StackPanel>
             </Border>
@@ -132,9 +132,9 @@
                             <TextBlock Text="Install Context" Style="{StaticResource FieldLabel}"/>
                             <Border Style="{StaticResource SegmentGroup}" Margin="0,6,0,0">
                                 <StackPanel Orientation="Horizontal">
-                                    <RadioButton Style="{StaticResource ContextToggle}" GroupName="Ctx" Content="System"
+                                    <RadioButton Style="{StaticResource ContextToggle}" Content="System"
                                                  IsChecked="{Binding CreatePackage.UserInstall, Mode=TwoWay, Converter={StaticResource InverseBool}}"/>
-                                    <RadioButton Style="{StaticResource ContextToggle}" GroupName="Ctx" Content="User"
+                                    <RadioButton Style="{StaticResource ContextToggle}" Content="User"
                                                  IsChecked="{Binding CreatePackage.UserInstall, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Border>

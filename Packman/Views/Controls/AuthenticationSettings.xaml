@@ -9,7 +9,7 @@
             <!-- Auth mode tab bar (Interactive | App Registration) -->
             <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="4">
                 <UniformGrid Rows="1">
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="AuthModeGroup" IsChecked="{Binding IsInteractive}">
+                    <RadioButton Style="{StaticResource ModeToggle}" IsChecked="{Binding IsInteractive}">
                         <StackPanel Orientation="Horizontal">
                             <Viewbox Width="14" Height="14">
                                 <Path Data="{StaticResource IconUser}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
@@ -17,7 +17,7 @@
                             <TextBlock Text="Interactive" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </RadioButton>
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="AuthModeGroup" Margin="4,0,0,0" IsChecked="{Binding IsAppRegistration}">
+                    <RadioButton Style="{StaticResource ModeToggle}" Margin="4,0,0,0" IsChecked="{Binding IsAppRegistration}">
                         <StackPanel Orientation="Horizontal">
                             <Viewbox Width="14" Height="14">
                                 <Path Data="{StaticResource IconShield}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>
@@ -110,7 +110,7 @@
                 <TextBlock Text="Certificate" Style="{StaticResource FieldLabel}" Margin="0,18,0,7"/>
                 <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left">
                     <StackPanel Orientation="Horizontal">
-                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="AuthCertSource" IsChecked="{Binding AuthUseStoreCert}">
+                        <RadioButton Style="{StaticResource ContextToggle}" IsChecked="{Binding AuthUseStoreCert}">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="13" Height="13">
                                     <Path Data="{StaticResource IconBook}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
@@ -118,7 +118,7 @@
                                 <TextBlock Text="Select from store" Margin="7,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
-                        <RadioButton Style="{StaticResource ContextToggle}" GroupName="AuthCertSource" Margin="3,0,0,0" IsChecked="{Binding AuthUseManualThumbprint}">
+                        <RadioButton Style="{StaticResource ContextToggle}" Margin="3,0,0,0" IsChecked="{Binding AuthUseManualThumbprint}">
                             <StackPanel Orientation="Horizontal">
                                 <Viewbox Width="13" Height="13">
                                     <Path Data="{StaticResource IconCode}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/>

@@ -70,32 +70,32 @@
             </Grid>
         </Border>
             <ScrollViewer Grid.Column="0" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
-                <RadioButton x:Name="TabAuth" Style="{StaticResource SectionItem}" GroupName="SettingsTabs" IsChecked="True">
+                <RadioButton x:Name="TabAuth" Style="{StaticResource SectionItem}" IsChecked="True">
                     <DockPanel LastChildFill="False" Width="160">
                         <TextBlock DockPanel.Dock="Left" Text="Authentication" VerticalAlignment="Center"/>
                     </DockPanel>
                 </RadioButton>
-                <RadioButton x:Name="TabCodeSign" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                <RadioButton x:Name="TabCodeSign" Style="{StaticResource SectionItem}">
                     <DockPanel LastChildFill="False" Width="160">
                         <TextBlock DockPanel.Dock="Left" Text="Code Signing" VerticalAlignment="Center"/>
                     </DockPanel>
                 </RadioButton>
-                <RadioButton x:Name="TabNetworkPaths" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                <RadioButton x:Name="TabNetworkPaths" Style="{StaticResource SectionItem}">
                     <DockPanel LastChildFill="False" Width="160">
                         <TextBlock DockPanel.Dock="Left" Text="Network Paths" VerticalAlignment="Center"/>
                     </DockPanel>
                 </RadioButton>
-                <RadioButton x:Name="TabGroupAssignment" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                <RadioButton x:Name="TabGroupAssignment" Style="{StaticResource SectionItem}">
                     <DockPanel LastChildFill="False" Width="160">
                         <TextBlock DockPanel.Dock="Left" Text="Group Assignment" VerticalAlignment="Center"/>
                     </DockPanel>
                 </RadioButton>
-                <RadioButton x:Name="TabIntuneDefaults" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                <RadioButton x:Name="TabIntuneDefaults" Style="{StaticResource SectionItem}">
                     <DockPanel LastChildFill="False" Width="160">
                         <TextBlock DockPanel.Dock="Left" Text="Intune Defaults" VerticalAlignment="Center"/>
                     </DockPanel>
                 </RadioButton>
-                <RadioButton x:Name="TabAppearance" Style="{StaticResource SectionItem}" GroupName="SettingsTabs">
+                <RadioButton x:Name="TabAppearance" Style="{StaticResource SectionItem}">
                     <DockPanel LastChildFill="False" Width="160">
                         <TextBlock DockPanel.Dock="Left" Text="Appearance" VerticalAlignment="Center"/>
                     </DockPanel>

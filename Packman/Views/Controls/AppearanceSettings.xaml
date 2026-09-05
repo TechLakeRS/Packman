@@ -9,9 +9,9 @@
             <!-- Theme (System | Dark | Light) -->
             <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="4" HorizontalAlignment="Left">
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="ThemeGroup" Content="System" IsChecked="{Binding IsThemeSystem}"/>
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="ThemeGroup" Content="Dark" IsChecked="{Binding IsThemeDark}"/>
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="ThemeGroup" Content="Light" IsChecked="{Binding IsThemeLight}"/>
+                    <RadioButton Style="{StaticResource ModeToggle}" Content="System" IsChecked="{Binding IsThemeSystem}"/>
+                    <RadioButton Style="{StaticResource ModeToggle}" Content="Dark" IsChecked="{Binding IsThemeDark}"/>
+                    <RadioButton Style="{StaticResource ModeToggle}" Content="Light" IsChecked="{Binding IsThemeLight}"/>
                 </StackPanel>
             </Border>
             <TextBlock Text="Applies immediately and is saved automatically. System follows your Windows appearance setting." Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,14,0,0" MaxWidth="560" HorizontalAlignment="Left"/>
