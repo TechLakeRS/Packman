@@ -61,7 +61,7 @@ public partial class ApplicationDetailView : UserControl
             $"Source: {_vm.SourcePath}\n\n" +
             "The .intunewin is regenerated from the source folder and becomes the content devices download. " +
             "Name, description, install commands, detection rules, requirements, return codes and assignments are not changed.",
-            "Update package", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            "Republish package content", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (result != MessageBoxResult.Yes) return;
 
         ErrorReporter.FireAndForget(async () =>
@@ -240,8 +240,8 @@ public partial class ApplicationDetailView : UserControl
         if (_vm == null) return;
 
         var result = MessageBox.Show(
-            $"Retire \"{_vm.Detail.DisplayName}\" from Intune?\n\nThis permanently removes the Win32 app from the tenant. This cannot be undone.",
-            "Retire from Intune", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            $"Delete \"{_vm.Detail.DisplayName}\" from Intune?\n\nThis permanently removes the Win32 app from the tenant. This cannot be undone.",
+            "Delete from Intune", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (result != MessageBoxResult.Yes) return;
 
         ErrorReporter.FireAndForget(async () =>

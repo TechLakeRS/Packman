@@ -19,11 +19,7 @@
                 </StackPanel>
 
                 <Grid Margin="0,22,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="18"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
                     <!-- LEFT COLUMN -->
                     <StackPanel Grid.Column="0">
@@ -32,7 +28,7 @@
                         <Border Style="{StaticResource Card}" VerticalAlignment="Top">
                             <StackPanel>
 <StackPanel Margin="0,0,0,14">
-    <controls:SectionHeader Title="SELECT PACKAGE"/>
+    <controls:SectionHeader Title="Select package"/>
     <TextBlock Text="Choose the folder that contains the Invoke-AppDeployToolkit package" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
 </StackPanel>
 
@@ -65,7 +61,7 @@
                                             <Viewbox Width="15" Height="15">
                                                 <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.6" Style="{StaticResource Icon}"/>
                                             </Viewbox>
-                                            <TextBlock Text="Package validated — metadata detected" Margin="9,0,0,0" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource OkBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Package validated — metadata detected" Margin="9,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OkBrush}" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Border>
 
@@ -85,7 +81,7 @@
                         <!-- Detection method card -->
                         <Border Style="{StaticResource Card}" Margin="0,18,0,0" VerticalAlignment="Top">
                             <StackPanel>
-<controls:SectionHeader Title="DETECTION METHOD" Caption="How Intune confirms the app is installed" Margin="0,0,0,14"/>
+<controls:SectionHeader Title="Detection rules" Caption="How Intune confirms the app is installed" Margin="0,0,0,14"/>
 
                                 <!-- Rule list -->
                                 <ItemsControl ItemsSource="{Binding DetectionRules}">
@@ -98,8 +94,8 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
-                                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
-                                                        <TextBlock Text="{Binding Description}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
                                                     </StackPanel>
                                                     <Button Grid.Column="1" Style="{StaticResource RowIconButton}" VerticalAlignment="Top" Margin="8,0,0,0"
                                                             Command="{Binding DataContext.RemoveRuleCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -169,7 +165,7 @@
                                                      local:PlaceholderText.Text="{}{00000000-0000-0000-0000-000000000000}"
                                                      Text="{Binding NewRuleProductCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                             <TextBlock Text="No MSI found in the package — enter the product code manually."
-                                                       FontSize="11.5" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                                       FontSize="12" Foreground="{DynamicResource WarnBrush}" Margin="0,6,0,0" TextWrapping="Wrap"
                                                        Visibility="{Binding HasNoMsiProductCode, Converter={StaticResource BoolToVis}}"/>
                                         </StackPanel>
 
@@ -189,9 +185,9 @@
                     </StackPanel>
 
                     <!-- RIGHT COLUMN: Assignment -->
-                    <Border Grid.Column="2" Style="{StaticResource Card}" VerticalAlignment="Top">
+                    <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,24,0,0" VerticalAlignment="Top">
                         <StackPanel>
-<controls:SectionHeader Title="ASSIGNMENT" Caption="Who receives this app" Margin="0,0,0,14"/>
+<controls:SectionHeader Title="Assignments" Caption="Who receives this app" Margin="0,0,0,14"/>
 
                             <controls:GroupPickerControl DataContext="{Binding GroupPicker}"/>
 
@@ -218,8 +214,8 @@
                                     Visibility="{Binding IsSignedIn, Converter={StaticResource BoolToVis}}">
                                 <TextBlock FontSize="12.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap">
                                     <Run Text="Connected to "/>
-                                    <Run Text="{Binding TenantName, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                                    <Run Text=" tenant. No signing or build step — the package is published as-is."/>
+                                    <Run Text="{Binding TenantName, Mode=OneWay}" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                                    <Run Text=" tenant. The PSADT package is signed when enabled, built as .intunewin, and published with these assignments."/>
                                 </TextBlock>
                             </Border>
                         </StackPanel>
@@ -228,83 +224,9 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- ============ PUBLISHING OVERLAY ============ -->
-        <Grid Background="{DynamicResource BgBrush}" Visibility="{Binding Publish.IsPublishing, Converter={StaticResource BoolToVis}}">
-            <StackPanel Width="560" VerticalAlignment="Center" HorizontalAlignment="Center">
-
-                <!-- Spinner (running) -->
-                <Viewbox Width="56" Height="56" HorizontalAlignment="Center"
-                         Visibility="{Binding Publish.IsRunning, Converter={StaticResource BoolToVis}}">
-                    <Grid Width="44" Height="44" RenderTransformOrigin="0.5,0.5">
-                        <Grid.RenderTransform>
-                            <RotateTransform Angle="0"/>
-                        </Grid.RenderTransform>
-                        <Grid.Style>
-                            <Style TargetType="Grid">
-                                <Style.Triggers>
-                                    <Trigger Property="IsVisible" Value="True">
-                                        <Trigger.EnterActions>
-                                            <BeginStoryboard Name="Spin">
-                                                <Storyboard>
-                                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                     From="0" To="360" Duration="0:0:0.9" RepeatBehavior="Forever"/>
-                                                </Storyboard>
-                                            </BeginStoryboard>
-                                        </Trigger.EnterActions>
-                                        <Trigger.ExitActions>
-                                            <StopStoryboard BeginStoryboardName="Spin"/>
-                                        </Trigger.ExitActions>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Grid.Style>
-                        <Ellipse Width="44" Height="44" Stroke="{DynamicResource LineBrush}" StrokeThickness="4"/>
-                        <Path Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                              Data="M22,2 A20,20 0 0 1 42,22"/>
-                    </Grid>
-                </Viewbox>
-
-                <!-- Done check (complete & success) -->
-                <Border Width="52" Height="52" CornerRadius="4" Background="{DynamicResource OkSoftBrush}" HorizontalAlignment="Center"
-                        Visibility="{Binding Publish.IsSucceeded, Converter={StaticResource BoolToVis}}">
-                    <Viewbox Width="22" Height="22">
-                        <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.6" Style="{StaticResource Icon}"/>
-                    </Viewbox>
-                </Border>
-
-                <!-- Error mark (complete & failed) -->
-                <Border Width="52" Height="52" CornerRadius="4" Background="{DynamicResource BadSoftBrush}" HorizontalAlignment="Center"
-                        Visibility="{Binding Publish.IsFailed, Converter={StaticResource BoolToVis}}">
-                    <Viewbox Width="20" Height="20">
-                        <Path Data="{StaticResource IconX}" Stroke="{DynamicResource BadBrush}" StrokeThickness="2.4" Style="{StaticResource Icon}"/>
-                    </Viewbox>
-                </Border>
-
-                <TextBlock Text="{Binding Publish.Title}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                           HorizontalAlignment="Center" Margin="0,18,0,0"/>
-                <TextBlock Text="Building the Win32 package and pushing to Microsoft Intune. This usually takes ~30 seconds — keep this tab open."
-                           FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center"
-                           HorizontalAlignment="Center" Margin="0,8,0,0"
-                           Visibility="{Binding Publish.IsRunning, Converter={StaticResource BoolToVis}}"/>
-
-                <controls:PublishStepList DataContext="{Binding Publish}" Margin="0,24,0,0"/>
-
-                <!-- Cancel while running -->
-                <StackPanel Visibility="{Binding Publish.IsRunning, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
-                    <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Center" Margin="0,16,0,0"
-                            Command="{Binding Publish.CancelCommand}" Content="Cancel upload"
-                            AutomationProperties.Name="Cancel upload"
-                            ToolTip="Stops the upload. Anything already created in Intune is removed."/>
-                </StackPanel>
-
-                <!-- Result + Done -->
-                <StackPanel Visibility="{Binding Publish.IsComplete, Converter={StaticResource BoolToVis}}" Margin="0,6,0,0">
-                    <TextBlock Text="{Binding Publish.ResultText}" FontSize="13" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center"/>
-                    <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center" Margin="0,16,0,0"
-                            Command="{Binding Publish.DoneCommand}" Content="Done"
-                            AutomationProperties.Name="Done"/>
-                </StackPanel>
-            </StackPanel>
-        </Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+            Visibility="{Binding Publish.IsPublishing, Converter={StaticResource BoolToVis}}">
+            <controls:PublishStatusControl DataContext="{Binding Publish}" MaxWidth="760" Margin="30" VerticalAlignment="Top"/>
+        </ScrollViewer>
     </Grid>
 </UserControl>

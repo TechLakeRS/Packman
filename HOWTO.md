@@ -11,7 +11,7 @@ full explanation in **[README.md](README.md)**.
 
 ## 1. Set it up once
 
-Open **Settings** and complete two sections, then press **Save**:
+Open **Settings** and complete two sections, then press **Save settings**:
 
 1. **Authentication** — press **Sign in** (interactive needs no app registration), then
    **Test connection** to confirm every Graph scope is consented.
@@ -23,9 +23,9 @@ Code signing, group-assignment defaults, Intune defaults and the theme are optio
 
 ## 2. Generate the package
 
-**Create Package** → drag your **MSI or EXE** onto the Sources Path field. Name, manufacturer,
+**Create Package** → drag your **MSI or EXE** onto the Source installer field. Name, manufacturer,
 version and icon are filled from the installer; correct anything you disagree with, pick
-**x64/x86** and **SYSTEM/USER**, then **GENERATE PACKAGE**.
+**x64/x86** and **SYSTEM/USER**, then **Generate package**.
 
 → [Creating a package](README.md#creating-a-package) — including exactly what an MSI fills in
 versus an EXE, and where the package lands on disk.
@@ -40,22 +40,23 @@ switches, then Ctrl+S.
 
 ## 4. Test it on a real machine (recommended)
 
-**Remote test** → enter a computer name, **CHECK**, leave the context on **SYSTEM** (what Intune
-uses), **RUN INSTALL**. After a successful install, **USE FOR PUBLISH** carries the discovered
-detection rule into the publish step.
+**Remote Test** → enter a computer name, then **Ping**. Choose **System** or **User** to match the
+app’s Intune install behavior, then **Run install**. Check the discovered detection rule and use
+**Use for publishing** to carry it into Configure for the wizard’s package. Verify **Run uninstall**
+on the test device too; test devices need WinRM and admin-share access.
 
 → [Remote testing](README.md#remote-testing)
 
 ## 5. Publish
 
-**CONTINUE TO UPLOAD**, then:
+**Continue to configure**, then:
 
 1. Check the **Name in Intune**.
 2. Confirm the **detection method** — MSI packages default to the product code; anything else needs
    a path.
-3. Pick a **deploy mode** if *Auto* is not what you want.
+3. Use **Silent** for unattended Intune deployment and verify that both commands need no user input.
 4. Add **assignment** groups, each with its own intent (Required / Available / Uninstall).
-5. **CONTINUE TO REVIEW**, check the summary, **BUILD & UPLOAD**.
+5. **Review deployment**, check the summary, **Build & publish**.
 
 → [Publishing to Intune](README.md#publishing-to-intune)
 
@@ -67,7 +68,7 @@ detection rule into the publish step.
 |---|---|
 | Roll out a new version of an existing package | [Upgrading a package](README.md#upgrading-a-package-to-a-new-version) |
 | Publish a package I already built | [Upload to Intune (standalone)](README.md#upload-to-intune-standalone) |
-| Browse, filter, edit or retire tenant apps | [Applications](README.md#applications--browsing-your-tenant) |
+| Browse, filter, edit or delete tenant apps | [Applications](README.md#applications--browsing-your-tenant) |
 | Bulk-add PCs to a group, or see what targets a group | [Advanced](README.md#advanced--directory-tools) |
 | Know what Packman deliberately does not do | [Limits](README.md#what-packman-cannot-do) |
 | Fix an error message | [Troubleshooting](README.md#troubleshooting) |

@@ -10,17 +10,17 @@
 
     <StackPanel>
         <!-- Mode toggle + upload cross-link -->
-        <Grid Margin="0,0,0,20">
-            <Border Style="{StaticResource SegmentGroup}">
+        <Grid Margin="0,0,0,20"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Border Style="{StaticResource SegmentGroup}" IsEnabled="{Binding CanEditPackageInputs}">
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="GenMode" Content="CREATE NEW"
+                    <RadioButton Style="{StaticResource ModeToggle}" Content="Create new"
                                  IsChecked="{Binding IsUpgradeMode, Mode=TwoWay, Converter={StaticResource InverseBool}}"/>
-                    <RadioButton Style="{StaticResource ModeToggle}" GroupName="GenMode" Content="UPGRADE EXISTING"
+                    <RadioButton Style="{StaticResource ModeToggle}" Content="Upgrade existing"
                                  IsChecked="{Binding IsUpgradeMode, Mode=TwoWay}"/>
                 </StackPanel>
             </Border>
 
-            <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12">
+            <TextBlock Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" FontSize="12">
                 <Run Text="Already have a built package?" Foreground="{DynamicResource Muted2Brush}"/>
                 <Hyperlink Click="UploadExisting_Click" Foreground="{DynamicResource AccentTextBrush}" TextDecorations="{x:Null}" FontWeight="SemiBold">
                     Upload it directly →
@@ -28,15 +28,50 @@
             </TextBlock>
         </Grid>
 
+        <Border Style="{StaticResource Card}" Margin="0,0,0,20"
+            Visibility="{Binding HasPackage, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Start a new package" Style="{StaticResource GhostButton}"
+                    Command="{Binding NewPackageCommand}" Margin="18,0,0,0"/>
+                <StackPanel>
+                    <TextBlock Text="Package generated" Style="{StaticResource H2}"/>
+                    <TextBlock Text="Installer details are saved in this package. To change them, start a new package."
+                        Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
         <!-- ═══ CREATE NEW ═══ -->
         <StackPanel Visibility="{Binding IsUpgradeMode, Converter={StaticResource InverseBoolToVis}}">
             <StackPanel Margin="0,0,0,14">
-                <controls:SectionHeader Title="APPLICATION INFORMATION"/>
-                <TextBlock Text="details used to identify and package this app" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                <controls:SectionHeader Title="Start with your installer"/>
+                <TextBlock Text="Choose the source first. Review the detected details before generating your package." Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <Border Style="{StaticResource Card}" Padding="22,20,22,22">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
+            <Border x:Name="SourceFields" Style="{StaticResource Card}" Padding="22,20,22,22" IsEnabled="{Binding CanEditPackageInputs}">
                 <StackPanel>
+                    <!-- Sources path: browse sits inside the field, hint sits under it -->
+                    <StackPanel Margin="0,0,0,24">
+                        <TextBlock Style="{StaticResource FieldLabel}">
+                            <Run Text="Source installer"/><Run Text=" *" Foreground="{DynamicResource AccentTextBrush}"/>
+                        </TextBlock>
+                        <Grid Margin="0,6,0,0">
+                            <TextBox AutomationProperties.Name="Source installer" Style="{StaticResource MonoField}" Padding="11,0,86,0"
+                                     local:PlaceholderText.Text="Choose or drop an MSI / EXE installer"
+                                     Text="{Binding CreatePackage.SourcesPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PreviewDragOver="SourcesPath_DragOver" Drop="SourcesPath_Drop"
+                                     AllowDrop="True"/>
+                            <Button Style="{StaticResource BrowseButton}" Content="Browse…"
+                                    HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    Margin="0,0,5,0" Click="BrowseButton_Click"/>
+                        </Grid>
+                        <TextBlock Text="Drop an MSI or EXE here — metadata, icon and product code are read automatically."
+                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="12" LineHeight="18"
+                                   Foreground="{DynamicResource Dim2Brush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -86,26 +121,6 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Sources path: browse sits inside the field, hint sits under it -->
-                    <StackPanel Margin="0,18,0,0">
-                        <TextBlock Style="{StaticResource FieldLabel}">
-                            <Run Text="Sources Path"/><Run Text=" *" Foreground="{DynamicResource AccentTextBrush}"/>
-                        </TextBlock>
-                        <Grid Margin="0,6,0,0">
-                            <TextBox AutomationProperties.Name="Sources Path" Style="{StaticResource MonoField}" Padding="11,0,86,0"
-                                     local:PlaceholderText.Text="\\server\share\Sources or drag &amp; drop"
-                                     Text="{Binding CreatePackage.SourcesPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                     PreviewDragOver="SourcesPath_DragOver" Drop="SourcesPath_Drop"
-                                     AllowDrop="True"/>
-                            <Button Style="{StaticResource BrowseButton}" Content="BROWSE"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Margin="0,0,5,0" Click="BrowseButton_Click"/>
-                        </Grid>
-                        <TextBlock Text="Drop an MSI or EXE here — metadata, icon and product code are read automatically."
-                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5" LineHeight="16"
-                                   Foreground="{DynamicResource Dim2Brush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
-                    </StackPanel>
-
                     <!-- Install context -->
                     <Grid Margin="0,18,0,0">
                         <Grid.ColumnDefinitions>
@@ -117,9 +132,9 @@
                             <TextBlock Text="Install Context" Style="{StaticResource FieldLabel}"/>
                             <Border Style="{StaticResource SegmentGroup}" Margin="0,6,0,0">
                                 <StackPanel Orientation="Horizontal">
-                                    <RadioButton Style="{StaticResource ContextToggle}" GroupName="Ctx" Content="SYSTEM"
+                                    <RadioButton Style="{StaticResource ContextToggle}" Content="System"
                                                  IsChecked="{Binding CreatePackage.UserInstall, Mode=TwoWay, Converter={StaticResource InverseBool}}"/>
-                                    <RadioButton Style="{StaticResource ContextToggle}" GroupName="Ctx" Content="USER"
+                                    <RadioButton Style="{StaticResource ContextToggle}" Content="User"
                                                  IsChecked="{Binding CreatePackage.UserInstall, Mode=TwoWay}"/>
                                 </StackPanel>
                             </Border>
@@ -132,9 +147,27 @@
                 </StackPanel>
             </Border>
 
+
+                <Border Grid.Column="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0" Padding="22,0,0,0" VerticalAlignment="Top">
+                    <StackPanel>
+                        <TextBlock Text="Package preview" Style="{StaticResource H2}"/>
+                        <TextBlock Text="PSADT v4 · Win32 application" Style="{StaticResource SubText}" Margin="0,6,0,18" TextWrapping="Wrap"/>
+                        <TextBlock Text="Application" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{Binding CreatePackage.AppName}" Foreground="{DynamicResource InkBrush}" FontSize="15" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                        <TextBlock Text="Publisher" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{Binding CreatePackage.Manufacturer}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                        <TextBlock Text="Version" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{Binding CreatePackage.Version}" Style="{StaticResource SubText}" Margin="0,0,0,16"/>
+                        <TextBlock Text="Output share" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{Binding SettingsService.Settings.NetworkPaths.IntuneApplications}" Style="{StaticResource SubText}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Your package contains Application, Intune and Icon folders." Style="{StaticResource SubText}" Margin="0,18,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
             <!-- Generation status -->
-            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" VerticalAlignment="Center">
+            <StackPanel Margin="0,16,0,0">
+                <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" HorizontalAlignment="Left" VerticalAlignment="Center">
                     <Rectangle.Style>
                         <Style TargetType="Rectangle">
                             <Setter Property="Fill" Value="{DynamicResource MarkBrush}"/>
@@ -147,9 +180,9 @@
                     </Rectangle.Style>
                 </Rectangle>
                 <TextBlock Text="{Binding CreatePackage.StatusText}" Margin="10,0,0,0" VerticalAlignment="Center"
-                           FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" LineHeight="17"
+                           FontFamily="{StaticResource MonoFontFamily}" FontSize="12" LineHeight="18"
                            Foreground="{DynamicResource Muted2Brush}" TextWrapping="Wrap"/>
-                <TextBlock Margin="14,0,0,0" VerticalAlignment="Center" FontSize="11.5"
+                <TextBlock Margin="14,0,0,0" VerticalAlignment="Center" FontSize="12"
                            Visibility="{Binding HasPackage, Converter={StaticResource BoolToVis}}">
                     <Hyperlink Command="{Binding NewPackageCommand}" Foreground="{DynamicResource AccentTextBrush}"
                                TextDecorations="{x:Null}" FontWeight="SemiBold">start a new package</Hyperlink>
@@ -158,7 +191,7 @@
 
             <!-- Optional tools, offered once a package exists -->
             <StackPanel Visibility="{Binding HasPackage, Converter={StaticResource BoolToVis}}">
-                <controls:SectionHeader Title="BEFORE YOU PUBLISH" Caption="optional — skip straight to publish" Margin="0,26,0,14"/>
+                <controls:SectionHeader Title="Prepare for deployment" Caption="Edit and test before publishing" Margin="0,26,0,14"/>
 
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -172,10 +205,10 @@
                     <Button Grid.Column="0" Command="{Binding OpenEditToolCommand}" Style="{StaticResource ToolCard}">
                         <StackPanel>
                             <TextBlock Text="Edit script" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Adjust the PSADT deployment script with catalog completions." Margin="0,8,0,0"
-                                       FontSize="11" LineHeight="17" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"/>
+                            <TextBlock Text="Review install and uninstall commands. EXE packages need their actual silent switches." Margin="0,8,0,0"
+                                       FontSize="12" LineHeight="18" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"/>
                             <TextBlock Text="Invoke-AppDeployToolkit.ps1" Margin="0,8,0,0"
-                                       FontFamily="{StaticResource MonoFontFamily}" FontSize="10" Foreground="{DynamicResource DimBrush}"/>
+                                       FontFamily="{StaticResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource DimBrush}"/>
                         </StackPanel>
                     </Button>
 
@@ -183,9 +216,9 @@
                         <StackPanel>
                             <TextBlock Text="Remote test" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
                             <TextBlock Text="Install on a test machine and verify the detection rule." Margin="0,8,0,0"
-                                       FontSize="11" LineHeight="17" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"/>
+                                       FontSize="12" LineHeight="18" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"/>
                             <TextBlock Text="deploy to a device" Margin="0,8,0,0"
-                                       FontFamily="{StaticResource MonoFontFamily}" FontSize="10" Foreground="{DynamicResource DimBrush}"/>
+                                       FontFamily="{StaticResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource DimBrush}"/>
                         </StackPanel>
                     </Button>
 
@@ -193,9 +226,9 @@
                         <StackPanel>
                             <TextBlock Text="Open folder" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
                             <TextBlock Text="Inspect the package on the network share." Margin="0,8,0,0"
-                                       FontSize="11" LineHeight="17" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"/>
+                                       FontSize="12" LineHeight="18" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"/>
                             <TextBlock Text="{Binding PackageName}" Margin="0,8,0,0" TextTrimming="CharacterEllipsis"
-                                       FontFamily="{StaticResource MonoFontFamily}" FontSize="10" Foreground="{DynamicResource DimBrush}"/>
+                                       FontFamily="{StaticResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource DimBrush}"/>
                         </StackPanel>
                     </Button>
                 </Grid>
@@ -205,18 +238,18 @@
         <!-- ═══ UPGRADE EXISTING ═══ -->
         <StackPanel Visibility="{Binding IsUpgradeMode, Converter={StaticResource BoolToVis}}">
             <StackPanel Margin="0,0,0,14">
-                <controls:SectionHeader Title="UPGRADE EXISTING PACKAGE"/>
+                <controls:SectionHeader Title="Upgrade an existing package"/>
                 <TextBlock Text="create a new version, reusing the existing install logic" Style="{StaticResource SubText}" Margin="0,8,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <Border Style="{StaticResource Card}" Padding="22,20,22,22">
+            <Border Style="{StaticResource Card}" IsEnabled="{Binding CanEditPackageInputs}" Padding="22,20,22,22">
                 <StackPanel>
                     <TextBlock Text="Existing Package Folder" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,6,0,0">
                         <TextBox AutomationProperties.Name="Existing Package Folder" Style="{StaticResource MonoField}" Padding="11,0,86,0" IsReadOnly="True"
                                  local:PlaceholderText.Text="Select the existing PSADT package folder"
                                  Text="{Binding Upgrade.ExistingPackagePath, Mode=OneWay}"/>
-                        <Button Style="{StaticResource BrowseButton}" Content="BROWSE"
+                        <Button Style="{StaticResource BrowseButton}" Content="Browse…"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
                                 Margin="0,0,5,0" Click="BrowseUpgradePackage_Click"/>
                     </Grid>
@@ -229,11 +262,11 @@
                                        Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
                             <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                                 <TextBlock Text="{Binding Upgrade.PackageDisplayVersion}" FontFamily="{StaticResource MonoFontFamily}"
-                                           FontSize="10.5" Foreground="{DynamicResource Muted2Brush}"/>
-                                <TextBlock Text=" · " FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5"
+                                           FontSize="12" Foreground="{DynamicResource Muted2Brush}"/>
+                                <TextBlock Text=" · " FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
                                            Foreground="{DynamicResource Dim2Brush}"/>
                                 <TextBlock Text="{Binding Upgrade.PackageDisplayContext}" FontFamily="{StaticResource MonoFontFamily}"
-                                           FontSize="10.5" Foreground="{DynamicResource Muted2Brush}"/>
+                                           FontSize="12" Foreground="{DynamicResource Muted2Brush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -251,7 +284,7 @@
                                 <TextBox AutomationProperties.Name="New Source File" Style="{StaticResource MonoField}" Padding="11,0,86,0" IsReadOnly="True"
                                          local:PlaceholderText.Text="Select the new MSI/EXE"
                                          Text="{Binding Upgrade.NewSourcePath, Mode=OneWay}"/>
-                                <Button Style="{StaticResource BrowseButton}" Content="BROWSE"
+                                <Button Style="{StaticResource BrowseButton}" Content="Browse…"
                                         HorizontalAlignment="Right" VerticalAlignment="Center"
                                         Margin="0,0,5,0" Click="BrowseUpgradeSource_Click"/>
                             </Grid>
@@ -267,10 +300,10 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" VerticalAlignment="Center" Fill="{DynamicResource MarkBrush}"/>
+            <StackPanel Margin="0,16,0,0">
+                <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" HorizontalAlignment="Left" VerticalAlignment="Center" Fill="{DynamicResource MarkBrush}"/>
                 <TextBlock Text="{Binding Upgrade.StatusText}" Margin="10,0,0,0" VerticalAlignment="Center"
-                           FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" LineHeight="17"
+                           FontFamily="{StaticResource MonoFontFamily}" FontSize="12" LineHeight="18"
                            Foreground="{DynamicResource Muted2Brush}" TextWrapping="Wrap"/>
             </StackPanel>
         </StackPanel>

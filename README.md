@@ -76,7 +76,7 @@ In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start; this file is 
 - Live PSADT console output, colour-coded, with copy progress while the package is staged.
 - **Install**, **Uninstall**; exit codes `0` / `3010` / `1641` treated as success.
 - Optional cleanup of the staged copy on the target after each run.
-- Recent target machines remembered (last 8), with a ping **CHECK**.
+- Recent target machines remembered (last 8), with a **Ping** action.
 - **Detection-rule discovery** — after a successful install Packman searches the target for the
   executable that was actually installed and proposes a file/version rule, which can be pushed
   straight into the publish step.
@@ -115,7 +115,7 @@ In a hurry? **[HOWTO.md](HOWTO.md)** is the five-step quick start; this file is 
 - **Edit detection rules** on a published app (add, edit, delete) and PATCH them back.
 - **Edit assignments** on a published app — add or remove groups.
 - **Group membership** slide-over: list members, search devices and users, add and remove them.
-- **Retire** an app from the tenant.
+- **Delete** an app from the tenant, with an explicit confirmation. Deleting the Intune record does not uninstall copies on devices.
 - **Advanced** directory tools: bulk-add PCs to a group, list a PC's groups, and list every app
   targeting a group.
 
@@ -266,7 +266,7 @@ Defaults applied to every upload started from the **Create Package** wizard:
   `%appName%`, `%appVersion%`. A live preview shows how the name resolves.
 - **Create an uninstall group for each package** — same, always assigned with the *Uninstall* intent.
 - **Always assign these existing groups** — a list of group names, each with its own intent. These
-  pre-fill the assignment picker on the wizard's Upload step, where you can still edit them per
+  pre-fill the assignment picker on the wizard's Configure step, where you can still edit them per
   package.
 
 ### Intune Defaults
@@ -282,20 +282,19 @@ Defaults applied to every upload started from the **Create Package** wizard:
 
 Dark (default), Light, or System (follows the Windows app theme). Applied and saved on change.
 
-> **WDAC Hyper-V**, **GitLab** and **Key Vault Caching** appear in the rail marked *SOON* and are
-> not implemented.
+Only implemented settings are shown. Appearance saves immediately; other changes use **Save settings**. Save and error feedback stays below the settings content.
 
 ---
 
 ## Creating a package
 
-**Create Package** in the sidebar runs a three-step wizard — **Generate → Upload → Review** — with
-two optional side trips (Edit Script, Remote Test) available from the Generate step. `↵` triggers
+**Create Package** in the sidebar runs a three-step wizard — **Package → Configure → Review & publish** — with
+two optional side trips (Edit Script, Remote Test) available from the Package step. `↵` triggers
 the primary button; **← Back** steps back.
 
-### Step 1 — Generate
+### Step 1 — Package
 
-1. Leave the mode toggle on **CREATE NEW**.
+1. Leave the mode toggle on **Create new**.
 
 2. **Pick the source installer.** Press **BROWSE**, or drag an MSI/EXE straight onto the Sources
    Path field. What happens next depends on the file type:
@@ -320,7 +319,7 @@ the primary button; **← Back** steps back.
    - **SYSTEM** — installs for all users, elevated. The usual choice for managed apps.
    - **USER** — installs for the current user only, without elevation.
 
-5. Press **GENERATE PACKAGE**.
+5. Press **Generate package**.
 
 **What generation actually does.** Packman copies your PSADT template into
 
@@ -343,8 +342,8 @@ then rewrites `Invoke-AppDeployToolkit.ps1` — `AppVendor`, `AppName`, `AppVers
 If that version folder already exists you are asked whether to **replace** it; declining cancels
 without touching anything.
 
-Once a package exists, the **BEFORE YOU PUBLISH** card offers three optional actions — **Edit
-script**, **Remote test**, **Open folder** — and the primary button becomes **CONTINUE TO UPLOAD**.
+Once a package exists, the **Prepare for deployment** card offers three optional actions — **Edit
+script**, **Remote test**, **Open folder** — and the primary button becomes **Continue to configure**.
 
 ---
 
@@ -379,25 +378,26 @@ WinRM is only the transport — the install itself runs from a one-shot **schedu
 remote session runs as the connecting admin and would not match Intune's identity.
 
 1. **Package** — pre-filled with the package the wizard just generated. On the standalone
-   **Remote Test** page (sidebar) there is no wizard package, so **BROWSE FOR PACKAGE** and pick one
+   **Remote Test** page (sidebar) there is no wizard package, so **Browse for package** and pick one
    built earlier; name and version are read back out of its script.
-2. **Computer Name** — type it or pick a recent one, then **CHECK** to ping it.
+2. **Computer Name** — type it or pick a recent one, then **Ping** to check reachability.
 3. **Run Context**:
    - **SYSTEM** (default) — runs as `NT AUTHORITY\SYSTEM`, the identity the Intune Management
-     Extension uses. This is the one that matches production: SYSTEM has a different `%TEMP%` and
+     Extension uses for a System-context deployment. SYSTEM has a different `%TEMP%` and
      HKCU, and reaches network shares as the *machine* account, so a package that works under your
      own login can still fail here.
    - **USER** — runs in the logged-on user's session, so their profile and HKCU apply and the PSADT
-     dialogs are visible. Somebody must be logged on.
+     dialogs can be visible when the deployment mode permits interaction. Somebody must be logged on.
+   Choose the context that matches the app’s configured Intune install behavior.
 4. Optionally tick **Delete the staged package from the target after the run** (off by default, so
    a re-run only copies what changed). The setting is remembered.
-5. **RUN INSTALL** copies the package to `C:\Temp\Packman\...` over the admin share, registers the
-   task, and streams PSADT's output into the console. **RUN UNINSTALL** does the same with
+5. **Run install** copies the package to `C:\Temp\Packman\...` over the admin share, registers the
+   task, and streams PSADT's output into the console. **Run uninstall** does the same with
    `-DeploymentType Uninstall`.
 6. After a successful install Packman waits for the registry to settle and searches the target for
    the executable that was installed, proposing a **detection rule** from its real path and
-   version. **DISCOVER DETECTION RULE** re-runs that search on its own.
-7. **USE FOR PUBLISH** pushes that rule into the wizard's Upload step. This is only available for
+   version. **Discover detection rule** re-runs that search on its own.
+7. **Use for publishing** pushes that rule into the wizard's Configure step. This is only available for
    the wizard's own package — a package picked from the share has no publish step to feed.
 
 Exit codes `0`, `3010` and `1641` count as success (the latter two mean *reboot required*).
@@ -406,7 +406,7 @@ Exit codes `0`, `3010` and `1641` count as success (the latter two mean *reboot 
 
 ## Publishing to Intune
 
-### Step 2 — Upload
+### Step 2 — Configure
 
 **Nothing is sent to Intune from this step.** It is where you decide how the app will land, and
 every field here is pre-filled from Settings and then editable for this one package.
@@ -424,7 +424,7 @@ every field here is pre-filled from Settings and then editable for this one pack
    | **File version** | path + file name + version to compare (`>=`) | non-MSI packages: the version is pre-filled from the package, the path is yours to supply |
    | **Registry key** | hive + key path + optional value name | — |
 
-   If you ran a remote test, **USE FOR PUBLISH** will have filled a file/version rule in from the
+   If you ran a remote test, **Use for publishing** will have filled a file/version rule in from the
    real install. Packman refuses to upload an incomplete rule — Intune would accept it and then
    never detect the app, so a Required assignment would reinstall forever.
 
@@ -432,9 +432,9 @@ every field here is pre-filled from Settings and then editable for this one pack
 
    | Mode | Behaviour |
    |---|---|
-   | **Auto** (default) | PSADT decides: dialogs when a user is logged on, silent otherwise. |
-   | **Interactive** | Always shows the PSADT dialogs. |
-   | **NonInteractive** | Shows dialogs but never waits for the user. |
+   | **Auto** (default) | PSADT chooses from session state and toolkit configuration; behavior depends on the PSADT version. |
+   | **Interactive** | For attended testing; do not rely on user interaction during an Intune installation. |
+   | **NonInteractive** | Does not wait for user input; progress may be shown when a suitable user session exists. |
    | **Silent** | No dialogs at all. |
 
    Anything other than *Auto* appends `-DeployMode <mode>` to **both** command lines; the result is
@@ -445,22 +445,25 @@ every field here is pre-filled from Settings and then editable for this one pack
    success/retry/failure return-code map. Pre-filled from Settings ▸ Intune Defaults, editable per
    package, with **restore defaults**.
 
-5. **Assignment** (right-hand column) — who gets the app. Pre-filled with the groups from
+5. **Assignments** — who gets the app. Pre-filled with the groups from
    Settings ▸ Group Assignment (each resolved against Entra when the step opens). To change it:
    pick an intent — **Required** (installs it), **Available** (offers it in Company Portal) or
    **Uninstall** (removes it) — type at least part of a group name, and click a result to add it as
-   a chip. Each chip keeps **its own** intent, so one package can push to a pilot group as Required,
+   a chip. Each row keeps **its own** intent, so one package can push to a pilot group as Required,
    offer itself to a wider group as Available, and remove itself from a third, all in one upload.
-   Remove any chip you do not want for this package. A default group that no longer exists in Entra
+   Remove any row you do not want for this package. A default group that no longer exists in Entra
    is shown but skipped, with a note saying so.
 
-### Step 3 — Review
+### Step 3 — Review & publish
 
-Everything you chose, read-only, in one place: package metadata, size, deploy mode, both command
-lines, the detection rule, minimum OS and the assignment chips. Check it, confirm you are signed in
-and that the IntuneWinAppUtil path is set, then press **BUILD & UPLOAD**.
+Everything you chose, read-only, in one place: destination tenant, package metadata, source size, deploy mode, command lines, detection, requirements, return codes and assignments. Per-package groups that will be created or reused are listed separately. **Edit package**, **Configure**, and **Open remote test** return directly to the relevant task. Check it, confirm you are signed in
+and that the IntuneWinAppUtil path is set, then press **Build & publish**.
 
-**What upload actually does**, with a five-stage overlay:
+Before signing or building, Packman checks the staged `Application/` folder for the PSADT script, launcher and module manifest. It parses the script without executing it and blocks syntax errors and the generated EXE `<silent flags>` / `<uninstall flags>` placeholders. This is a preflight check, not proof that the installer works: test both installation and removal on a representative device.
+
+Use **Silent** for unattended Intune deployment. Microsoft's Win32 guidance requires installation without user interaction. PSADT Auto behavior also depends on toolkit version and configuration; see [Microsoft's Win32 app guidance](https://learn.microsoft.com/en-us/intune/app-management/deployment/add-win32) and [PSADT deployment modes](https://psappdeploytoolkit.com/docs/explanation/deployment-modes).
+
+**What upload actually does**, with a shared five-stage progress panel:
 
 1. **Signs** the deploy script, if code signing is enabled in Settings.
 2. **Builds** the `.intunewin` into the package's `Intune` folder using `IntuneWinAppUtil.exe`.
@@ -488,13 +491,13 @@ the assignment simply is not, and the log names the group that failed.
 
 ## Upgrading a package to a new version
 
-From **Create Package**, switch the mode toggle to **UPGRADE EXISTING**:
+From **Create Package**, switch the mode toggle to **Upgrade existing**:
 
 1. **BROWSE** to the existing package folder. Packman reads its vendor, name, version and install
    context back out of the script.
 2. Select the **new source installer**; the new version is auto-filled from its metadata (edit it if
    you disagree).
-3. Press **UPGRADE PACKAGE**.
+3. Press **Upgrade package**.
 
 The old package is copied forward — **keeping your script edits** — the new installer replaces the
 old one under `Files\`, the script metadata and MSI product code are refreshed, and the icon is
@@ -548,8 +551,8 @@ session — **Refresh** forces a re-fetch, and it reports progress while paging 
 
 ### Application detail
 
-The header carries **Update version**, **Edit script**, **View in Intune** and copy buttons for the
-App ID. Three tabs:
+The header carries **Republish content** and **Edit script**. The sidebar has **View in Intune**,
+the App ID with a copy action, and **Delete from Intune**. Three tabs:
 
 **Overview** — publisher, version, category, package type, size, dates, publishing state,
 description, and the current assignments (read-only here; *Manage in Deployment* jumps to the tab
@@ -566,8 +569,9 @@ matching `<Vendor>_<AppName>\<Version>` folder and runs an integrity check:
 | `Icon\…` | icon archived with the package |
 
 From here you can **copy the path**, **open the folder**, or **edit the script** in VS Code / ISE.
-The tab also shows the **install and uninstall command lines** (with copy buttons) and the
-**detection rules**, which you can edit here:
+
+**Deployment** — **install and uninstall command lines** (with copy buttons), editable
+**detection rules**, requirements and assignment groups. The detection editor supports:
 
 - **Add rule** — MSI, File or Registry.
 - Inline edit of path, file/folder or value name, detection type (exists, does not exist, version,
@@ -577,16 +581,16 @@ The tab also shows the **install and uninstall command lines** (with copy button
 - Saving PATCHes the whole rule array back to Intune; devices re-evaluate at their next check-in.
 - **PowerShell script** detection rules are shown but cannot be edited in Packman.
 
-**Deployment** — requirements (install context, restart behaviour, max install time, disk space),
-the **assignment groups**, and the deployment status rollup: targeted devices with an
-installed / pending / failed bar plus not-installed and not-applicable counts.
+Requirements show install context, restart behavior, maximum install time and disk space.
+The sidebar shows the deployment rollup: targeted devices with an installed / pending / failed
+bar plus not-installed and not-applicable counts. Assignment actions include:
 
 - Add an assignment: pick Required / Available / Uninstall, search Entra, add.
 - Remove an assignment.
 - Click a group to open the **members** slide-over: the first 100 members, a search box over devices
   and users, and add/remove. Membership changes affect **every** app assigned to that group — the
   panel says so. Built-in targets (All Devices / All Users) have no member list.
-- **Retire from Intune** (bottom of the tab) removes the app and its assignments from the tenant
+- **Delete from Intune** (sidebar) removes the app and its assignments from the tenant
   after a confirmation. It cannot be undone; devices keep their installed copy.
 
 ---
@@ -645,10 +649,9 @@ Known limits, so you do not go looking:
 - On a published app you can edit **detection rules** and **assignments** only. Display name,
   description, publisher, command lines, requirements, return codes and the icon cannot be changed
   from Packman — publish a new version, or edit those in the Intune admin center.
-- You cannot **replace the content** of an existing app; a new version is uploaded as a new app,
-  with supersedence pointing back at the old one.
+- **Republish content** rebuilds the existing source folder and replaces the content served by the same Intune app. It preserves metadata, detection, commands and assignments. For a new application version with supersedence, use **Create package → Upgrade existing**.
 - **PowerShell script** detection rules can be viewed but not edited.
-- **Retire** deletes the app in the tenant. There is no soft-retire, no archive and no undo.
+- **Delete from Intune** deletes the app in the tenant. There is no soft-retire, archive or undo. Use an Uninstall assignment to remove an installed app from devices.
 
 **Assignments**
 
@@ -665,7 +668,7 @@ Known limits, so you do not go looking:
 
 **Wizard and testing**
 
-- The Remote Test **USE FOR PUBLISH** button only works for the package the wizard generated. A
+- The Remote Test **Use for publishing** button only works for the package the wizard generated. A
   package browsed from the share has no publish step to feed.
 - The remote test runs **Install** and **Uninstall** only — there is no Repair button.
 - Remote testing needs WinRM enabled on the target, firewall access, and administrative rights (the
@@ -673,11 +676,10 @@ Known limits, so you do not go looking:
 - Detection discovery searches for an installed **executable**. Packages that install no `.exe`, or
   whose executable name looks like an uninstaller/setup/helper, will not produce a rule — set one by
   hand.
-- The wizard's Upload step takes **one** detection rule. Use the standalone **Upload to Intune** page
+- The wizard's Configure step takes **one** detection rule. Use the standalone **Upload to Intune** page
   when you need several.
 - The standalone Upload page has no deploy-mode picker and no icon upload.
-- **Update version** on an application's detail page navigates to the Create Package wizard but does
-  not pre-fill it — select the existing package and the new installer yourself.
+- **Republish content** on Application Detail updates the same app, not its metadata or detection rules. Review those rules separately when changing the installed application.
 
 **Performance and scale**
 
@@ -700,13 +702,13 @@ Known limits, so you do not go looking:
 | *Sign in to Intune on the Settings page first.* | Sign in, then **Test connection**, before uploading. |
 | Connection test shows a red scope | That scope has not been consented. For interactive sign-in, have an admin consent; for app registration, add the application permission and grant consent. |
 | *Detection needs a path and a file name.* | The upload is blocked deliberately — Intune would accept an incomplete rule and then never detect the app. |
-| The app installs but Intune keeps reinstalling it | The detection rule does not match reality. Remote-test the package and use **DISCOVER DETECTION RULE**, or fix the rule on the app's Package tab. |
+| The app installs but Intune keeps reinstalling it | The detection rule does not match reality. Remote-test the package and use **Discover detection rule**, or fix the rule on the app's Deployment tab. |
 | An EXE package "succeeds" but installs nothing | The `<silent flags>` placeholder was never replaced. Open the script and put the installer's real silent switches in. |
 | The in-app editor shows a plain note instead of code | The Edge **WebView2 Runtime** is missing. Install it, or use **Open in VS Code**. |
 | Remote test: *WinRM connection failed* | Run `Enable-PSRemoting -Force` on the target and allow WinRM through its firewall. |
 | Remote test: *&lt;host&gt; is not reachable* | The target did not answer a ping — check the name and that it is powered on. Some networks block ICMP while WinRM still works; try the run anyway. |
 | Remote test: *No user is logged on…* | A **USER** context run needs somebody signed in to the target. Use **SYSTEM**, or log on first. |
-| Remote test: *No matching application files found* | Detection discovery could not find the installed executable — set the detection rule by hand on the Upload step. |
+| Remote test: *No matching application files found* | Detection discovery could not find the installed executable — set the detection rule by hand on the Configure step. |
 | Upload failed partway | Read the per-upload log under `%LocalAppData%\Packman\Logs\Upload\`; its path is printed at the start of the run. Anything half-created in the tenant is deleted automatically. |
 | Group not assigned after upload | The name did not resolve to an Entra group. The log names it under *GROUP ASSIGNMENT*. |
 | Settings will not save | Packman writes to `%LocalAppData%\Packman\`; the page reports the actual error under the Save button. |
@@ -730,7 +732,8 @@ Packman/
   ViewModels/     one per screen and wizard step, plus the shared publish overlay
                   and editor session
   Views/          XAML screens and wizard steps
-    Controls/     SectionHeader, GroupPickerControl, PublishStepList
+    Controls/     shared headings, assignment picker, return-code editor, publishing
+                  status, and six focused Settings sections
   Helpers/        the PSADT script editor (PsadtScript), package paths, MSI/EXE
                   metadata, icon extraction, converters
   Themes/         light/dark palettes, styles, icons
@@ -739,7 +742,8 @@ Packman/
   PSADT/          bundled PSADT v4 template (script only)
   Tools/          Update-PsadtCatalog.ps1, regenerates the function catalog
   PSADT_v4_Functions*.csv   function catalog behind the editor's IntelliSense
-Packman.Tests/    xunit tests for the script editing, package paths and Graph payloads
+Packman.Tests/    xunit tests for scripts, package paths, preflight and Graph payloads;
+                  Windows-only WPF layout smoke tests with light/dark PNG previews
 packages/         vendored .nupkg files for offline restore
 .github/workflows/build.yml   restore, build and test on windows-latest
 ```
@@ -749,3 +753,10 @@ packages/         vendored .nupkg files for offline restore
 ## License
 
 [Apache License 2.0](LICENSE) — Copyright 2026 TechLakeRS.
+
+
+## UI design and validation
+
+The desktop UI uses a shared type scale, sentence-case actions, larger form controls and keyboard focus indicators. The installer appears before its editable metadata, with a live package summary beside it. Configuration and assignments use the available width; publishing feedback is shared by both entry points. Application Detail distinguishes **Republish content**, version upgrades and **Delete from Intune**.
+
+See [the UI design notes](docs/UI-DESIGN.md) for scope, component structure and verification. Windows CI runs on `main`, `codex/**` branches and pull requests, and publishes `ui-previews` artifacts from the WPF layout tests.

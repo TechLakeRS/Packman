@@ -15,6 +15,7 @@
              38x38 box, which the variable-width tabs cannot use. -->
         <Style x:Key="FlatTabButton" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
@@ -32,21 +33,21 @@
         <DataTemplate x:Key="FileTabTemplate">
             <Border x:Name="TabBorder" CornerRadius="4" Margin="0,0,4,0" Background="Transparent">
                 <StackPanel Orientation="Horizontal">
-                    <Button Style="{StaticResource FlatTabButton}" Padding="9,3" Height="24" ToolTip="{Binding Path}"
+                    <Button Style="{StaticResource FlatTabButton}" Padding="9,3" Height="30" ToolTip="{Binding Path}"
                             Command="{Binding DataContext.Editor.ActivateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding Name}" FontFamily="{StaticResource MonoFontFamily}"
-                                       FontSize="11.5" Foreground="{DynamicResource CodeBarTxtBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="●" Margin="5,0,0,0" FontSize="10" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource CodeBarTxtBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="●" Margin="5,0,0,0" FontSize="12" VerticalAlignment="Center"
                                        Foreground="{DynamicResource WarnBrush}" ToolTip="Unsaved changes"
                                        Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource FlatTabButton}" Width="18" Height="24" Margin="0,0,4,0" ToolTip="Close"
+                    <Button Style="{StaticResource FlatTabButton}" Width="18" Height="30" Margin="0,0,4,0" ToolTip="Close"
                             Command="{Binding DataContext.Editor.CloseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}">
-                        <TextBlock Text="✕" FontSize="10" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                        <TextBlock Text="✕" FontSize="12" Foreground="{DynamicResource CodeBarTxtBrush}"/>
                     </Button>
                 </StackPanel>
             </Border>
@@ -61,10 +62,10 @@
         <DataTemplate x:Key="SearchHitTemplate">
             <StackPanel Margin="2,3">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                    <TextBlock Text="{Binding LineLabel}" Margin="6,0,0,0" FontSize="10.5" Foreground="{DynamicResource MutedBrush}"/>
+                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                    <TextBlock Text="{Binding LineLabel}" Margin="6,0,0,0" FontSize="12" Foreground="{DynamicResource MutedBrush}"/>
                 </StackPanel>
-                <TextBlock Text="{Binding Preview}" FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5"
+                <TextBlock Text="{Binding Preview}" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
                            Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
         </DataTemplate>
@@ -80,7 +81,7 @@
             <Border Grid.Row="0" Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
                     CornerRadius="4" Padding="20" VerticalAlignment="Top"
                     Visibility="{Binding Editor.HasPackage, Converter={StaticResource InverseBoolToVis}}">
-                <TextBlock Text="No package generated yet. Go back to the Generate step to create the package first."
+                <TextBlock Text="No package generated yet. Go back to the Package step to create the package first."
                            FontSize="12.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"/>
             </Border>
 
@@ -122,7 +123,7 @@
                                 <Viewbox Width="14" Height="14">
                                     <Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource InkBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
                                 </Viewbox>
-                                <TextBlock Text="{Binding Editor.PackageName}" Margin="7,0,0,0" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Editor.PackageName}" Margin="7,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                             <Button Grid.Column="1" Style="{StaticResource IconButton}" Width="28" Height="28" Background="Transparent" BorderThickness="0"
                                     ToolTip="Refresh files" Click="RefreshTree_Click">
@@ -221,9 +222,9 @@
                         <Border Grid.Row="2" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,5,14,7">
                             <Grid>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Editor.CursorText}" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock Text="{Binding Editor.SelectionText}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock Text="{Binding Editor.StatusProblems}" Margin="12,0,0,0" FontSize="11">
+                                    <TextBlock Text="{Binding Editor.CursorText}" FontSize="12" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.SelectionText}" Margin="12,0,0,0" FontSize="12" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.StatusProblems}" Margin="12,0,0,0" FontSize="12">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="{DynamicResource CodeBarTxtBrush}"/>
@@ -237,11 +238,11 @@
                                     </TextBlock>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <TextBlock Text="{Binding Editor.StatusEol}" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock Text="{Binding Editor.StatusEncoding}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
-                                    <TextBlock Text="{Binding Editor.StatusLanguage}" Margin="12,0,0,0" FontSize="11" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.StatusEol}" FontSize="12" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.StatusEncoding}" Margin="12,0,0,0" FontSize="12" Foreground="{DynamicResource CodeBarTxtBrush}"/>
+                                    <TextBlock Text="{Binding Editor.StatusLanguage}" Margin="12,0,0,0" FontSize="12" Foreground="{DynamicResource CodeBarTxtBrush}"/>
                                     <Border Background="{DynamicResource PrimaryDimBrush}" BorderBrush="{DynamicResource PrimaryLineBrush}" BorderThickness="1" CornerRadius="4" Padding="7,1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="PSADT INTELLISENSE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+                                        <TextBlock Text="PSADT IntelliSense" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
                                     </Border>
                                 </StackPanel>
                             </Grid>

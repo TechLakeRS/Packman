@@ -37,6 +37,7 @@
 
             <!-- Header -->
             <Grid Margin="0,0,0,20">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -45,7 +46,7 @@
 
                 <Border Grid.Column="0" Width="58" Height="58" CornerRadius="4" VerticalAlignment="Center"
                         Background="{Binding Detail.TileColor, Converter={StaticResource HexToBrush}}">
-                    <TextBlock Text="{Binding Detail.Initial}" Foreground="White" FontWeight="Bold" FontSize="26"
+                    <TextBlock Text="{Binding Detail.Initial}" Foreground="White" FontWeight="SemiBold" FontSize="26"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
@@ -56,13 +57,13 @@
                                TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="16,16,0,0" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource GhostButton}" Margin="0,0,9,0" Click="Update_Click"
                             IsEnabled="{Binding CanUpdatePackage}"
-                            ToolTip="Rebuild the .intunewin from the source share and publish it as new content for this app. All other settings stay as they are.">
+                            ToolTip="Rebuild content for this same Intune app. For a new app version with supersedence, use Create package → Upgrade existing.">
                         <StackPanel Orientation="Horizontal">
                             <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconRefresh}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
-                            <TextBlock Text="Update version" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Republish content" Margin="7,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource GhostButton}" Click="EditScript_Click"
@@ -78,11 +79,11 @@
             <!-- Tabs: Overview / Package / Deployment -->
             <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1" Margin="0,0,0,20">
                 <StackPanel Orientation="Horizontal">
-                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Overview"
+                    <RadioButton Style="{StaticResource DetailTab}" Content="Overview"
                                  IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=overview}"/>
-                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Package"
+                    <RadioButton Style="{StaticResource DetailTab}" Content="Package"
                                  IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=package}"/>
-                    <RadioButton Style="{StaticResource DetailTab}" GroupName="DetailTabs" Content="Deployment"
+                    <RadioButton Style="{StaticResource DetailTab}" Content="Deployment"
                                  IsChecked="{Binding Tab, Mode=TwoWay, Converter={StaticResource StringMatch}, ConverterParameter=deployment}"/>
                 </StackPanel>
             </Border>
@@ -92,7 +93,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="22"/>
-                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="270"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Main column -->
@@ -211,7 +212,7 @@
                                         <TextBlock Grid.Column="0" Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
                                                    FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                         <Button Grid.Column="1" Style="{StaticResource GhostButton}" Height="28" Padding="10,0" Margin="10,0,0,0"
-                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="11.5"/>
+                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="12"/>
                                     </Grid>
                                 </Border>
                             </StackPanel>
@@ -233,18 +234,18 @@
                                         <TextBlock Grid.Column="0" Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
                                                    FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                         <Button Grid.Column="1" Style="{StaticResource GhostButton}" Height="28" Padding="10,0" Margin="10,0,0,0"
-                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="11.5"/>
+                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="12"/>
                                     </Grid>
                                 </Border>
-                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                                    <Button Style="{StaticResource GhostButton}" Click="OpenFolder_Click" IsEnabled="{Binding HasSource}">
+                                <DockPanel Margin="0,12,0,0">
+                                    <Button DockPanel.Dock="Left" Style="{StaticResource GhostButton}" VerticalAlignment="Top" Click="OpenFolder_Click" IsEnabled="{Binding HasSource}">
                                         <StackPanel Orientation="Horizontal">
                                             <Viewbox Width="15" Height="15"><Path Data="{StaticResource IconFolder}" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/></Viewbox>
                                             <TextBlock Text="Open folder" Margin="7,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </Button>
-                                    <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
-                                        <Viewbox Width="13" Height="13">
+                                    <DockPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                        <Viewbox DockPanel.Dock="Left" Width="13" Height="13">
                                             <Viewbox.Style>
                                                 <Style TargetType="Viewbox">
                                                     <Style.Triggers>
@@ -256,7 +257,7 @@
                                             </Viewbox.Style>
                                             <Path Data="{StaticResource IconCheck}" Stroke="{DynamicResource OkBrush}" StrokeThickness="2.4" Style="{StaticResource Icon}"/>
                                         </Viewbox>
-                                        <TextBlock Text="{Binding SourceHintText}" FontSize="12" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SourceHintText}" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="{DynamicResource OkBrush}"/>
@@ -268,8 +269,8 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                    </StackPanel>
-                                </StackPanel>
+                                    </DockPanel>
+                                </DockPanel>
                             </StackPanel>
                         </Border>
 
@@ -410,7 +411,7 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
                                                         <Border Grid.Column="0" Background="{DynamicResource PrimaryDimBrush}" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding TypeTag}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                            <TextBlock Text="{Binding TypeTag}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
                                                         </Border>
                                                         <TextBlock Grid.Column="1" Text="{Binding Summary}" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
                                                                    Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
@@ -515,37 +516,37 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                                 <TextBlock Text="Saving patches the app in Intune; devices re-evaluate detection at their next check-in."
-                                           FontSize="11.5" Foreground="{DynamicResource Muted2Brush}" Margin="0,12,0,0"/>
+                                           FontSize="12" Foreground="{DynamicResource Muted2Brush}" Margin="0,12,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
 
-                        <!-- Requirements: four short facts in one sweep -->
+                        <!-- Requirements: readable at the minimum window width -->
                         <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                             <StackPanel>
                                 <TextBlock Text="Requirements" Style="{StaticResource H2}" Margin="0,0,0,12"/>
-                                <UniformGrid Columns="4">
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                <UniformGrid Columns="2" Margin="0,0,-10,-10">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="INSTALL CONTEXT" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.InstallContext}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Install context" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.InstallContext}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="RESTART BEHAVIOR" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.RestartBehaviorText}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Restart behavior" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.RestartBehaviorText}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,0">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="MAX INSTALL TIME" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.MaxRunTimeText}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Maximum install time" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.MaxRunTimeText}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
-                                            <TextBlock Text="DISK SPACE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBlock Text="{Binding Detail.MinDiskSpaceText}" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                            <TextBlock Text="Disk space" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                            <TextBlock Text="{Binding Detail.MinDiskSpaceText}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
                                 </UniformGrid>
@@ -588,7 +589,7 @@
                                                             <Path Data="{StaticResource IconGroup}" Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="1.8" Style="{StaticResource Icon}"/>
                                                         </Viewbox>
                                                     </Border>
-                                                    <TextBlock Grid.Column="1" Text="{Binding GroupName}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                                                    <TextBlock Grid.Column="1" Text="{Binding GroupName}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
                                                                Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                                     <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource StatusBadgeTemplate}"
                                                                     VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -660,11 +661,11 @@
                 <StackPanel Grid.Column="2">
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <TextBlock Text="Deployment status" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,10"/>
+                            <TextBlock Text="Deployment status" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,10"/>
 
                             <StackPanel Visibility="{Binding HasSummary, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Targeted devices" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"/>
-                                <TextBlock Text="{Binding TargetedDevicesText}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,1,0,12"/>
+                                <TextBlock Text="Targeted devices" FontSize="12" Foreground="{DynamicResource MutedBrush}"/>
+                                <TextBlock Text="{Binding TargetedDevicesText}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,1,0,12"/>
                                 <Border Height="9" CornerRadius="4" Background="{DynamicResource Line2Brush}" Margin="0,0,0,14" ClipToBounds="True">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -702,14 +703,14 @@
 
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
-                            <TextBlock Text="Intune publishing" FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Intune publishing" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,0,0,4"/>
                             <ContentControl Tag="State" Style="{StaticResource DlRow}">
                                 <ContentControl Content="{Binding Detail}" ContentTemplate="{StaticResource StatusBadgeTemplate}"/>
                             </ContentControl>
                             <ContentControl Tag="App ID" Style="{StaticResource DlRowMono}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Detail.IdShort}" VerticalAlignment="Center"
-                                               FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" Foreground="{DynamicResource InkBrush}"/>
+                                               FontFamily="{StaticResource MonoFontFamily}" FontSize="12" Foreground="{DynamicResource InkBrush}"/>
                                     <Button Style="{StaticResource RowIconButton}" Width="24" Height="24" Margin="5,0,0,0"
                                             Click="CopyAppId_Click" ToolTip="Copy full App ID">
                                         <Viewbox Width="12" Height="12">
@@ -732,14 +733,14 @@
                     <!-- Danger zone -->
                     <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,16,0,0">
                         <StackPanel>
-                            <TextBlock Text="Retire application" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Removes the app and its assignments from Intune. Devices keep their installed copy."
-                                       FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,10"/>
-                            <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left"
+                            <TextBlock Text="Delete application" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                            <TextBlock Text="Permanently deletes this app and its assignments from Intune. Installed copies stay on devices; use an Uninstall assignment to remove them."
+                                       FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,3,0,10"/>
+                            <Button Style="{StaticResource DangerButton}" HorizontalAlignment="Left"
                                     Foreground="{DynamicResource DangerBrush}" Click="Retire_Click">
                                 <StackPanel Orientation="Horizontal">
                                     <Viewbox Width="15" Height="15" Margin="0,0,8,0"><Path Data="{StaticResource IconTrash}" Stroke="{DynamicResource DangerBrush}" StrokeThickness="1.9" Style="{StaticResource Icon}"/></Viewbox>
-                                    <TextBlock Text="Retire from Intune" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Delete from Intune" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -760,9 +761,9 @@
                 <TextBlock Text="{Binding Detail.DisplayName}" FontSize="12" Margin="0,4,0,0"
                            Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                 <ProgressBar Value="{Binding UpdatePercent, Mode=OneWay}" Maximum="100" Margin="0,18,0,0"/>
-                <TextBlock Text="{Binding UpdateStatus}" FontFamily="{StaticResource MonoFontFamily}" FontSize="11"
+                <TextBlock Text="{Binding UpdateStatus}" FontFamily="{StaticResource MonoFontFamily}" FontSize="12"
                            Foreground="{DynamicResource Muted2Brush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                <Button Style="{StaticResource GhostButton}" Content="CANCEL" HorizontalAlignment="Right"
+                <Button Style="{StaticResource GhostButton}" Content="Cancel" HorizontalAlignment="Right"
                         Margin="0,18,0,0" Click="CancelUpdate_Click"/>
             </StackPanel>
         </Border>
@@ -793,7 +794,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="{Binding FlyoutGroup.GroupName}" FontSize="15" FontWeight="Bold"
+                    <TextBlock Text="{Binding FlyoutGroup.GroupName}" FontSize="15" FontWeight="SemiBold"
                                Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
                     <ContentControl Content="{Binding FlyoutGroup}" ContentTemplate="{StaticResource StatusBadgeTemplate}"
                                     HorizontalAlignment="Left" Margin="0,6,0,0"/>
@@ -807,7 +808,7 @@
             <Border Grid.Row="1" Background="{DynamicResource WarnSoftBrush}" CornerRadius="4" Padding="11,9" Margin="0,0,0,12"
                     Visibility="{Binding FlyoutHasGroup, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="Membership changes affect every app assigned to this group — not just this one."
-                           FontSize="11.5" Foreground="{DynamicResource WarnBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                           FontSize="12" Foreground="{DynamicResource WarnBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
             </Border>
 
             <!-- Add member -->
@@ -833,7 +834,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="12.5" Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource Muted2Brush}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Muted2Brush}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                                     </Grid>
                                 </Button>
                             </DataTemplate>
@@ -858,7 +859,7 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="10.5" FontWeight="Bold"
+                                        <TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="12" FontWeight="SemiBold"
                                                    Foreground="{DynamicResource Muted2Brush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                         <Button Grid.Column="2" Style="{StaticResource RowIconButton}" Width="24" Height="24" Margin="4,0,0,0"
                                                 Click="RemoveMember_Click" ToolTip="Remove from group">
@@ -873,7 +874,7 @@
             </Border>
 
             <!-- Status line -->
-            <TextBlock Grid.Row="5" Text="{Binding MembersStatus}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}"
+            <TextBlock Grid.Row="5" Text="{Binding MembersStatus}" FontSize="12" Foreground="{DynamicResource MutedBrush}"
                        TextWrapping="Wrap" Margin="0,10,0,0"/>
         </Grid>
     </Border>

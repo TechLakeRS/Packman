@@ -1,221 +1,87 @@
 <UserControl x:Class="Packman.Views.StepReview"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:controls="clr-namespace:Packman.Views.Controls"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:local="clr-namespace:Packman"
-             mc:Ignorable="d"
-             FontFamily="{StaticResource UIFontFamily}">
-
-    <!-- Last stop before the push: everything is read-only here, publishing runs in the right rail. -->
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="28"/>
-            <ColumnDefinition Width="380"/>
-        </Grid.ColumnDefinitions>
-
-        <!-- ═══════════ REVIEW ═══════════ -->
-        <StackPanel Grid.Column="0" VerticalAlignment="Top">
-            <controls:SectionHeader Title="REVIEW" Caption="check, then publish" Margin="0,0,0,14"/>
-
-            <!-- App summary strip -->
-            <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" Padding="0" CornerRadius="4">
-                <Grid>
-                    <Border Width="3" HorizontalAlignment="Left" CornerRadius="4,0,0,4" Background="{DynamicResource PrimaryBrush}"/>
-                    <DockPanel Margin="16,14">
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding Upload.ReviewSize}" VerticalAlignment="Center"
-                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="11" Foreground="{DynamicResource DimBrush}"/>
-                        <TextBlock Text="{Binding Upload.AppSummaryName}" VerticalAlignment="Center" MaxWidth="360"
-                                   FontSize="15" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Upload.AppSummaryName}"/>
-                        <TextBlock Text="{Binding Upload.AppSummaryDetail}" Margin="12,0,0,0" VerticalAlignment="Center"
-                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="11"
-                                   Foreground="{DynamicResource Muted2Brush}" TextTrimming="CharacterEllipsis"/>
-                    </DockPanel>
-                </Grid>
-            </Border>
-
-            <!-- Package -->
-            <StackPanel Margin="0,20,0,0">
-                <ContentControl Style="{StaticResource DlRow}" Tag="Name in Intune" Content="{Binding Upload.IntuneDisplayName}"/>
-                <ContentControl Style="{StaticResource DlRow}" Tag="App name" Content="{Binding Upload.ReviewName}"/>
-                <ContentControl Style="{StaticResource DlRow}" Tag="Vendor" Content="{Binding Upload.ReviewVendor}"/>
-                <ContentControl Style="{StaticResource DlRowMono}" Tag="Version" Content="{Binding Upload.ReviewVersion}"/>
-                <ContentControl Style="{StaticResource DlRowMono}" Tag="Author" Content="{Binding Upload.ReviewAuthor}"/>
-                <ContentControl Style="{StaticResource DlRowMono}" Tag="Architecture" Content="{Binding Upload.ReviewArchitecture}"/>
-                <ContentControl Style="{StaticResource DlRow}" Tag="Context" Content="{Binding Upload.ReviewContext}"/>
-                <ContentControl Style="{StaticResource DlRow}" Tag="Type" Content="{Binding Upload.ReviewPackageType}"/>
-                <ContentControl Style="{StaticResource DlRowMono}" Tag="Size" Content="{Binding Upload.ReviewSize}"/>
-            </StackPanel>
-
-            <!-- Sign-in state -->
-            <Border BorderBrush="{DynamicResource WarnLineBrush}" BorderThickness="2,0,0,0" Background="{DynamicResource CardBrush}"
-                    Padding="13,10" Margin="0,20,0,0"
-                    Visibility="{Binding Upload.IsNotSignedIn, Converter={StaticResource BoolToVis}}" CornerRadius="4">
-                <TextBlock FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" Foreground="{DynamicResource WarnBrush}" TextWrapping="Wrap"
-                           Text="Not signed in to Intune. Open Settings and sign in before uploading."/>
-            </Border>
-
-            <StackPanel Orientation="Horizontal" Margin="0,20,0,0"
-                        Visibility="{Binding Upload.IsSignedIn, Converter={StaticResource BoolToVis}}">
-                <Rectangle Width="6" Height="6" RadiusX="3" RadiusY="3" Fill="{DynamicResource OkBrush}" VerticalAlignment="Center"/>
-                <TextBlock Margin="9,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"
-                           FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" Foreground="{DynamicResource Muted2Brush}">
-                    <Run Text="Signed in as"/>
-                    <Run Text="{Binding Upload.SignedInUser, Mode=OneWay}" Foreground="{DynamicResource TextBrush}"/>
-                </TextBlock>
-            </StackPanel>
-        </StackPanel>
-
-        <!-- ═══════════ PUBLISHING ═══════════ -->
-        <StackPanel Grid.Column="2" VerticalAlignment="Top">
-            <!-- Pre-flight, shown until publishing starts -->
-            <StackPanel Visibility="{Binding Upload.Publish.IsNotPublishing, Converter={StaticResource BoolToVis}}">
-                <!-- Deployment -->
-                <controls:SectionHeader Title="DEPLOYMENT" Margin="0,0,0,12"/>
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Packman.Views.Controls"
+    FontFamily="{StaticResource UIFontFamily}">
+    <StackPanel>
+        <StackPanel Visibility="{Binding Upload.Publish.IsNotPublishing, Converter={StaticResource BoolToVis}}">
+            <controls:SectionHeader Title="Review your deployment" Caption="Confirm the package, destination and audience before publishing." Margin="0,0,0,20"/>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,20">
                 <StackPanel>
+                    <TextBlock Text="Destination tenant" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="{Binding Upload.TenantName}" Style="{StaticResource H2}"
+                        Visibility="{Binding Upload.IsSignedIn, Converter={StaticResource BoolToVis}}"/>
+                    <TextBlock Text="{Binding ConnectionStatusText}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Border Style="{StaticResource Card}" VerticalAlignment="Top">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,14">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource Breadcrumb}" Content="Edit package" Command="{Binding GoToStepCommand}" CommandParameter="0"/>
+                            <TextBlock Text="Package" Style="{StaticResource H2}"/>
+                        </DockPanel>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Name in Intune" Content="{Binding Upload.IntuneDisplayName}"/>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Application" Content="{Binding Upload.ReviewName}"/>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Publisher" Content="{Binding Upload.ReviewVendor}"/>
+                        <ContentControl Style="{StaticResource DlRowMono}" Tag="Version" Content="{Binding Upload.ReviewVersion}"/>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Author" Content="{Binding Upload.ReviewAuthor}"/>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Architecture" Content="{Binding Upload.ReviewArchitecture}"/>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Context" Content="{Binding Upload.ReviewContext}"/>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Type" Content="{Binding Upload.ReviewPackageType}"/>
+                        <ContentControl Style="{StaticResource DlRow}" Tag="Source size" Content="{Binding Upload.ReviewSize}"/>
+                    </StackPanel>
+                </Border>
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,14">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource Breadcrumb}" Content="Configure" Command="{Binding GoToStepCommand}" CommandParameter="1"/>
+                                <TextBlock Text="Detection &amp; audience" Style="{StaticResource H2}"/>
+                            </DockPanel>
+                            <TextBlock Text="{Binding Upload.DetectionSummary}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                            <ItemsControl ItemsSource="{Binding Upload.GroupPicker.SelectedGroups}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <TextBlock Text="{Binding ChipText}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="No existing groups selected." Style="{StaticResource SubText}" TextWrapping="Wrap"
+                                Visibility="{Binding Upload.GroupPicker.HasGroups, Converter={StaticResource InverseBoolToVis}}"/>
+                            <TextBlock Text="{Binding Upload.PerPackageGroupsSummary}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Verify before rollout" Style="{StaticResource H2}"/>
+                            <TextBlock Text="Test install and uninstall on a representative device. Check the detection rule against the installed application." Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,8,0,14"/>
+                            <Button Style="{StaticResource GhostButton}" Content="Open remote test" Command="{Binding OpenTestToolCommand}" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+            <Border Style="{StaticResource Card}" Margin="0,20,0,0">
+                <StackPanel>
+                    <TextBlock Text="Installation behavior" Style="{StaticResource H2}" Margin="0,0,0,14"/>
                     <ContentControl Style="{StaticResource DlRow}" Tag="Deploy mode" Content="{Binding Upload.SelectedDeployMode}"/>
                     <ContentControl Style="{StaticResource DlRowMono}" Tag="Install" Content="{Binding Upload.InstallCommandPreview}"/>
                     <ContentControl Style="{StaticResource DlRowMono}" Tag="Uninstall" Content="{Binding Upload.UninstallCommandPreview}"/>
-                    <ContentControl Style="{StaticResource DlRowMono}" Tag="Detection" Content="{Binding Upload.DetectionSummary}"/>
                     <ContentControl Style="{StaticResource DlRow}" Tag="Minimum OS" Content="{Binding Upload.SelectedOperatingSystem}"/>
+                    <TextBlock Text="Intune deployment must complete without user input. Package files and script syntax are checked before signing and building." Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,14,0,0"/>
+                    <Expander Header="Requirements &amp; return codes" Margin="0,16,0,0">
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="{Binding Upload.RequirementsSummary}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                            <ItemsControl ItemsSource="{Binding Upload.ReturnCodes}">
+                                <ItemsControl.ItemTemplate><DataTemplate>
+                                    <ContentControl Style="{StaticResource DlRow}" Tag="{Binding Code}" Content="{Binding Type}"/>
+                                </DataTemplate></ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Expander>
                 </StackPanel>
-
-                <!-- Assignment -->
-                <controls:SectionHeader Title="ASSIGNMENT" Margin="0,24,0,12"/>
-                <ItemsControl ItemsSource="{Binding Upload.GroupPicker.SelectedGroups}"
-                              Visibility="{Binding Upload.GroupPicker.HasGroups, Converter={StaticResource BoolToVis}}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border Background="{DynamicResource PrimaryDimBrush}" BorderBrush="{DynamicResource AccentTextBrush}" BorderThickness="1"
-                                    Padding="11,6" Margin="0,0,8,8" CornerRadius="4">
-                                <TextBlock Text="{Binding ChipText}" FontSize="12.5" Foreground="{DynamicResource InkBrush}"
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Text="No groups assigned - the app publishes unassigned."
-                           FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" Foreground="{DynamicResource DimBrush}"
-                           TextWrapping="Wrap">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Visibility" Value="Visible"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Upload.GroupPicker.HasGroups}" Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-            </StackPanel>
-
-            <!-- Live publish state -->
-            <StackPanel Visibility="{Binding Upload.Publish.IsPublishing, Converter={StaticResource BoolToVis}}">
-                <controls:SectionHeader Title="PUBLISHING" Caption="{Binding Upload.TenantName}" Margin="0,0,0,14"/>
-
-                <StackPanel Orientation="Horizontal">
-                    <Grid Width="30" Height="30" VerticalAlignment="Top">
-                        <!-- running: rotating arc -->
-                        <Grid Visibility="{Binding Upload.Publish.IsRunning, Converter={StaticResource BoolToVis}}" RenderTransformOrigin="0.5,0.5">
-                            <Grid.RenderTransform>
-                                <RotateTransform Angle="0"/>
-                            </Grid.RenderTransform>
-                            <Grid.Style>
-                                <Style TargetType="Grid">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsVisible" Value="True">
-                                            <Trigger.EnterActions>
-                                                <BeginStoryboard Name="Spin">
-                                                    <Storyboard>
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                         From="0" To="360" Duration="0:0:0.9" RepeatBehavior="Forever"/>
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </Trigger.EnterActions>
-                                            <Trigger.ExitActions>
-                                                <StopStoryboard BeginStoryboardName="Spin"/>
-                                            </Trigger.ExitActions>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Grid.Style>
-                            <Ellipse Width="30" Height="30" Stroke="{DynamicResource EdgeBrush}" StrokeThickness="2"/>
-                            <Path Stroke="{DynamicResource AccentTextBrush}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Data="M15,1 A14,14 0 0 1 29,15"/>
-                        </Grid>
-                        <Border BorderBrush="{DynamicResource OkBrush}" BorderThickness="1.5"
-                                Visibility="{Binding Upload.Publish.IsSucceeded, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="&#x2713;" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource OkBrush}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <Border BorderBrush="{DynamicResource BadBrush}" BorderThickness="1.5"
-                                Visibility="{Binding Upload.Publish.IsFailed, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="&#x2715;" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BadBrush}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </Grid>
-
-                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" MaxWidth="320">
-                        <TextBlock Text="{Binding Upload.Publish.Title}" FontSize="14.5" FontWeight="Bold" LineHeight="19"
-                                   Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding Upload.StatusText}" Margin="0,5,0,0" TextWrapping="Wrap"
-                                   FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5" LineHeight="15"
-                                   Foreground="{DynamicResource Muted2Brush}"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <!-- Progress rail -->
-                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Upload.Publish.ProgressValue, Mode=OneWay}" Margin="0,16,0,0">
-                    <ProgressBar.Style>
-                        <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Upload.Publish.IsSucceeded}" Value="True">
-                                    <Setter Property="Foreground" Value="{DynamicResource OkBrush}"/>
-                                    <Setter Property="Value" Value="100"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding Upload.Publish.IsFailed}" Value="True">
-                                    <Setter Property="Foreground" Value="{DynamicResource BadBrush}"/>
-                                    <Setter Property="Value" Value="100"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ProgressBar.Style>
-                </ProgressBar>
-
-                <controls:PublishStepList DataContext="{Binding Upload.Publish}" Margin="0,16,0,0"/>
-
-                <TextBlock Text="{Binding Upload.Publish.ResultText}" Margin="0,14,0,0" TextWrapping="Wrap"
-                           FontFamily="{StaticResource MonoFontFamily}" FontSize="10.5" LineHeight="18">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{DynamicResource Muted2Brush}"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding Upload.Publish.IsFailed}" Value="True">
-                                    <Setter Property="Foreground" Value="{DynamicResource BadBrush}"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-
-                <Button Style="{StaticResource GhostButton}" Content="CANCEL UPLOAD" HorizontalAlignment="Stretch" Margin="0,14,0,0"
-                        Command="{Binding Upload.Publish.CancelCommand}"
-                        AutomationProperties.Name="Cancel upload"
-                        ToolTip="Stops the upload. Anything already created in Intune is removed."
-                        Visibility="{Binding Upload.Publish.IsRunning, Converter={StaticResource BoolToVis}}"/>
-
-                <Button Style="{StaticResource GhostButton}" Content="DONE" HorizontalAlignment="Stretch" Margin="0,14,0,0"
-                        Command="{Binding Upload.Publish.DoneCommand}"
-                        AutomationProperties.Name="Done"
-                        Visibility="{Binding Upload.Publish.IsComplete, Converter={StaticResource BoolToVis}}"/>
-            </StackPanel>
+            </Border>
+            <TextBlock Text="{Binding Upload.StatusText}" Foreground="{DynamicResource WarnBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,18,0,0" AutomationProperties.LiveSetting="Polite"/>
         </StackPanel>
-    </Grid>
+        <controls:PublishStatusControl DataContext="{Binding Upload.Publish}" Visibility="{Binding IsPublishing, Converter={StaticResource BoolToVis}}"/>
+    </StackPanel>
 </UserControl>

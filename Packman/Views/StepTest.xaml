@@ -18,20 +18,20 @@
         <StackPanel Grid.Column="0">
             <Border Style="{StaticResource Card}">
                 <StackPanel>
-                    <controls:SectionHeader Title="PACKAGE" Caption="{Binding PackageSourceCaption}" Margin="0,0,0,14"/>
+                    <controls:SectionHeader Title="Package" Caption="{Binding PackageSourceCaption}" Margin="0,0,0,14"/>
 
                     <StackPanel Visibility="{Binding HasPackage, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="{Binding PackageLabel}" FontSize="13" FontWeight="SemiBold"
                                    Foreground="{DynamicResource InkBrush}" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding PackagePath}" Margin="0,6,0,0" FontSize="11" TextWrapping="Wrap"
+                        <TextBlock Text="{Binding PackagePath}" Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap"
                                    FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource DimBrush}"/>
                     </StackPanel>
 
-                    <TextBlock Text="No package selected. Generate one on the Generate step and it lands here automatically, or browse to a package already built on the share."
+                    <TextBlock Text="No package selected. Generate one on the Package step and it lands here automatically, or browse to a package already built on the share."
                                FontSize="12" LineHeight="18" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"
                                Visibility="{Binding NeedsPackage, Converter={StaticResource BoolToVis}}"/>
 
-                    <Button Style="{StaticResource GhostButton}" Content="BROWSE FOR PACKAGE" HorizontalAlignment="Stretch"
+                    <Button Style="{StaticResource GhostButton}" Content="Browse for package…" HorizontalAlignment="Stretch"
                             Margin="0,12,0,0" Click="BrowsePackage_Click" IsEnabled="{Binding IsIdle}"
                             ToolTip="Pick a PSADT package folder on the share to test."/>
                 </StackPanel>
@@ -39,9 +39,11 @@
 
             <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                 <StackPanel>
-                    <controls:SectionHeader Title="TARGET DEVICE" Caption="{Binding StatusText}" Margin="0,0,0,14"/>
+                    <controls:SectionHeader Title="Target device" Margin="0,0,0,14"/>
 
-                    <TextBlock Text="Computer Name" Style="{StaticResource FieldLabel}"/>
+                    <TextBlock Text="Use a test device with WinRM enabled and admin-share access. User context also needs a signed-in user."
+                        Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                    <TextBlock Text="Computer name" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -52,16 +54,17 @@
                                   Text="{Binding TargetComputer, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                   IsEnabled="{Binding IsIdle}"
                                   ToolTip="Name of the machine to test on. WinRM must be enabled (Enable-PSRemoting)."/>
-                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="CHECK" Margin="8,0,0,0"
+                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Ping" Margin="8,0,0,0"
                                 Command="{Binding CheckOnlineCommand}"/>
                     </Grid>
 
-                    <TextBlock Text="Run Context" Style="{StaticResource FieldLabel}" Margin="0,16,0,0"/>
+                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource SubText}" TextWrapping="Wrap" Margin="0,10,0,0" AutomationProperties.LiveSetting="Polite"/>
+                    <TextBlock Text="Run context" Style="{StaticResource FieldLabel}" Margin="0,16,0,0"/>
                     <Border Style="{StaticResource SegmentGroup}" Margin="0,6,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton Style="{StaticResource ContextToggle}" GroupName="RunCtx" Content="SYSTEM"
+                            <RadioButton Style="{StaticResource ContextToggle}" Content="System"
                                          IsChecked="{Binding IsSystemContext, Mode=TwoWay}" IsEnabled="{Binding IsIdle}"/>
-                            <RadioButton Style="{StaticResource ContextToggle}" GroupName="RunCtx" Content="USER"
+                            <RadioButton Style="{StaticResource ContextToggle}" Content="User"
                                          IsChecked="{Binding RunAsUser, Mode=TwoWay}" IsEnabled="{Binding IsIdle}"/>
                         </StackPanel>
                     </Border>
@@ -76,15 +79,42 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+            <!-- Detection rule discovered on the target -->
+            <Border Style="{StaticResource Card}" Margin="0,18,0,0"
+                    Visibility="{Binding HasDiscoveredRule, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
-                    <controls:SectionHeader Title="TEST ACTIONS" Caption="What to run on the target" Margin="0,0,0,14"/>
+                    <controls:SectionHeader Title="Detection rule" Caption="found on the target" Margin="0,0,0,14"/>
+                    <TextBlock Text="{Binding DiscoveredSummary}" FontSize="12.5" TextWrapping="Wrap"
+                               FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource InkBrush}"/>
 
-                    <Button Style="{StaticResource PrimaryButton}" Content="RUN INSTALL" HorizontalAlignment="Stretch"
-                            Command="{Binding InstallCommand}"/>
-                    <Button Style="{StaticResource GhostButton}" Content="RUN UNINSTALL" HorizontalAlignment="Stretch"
-                            Margin="0,8,0,0" Command="{Binding UninstallCommand}"/>
-                    <Button Style="{StaticResource GhostButton}" Content="DISCOVER DETECTION RULE" HorizontalAlignment="Stretch"
+                    <!-- Only the wizard has a publish step to hand the rule to. -->
+                    <StackPanel Visibility="{Binding HasPublishStep, Converter={StaticResource BoolToVis}}">
+                        <Button Style="{StaticResource GhostButton}" Content="Use for publishing" HorizontalAlignment="Left"
+                                Margin="0,12,0,0" Command="{Binding ApplyDetectionCommand}"
+                                ToolTip="Replace the publish step's detection rule with this one."/>
+                        <TextBlock Text="The publish step holds the wizard's own package, so a package picked from the share cannot feed it."
+                                   Margin="0,8,0,0" FontSize="12" LineHeight="18" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource Muted2Brush}"
+                                   Visibility="{Binding IsSelectedPackage, Converter={StaticResource BoolToVis}}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Actions stay beside device setup, above the live output. -->
+        <StackPanel Grid.Column="2">
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <controls:SectionHeader Title="Test actions" Margin="0,0,0,14"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource PrimaryButton}" Content="Run install" HorizontalAlignment="Stretch"
+                                Command="{Binding InstallCommand}"/>
+                        <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Run uninstall" HorizontalAlignment="Stretch"
+                                Command="{Binding UninstallCommand}"/>
+                    </Grid>
+                    <Button Style="{StaticResource GhostButton}" Content="Discover detection rule" HorizontalAlignment="Stretch"
                             Margin="0,8,0,0" Command="{Binding DetectCommand}"
                             ToolTip="Search the target for the installed executable and build a detection rule from it."/>
 
@@ -98,45 +128,22 @@
                 </StackPanel>
             </Border>
 
-            <!-- Detection rule discovered on the target -->
-            <Border Style="{StaticResource Card}" Margin="0,18,0,0"
-                    Visibility="{Binding HasDiscoveredRule, Converter={StaticResource BoolToVis}}">
-                <StackPanel>
-                    <controls:SectionHeader Title="DETECTION RULE" Caption="found on the target" Margin="0,0,0,14"/>
-                    <TextBlock Text="{Binding DiscoveredSummary}" FontSize="12.5" TextWrapping="Wrap"
-                               FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource InkBrush}"/>
-
-                    <!-- Only the wizard has a publish step to hand the rule to. -->
-                    <StackPanel Visibility="{Binding HasPublishStep, Converter={StaticResource BoolToVis}}">
-                        <Button Style="{StaticResource GhostButton}" Content="USE FOR PUBLISH" HorizontalAlignment="Left"
-                                Margin="0,12,0,0" Command="{Binding ApplyDetectionCommand}"
-                                ToolTip="Replace the publish step's detection rule with this one."/>
-                        <TextBlock Text="The publish step holds the wizard's own package, so a package picked from the share cannot feed it."
-                                   Margin="0,8,0,0" FontSize="11" LineHeight="17" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource Muted2Brush}"
-                                   Visibility="{Binding IsSelectedPackage, Converter={StaticResource BoolToVis}}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-
-        <!-- Console -->
-        <Border Grid.Column="2" Style="{StaticResource Card}">
+        <Border Style="{StaticResource Card}" Margin="0,18,0,0">
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
-                    <TextBlock DockPanel.Dock="Left" Text="OUTPUT" Style="{StaticResource SectionLabel}"/>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource BarButton}" Content="CLEAR"
+                    <TextBlock DockPanel.Dock="Left" Text="Live output" Style="{StaticResource SectionLabel}"/>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource BarButton}" Content="Clear"
                             Command="{Binding ClearLogCommand}"/>
                     <Border Style="{StaticResource Rule}"/>
                 </DockPanel>
 
                 <Border Background="{DynamicResource CodeBgBrush}" BorderBrush="{DynamicResource LineBrush}"
                         BorderThickness="1" CornerRadius="4" Padding="14,12" MinHeight="380" MaxHeight="600">
-                    <ScrollViewer x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer x:Name="ConsoleScroll" MinHeight="360" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <ItemsControl ItemsSource="{Binding Lines}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock FontFamily="{StaticResource MonoFontFamily}" FontSize="11.5" LineHeight="20"
+                                    <TextBlock FontFamily="{StaticResource MonoFontFamily}" FontSize="12" LineHeight="20"
                                                LineStackingStrategy="BlockLineHeight" TextWrapping="Wrap">
                                         <Run Foreground="{DynamicResource CodeCommentBrush}" Text="{Binding Time, Mode=OneWay}"/>
                                         <Run Text=" "/>
@@ -169,5 +176,6 @@
                 </Border>
             </DockPanel>
         </Border>
+        </StackPanel>
     </Grid>
 </UserControl>

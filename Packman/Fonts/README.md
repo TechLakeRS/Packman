@@ -1,6 +1,6 @@
 # Bundled fonts
 
-The console UI uses three families from the design. All are licensed under the
+The UI prefers Segoe UI Variable / Segoe UI, with Cascadia Mono / Consolas for paths and code. These bundled fallback families are licensed under the
 SIL Open Font License 1.1 — https://scripts.sil.org/OFL
 
 - **Instrument Sans** — UI text.
