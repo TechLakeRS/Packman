@@ -10,7 +10,7 @@ SIL Open Font License 1.1 — https://scripts.sil.org/OFL
   Copyright 2020 The JetBrains Mono Project Authors
   https://github.com/JetBrains/JetBrainsMono
 - **Martian Mono** — uppercase letterspaced section labels and button text.
-  Copyright 2020 The Martian Mono Project Authors
+  Copyright 2021 The Martian Mono Project Authors
   https://github.com/evilmartians/mono
 
 The upstream releases are variable fonts. WPF cannot interpolate a variable

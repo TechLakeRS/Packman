@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "id": "Microsoft.ApplicationInsights",
+      "version": "2.22.0",
+      "archive": "packages/microsoft.applicationinsights.2.22.0.nupkg",
+      "sha256": "99443addab694f4d2be3d71ae74b99bb660288b837c9deabdc7cd3af2a9cb840",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://go.microsoft.com/fwlink/?LinkId=392727",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.AspNetCore.App.Runtime.win-x64",
+      "version": "10.0.9",
+      "archive": "packages/microsoft.aspnetcore.app.runtime.win-x64.10.0.9.nupkg",
+      "sha256": "94d77b81a14fc60a189067127706c9a93d14faf3a92da07f0a29132b32507b05",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://asp.net/",
+      "notices": [
+        "third-party/nuget-notices/Microsoft.AspNetCore.App.Runtime.win-x64-10.0.9/LICENSE.txt",
+        "third-party/nuget-notices/Microsoft.AspNetCore.App.Runtime.win-x64-10.0.9/THIRD-PARTY-NOTICES.TXT"
+      ]
+    },
+    {
+      "id": "Microsoft.CodeCoverage",
+      "version": "17.12.0",
+      "archive": "packages/microsoft.codecoverage.17.12.0.nupkg",
+      "sha256": "9468e27e9a43d0e04c069dbca6351f3e2a5a79783bdfd9fc70f86d1d6a28e511",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/microsoft/vstest",
+      "notices": [
+        "third-party/nuget-notices/Microsoft.CodeCoverage-17.12.0/ThirdPartyNotices.txt",
+        "third-party/nuget-notices/Microsoft.CodeCoverage-17.12.0/build/netstandard2.0/ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "Microsoft.Identity.Client",
+      "version": "4.67.2",
+      "archive": "packages/microsoft.identity.client.4.67.2.nupkg",
+      "sha256": "13c8b8444ed35159dae5194dfe8e802d1ee104b93cc972d0c199b69b9832816e",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://go.microsoft.com/fwlink/?linkid=844761",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.Identity.Client.Broker",
+      "version": "4.67.2",
+      "archive": "packages/microsoft.identity.client.broker.4.67.2.nupkg",
+      "sha256": "854ca568d570b9cc4b748724bb91ff34d9b2977732749b124486cb07156ff328",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://go.microsoft.com/fwlink/?linkid=844761",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.Identity.Client.NativeInterop",
+      "version": "0.16.2",
+      "archive": "packages/microsoft.identity.client.nativeinterop.0.16.2.nupkg",
+      "sha256": "8652c52e9e9afaf9d04f5babb771a5228f781b70286b0733620a2868292f7cd5",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/AzureAD/microsoft-authentication-library-for-cpp",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.IdentityModel.Abstractions",
+      "version": "6.35.0",
+      "archive": "packages/microsoft.identitymodel.abstractions.6.35.0.nupkg",
+      "sha256": "6f1c98bbafd081a0384d0601af977e6f32022fe92d964772fed6ffd5f06ed344",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.Management.Infrastructure",
+      "version": "3.0.0",
+      "archive": "packages/microsoft.management.infrastructure.3.0.0.nupkg",
+      "sha256": "bd5a6b8baf5985de61f01ef03fdb240ec817e55ed3b0a237f722d78d65eab272",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/PowerShell/MMI",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.Management.Infrastructure.Runtime.Unix",
+      "version": "3.0.0",
+      "archive": "packages/microsoft.management.infrastructure.runtime.unix.3.0.0.nupkg",
+      "sha256": "b4f959bad08df9a6e680c33200f5cefe7c1b8222a26eb134d338de0b565425ab",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/PowerShell/MMI",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.Management.Infrastructure.Runtime.Win",
+      "version": "3.0.0",
+      "archive": "packages/microsoft.management.infrastructure.runtime.win.3.0.0.nupkg",
+      "sha256": "7206e8f30c824066fb34a97795ba88e4733a6958e9e08fba746e035ef6075f34",
+      "licenseType": "file",
+      "license": "LICENSE.txt",
+      "projectUrl": "https://github.com/PowerShell/MMI",
+      "notices": [
+        "third-party/nuget-notices/Microsoft.Management.Infrastructure.Runtime.Win-3.0.0/LICENSE.txt"
+      ]
+    },
+    {
+      "id": "Microsoft.NET.Test.Sdk",
+      "version": "17.12.0",
+      "archive": "packages/microsoft.net.test.sdk.17.12.0.nupkg",
+      "sha256": "0ca1446e1876c0fcda84d787744a058a0f2d661fcb115ac5739fb3a53e3706d8",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/microsoft/vstest",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.NETCore.App.Runtime.win-x64",
+      "version": "10.0.9",
+      "archive": "packages/microsoft.netcore.app.runtime.win-x64.10.0.9.nupkg",
+      "sha256": "b681046aef7cc0ffa9fec3ad865f033c7165300bd295c4a8902f24150a3fa414",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://dot.net/",
+      "notices": [
+        "third-party/nuget-notices/Microsoft.NETCore.App.Runtime.win-x64-10.0.9/LICENSE.TXT",
+        "third-party/nuget-notices/Microsoft.NETCore.App.Runtime.win-x64-10.0.9/THIRD-PARTY-NOTICES.TXT"
+      ]
+    },
+    {
+      "id": "Microsoft.PowerShell.CoreCLR.Eventing",
+      "version": "7.5.10",
+      "archive": "packages/microsoft.powershell.coreclr.eventing.7.5.10.nupkg",
+      "sha256": "6e965f7abf29e1dd9f393bac17b52055777bd09fff2a95b446918c42769178d7",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/PowerShell/PowerShell",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.PowerShell.Native",
+      "version": "700.0.0",
+      "archive": "packages/microsoft.powershell.native.700.0.0.nupkg",
+      "sha256": "fd9c5048f67d9d7ec2666a8c7062041ccd7041e5e3f086640b4a41c18d9ff2d3",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/PowerShell/PowerShell-Native",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.Security.Extensions",
+      "version": "1.4.0",
+      "archive": "packages/microsoft.security.extensions.1.4.0.nupkg",
+      "sha256": "633343fdc9624fcf2d250f7869c4bb590bf4c52b9b7cc14e613cc59562661ab2",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://aka.ms/getfilesiginforedist",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.TestPlatform.ObjectModel",
+      "version": "17.12.0",
+      "archive": "packages/microsoft.testplatform.objectmodel.17.12.0.nupkg",
+      "sha256": "dd7047052b82c608002251d798a3503653ea32ac0594cf79d80bfa46b2f0d7fc",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/microsoft/vstest",
+      "notices": []
+    },
+    {
+      "id": "Microsoft.TestPlatform.TestHost",
+      "version": "17.12.0",
+      "archive": "packages/microsoft.testplatform.testhost.17.12.0.nupkg",
+      "sha256": "adff128747d0ab8e129debafb3ae2e9e49081e0f243a30c6584df98fd88bc792",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/microsoft/vstest",
+      "notices": [
+        "third-party/nuget-notices/Microsoft.TestPlatform.TestHost-17.12.0/ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "Microsoft.Web.WebView2",
+      "version": "1.0.2903.40",
+      "archive": "packages/microsoft.web.webview2.1.0.2903.40.nupkg",
+      "sha256": "ef128016dd1e51c59178c827ed5b8aa3322c57afa8675d930f8109505542ad74",
+      "licenseType": "file",
+      "license": "LICENSE.txt",
+      "projectUrl": "https://aka.ms/webview",
+      "notices": [
+        "third-party/nuget-notices/Microsoft.Web.WebView2-1.0.2903.40/LICENSE.txt",
+        "third-party/nuget-notices/Microsoft.Web.WebView2-1.0.2903.40/NOTICE.txt"
+      ]
+    },
+    {
+      "id": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+      "version": "10.0.9",
+      "archive": "packages/microsoft.windowsdesktop.app.runtime.win-x64.10.0.9.nupkg",
+      "sha256": "582c8ae14cd3c0f651d8bdd6fcd0d7716489b0498d96decb6fa3220330593155",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://dot.net/",
+      "notices": [
+        "third-party/nuget-notices/Microsoft.WindowsDesktop.App.Runtime.win-x64-10.0.9/LICENSE"
+      ]
+    },
+    {
+      "id": "Newtonsoft.Json",
+      "version": "13.0.1",
+      "archive": "packages/newtonsoft.json.13.0.1.nupkg",
+      "sha256": "2b6b52556e27e1b7913f33eedeb95568110c746bd64afff74357f1683878323a",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://www.newtonsoft.com/json",
+      "notices": [
+        "third-party/nuget-notices/Newtonsoft.Json-13.0.1/LICENSE.md"
+      ]
+    },
+    {
+      "id": "Newtonsoft.Json",
+      "version": "13.0.4",
+      "archive": "packages/newtonsoft.json.13.0.4.nupkg",
+      "sha256": "f09081d457405baf35a973fa0c50d6bf272ed683f2568c5a620a49da952f6529",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://www.newtonsoft.com/json",
+      "notices": [
+        "third-party/nuget-notices/Newtonsoft.Json-13.0.4/LICENSE.md"
+      ]
+    },
+    {
+      "id": "System.Management",
+      "version": "9.0.19",
+      "archive": "packages/system.management.9.0.19.nupkg",
+      "sha256": "4753a793de979de8c4a73c4b4bbf8d4e16962c5e5b24926e61ad7ed7177a48c6",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://dot.net/",
+      "notices": [
+        "third-party/nuget-notices/System.Management-9.0.19/LICENSE.TXT",
+        "third-party/nuget-notices/System.Management-9.0.19/THIRD-PARTY-NOTICES.TXT"
+      ]
+    },
+    {
+      "id": "System.Management.Automation",
+      "version": "7.5.10",
+      "archive": "packages/system.management.automation.7.5.10.nupkg",
+      "sha256": "e70ed58fed60903ed4c2b74b89389ff70d7aac3cd3585add894e6d3d22240af6",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/PowerShell/PowerShell",
+      "notices": []
+    },
+    {
+      "id": "WPF-UI",
+      "version": "4.3.0",
+      "archive": "packages/wpf-ui.4.3.0.nupkg",
+      "sha256": "522f9a300fb3f3a885e7c0acbdd9b991d638f6011d2a67f3e9ccc6a3c3daad2b",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/lepoco/wpfui",
+      "notices": [
+        "third-party/nuget-notices/WPF-UI-4.3.0/LICENSE.md",
+        "third-party/nuget-notices/WPF-UI-4.3.0/ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "WPF-UI.Abstractions",
+      "version": "4.3.0",
+      "archive": "packages/wpf-ui.abstractions.4.3.0.nupkg",
+      "sha256": "0c4d22ee4089541c10fd65677d4e719a02eb8e25e7271743897d564ccb321ef2",
+      "licenseType": "expression",
+      "license": "MIT",
+      "projectUrl": "https://github.com/lepoco/wpfui",
+      "notices": [
+        "third-party/nuget-notices/WPF-UI.Abstractions-4.3.0/LICENSE.md",
+        "third-party/nuget-notices/WPF-UI.Abstractions-4.3.0/ThirdPartyNotices.txt"
+      ]
+    },
+    {
+      "id": "xunit",
+      "version": "2.9.2",
+      "archive": "packages/xunit.2.9.2.nupkg",
+      "sha256": "879fb24d37c29a89023f2e25a9d130f111b3425ae5b10016dc09b4261d2aee8a",
+      "licenseType": "expression",
+      "license": "Apache-2.0",
+      "projectUrl": null,
+      "notices": []
+    },
+    {
+      "id": "xunit.abstractions",
+      "version": "2.0.3",
+      "archive": "packages/xunit.abstractions.2.0.3.nupkg",
+      "sha256": "d03d72fc2df8880448f7a81bddb00e1bcb5c18f323c7e7cc69b4cfa727469403",
+      "licenseType": "url",
+      "license": "https://raw.githubusercontent.com/xunit/xunit/master/license.txt",
+      "projectUrl": "https://github.com/xunit/xunit",
+      "notices": []
+    },
+    {
+      "id": "xunit.analyzers",
+      "version": "1.16.0",
+      "archive": "packages/xunit.analyzers.1.16.0.nupkg",
+      "sha256": "3f906f97d86f1ef17c298d5858b838b4a898c657d19e61f22f5e237d20020da5",
+      "licenseType": "expression",
+      "license": "Apache-2.0",
+      "projectUrl": null,
+      "notices": []
+    },
+    {
+      "id": "xunit.assert",
+      "version": "2.9.2",
+      "archive": "packages/xunit.assert.2.9.2.nupkg",
+      "sha256": "104eabe76e90e1c1e7d0ebab7f510da57677ecb8ff3f6b8dbe89c782975c9eae",
+      "licenseType": "expression",
+      "license": "Apache-2.0",
+      "projectUrl": null,
+      "notices": []
+    },
+    {
+      "id": "xunit.core",
+      "version": "2.9.2",
+      "archive": "packages/xunit.core.2.9.2.nupkg",
+      "sha256": "ce18d5d48e7187444572481310aef6b4890bc5597808f9ad7abd9407efa8c9ef",
+      "licenseType": "expression",
+      "license": "Apache-2.0",
+      "projectUrl": null,
+      "notices": []
+    },
+    {
+      "id": "xunit.extensibility.core",
+      "version": "2.9.2",
+      "archive": "packages/xunit.extensibility.core.2.9.2.nupkg",
+      "sha256": "310002ff877aecdb2cbb747ea473e1eaf1e2b415d06311046645553065bbdb47",
+      "licenseType": "expression",
+      "license": "Apache-2.0",
+      "projectUrl": null,
+      "notices": []
+    },
+    {
+      "id": "xunit.extensibility.execution",
+      "version": "2.9.2",
+      "archive": "packages/xunit.extensibility.execution.2.9.2.nupkg",
+      "sha256": "7fef547e83f22b72480e14125b462ef5ce0f1aa52a642f7a0cc20d0988b68bcd",
+      "licenseType": "expression",
+      "license": "Apache-2.0",
+      "projectUrl": null,
+      "notices": []
+    },
+    {
+      "id": "xunit.runner.visualstudio",
+      "version": "2.8.2",
+      "archive": "packages/xunit.runner.visualstudio.2.8.2.nupkg",
+      "sha256": "5257cadf8f2bf2426eadacb07dd0ada492711e4bf4e303cdce951acf850cffad",
+      "licenseType": "expression",
+      "license": "Apache-2.0",
+      "projectUrl": null,
+      "notices": []
+    }
+  ]
+}

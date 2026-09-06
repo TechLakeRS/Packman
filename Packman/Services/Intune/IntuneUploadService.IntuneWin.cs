@@ -11,47 +11,28 @@ public partial class IntuneUploadService
 {
     private async Task SignApplicationFilesAsync(string packagePath, IUploadProgress? progress, UploadLogger log, CancellationToken ct)
     {
+        log.Section("FILE SIGNING");
+        if (_signer is null)
+        {
+            ct.ThrowIfCancellationRequested();
+            progress?.UpdateProgress(15, "Code signing disabled — skipping file signing");
+            log.Info("Code signing explicitly disabled in Settings");
+            return;
+        }
+
+        progress?.UpdateProgress(10, "Signing the deployment script...");
         try
         {
-            log.Section("FILE SIGNING");
-
-            if (_signer == null || !_signer.IsCertificateAvailable())
-            {
-                progress?.UpdateProgress(15, "Code signing disabled - skipping file signing");
-                log.Warning("Code signing disabled or certificate not available - skipping file signing");
-                return;
-            }
-
-            var scriptPath = PsadtScript.Find(packagePath);
-            if (scriptPath == null)
-            {
-                log.Warning("No PSADT script found - skipping signing");
-                return;
-            }
-
+            var scriptPath = await PackageSigningService.SignAsync(packagePath, _signer, ct);
             var scriptName = Path.GetFileName(scriptPath);
-            progress?.UpdateProgress(10, $"Signing {scriptName}...");
-            log.Info($"Signing {scriptName} (SHA-256 + RFC 3161)");
-
-            var result = await _signer.SignFileAsync(scriptPath, ct);
-            if (result.Success)
-            {
-                progress?.UpdateProgress(15, $"{scriptName} signed successfully");
-                log.Success($"{scriptName} signed successfully");
-            }
-            else
-            {
-                log.Warning($"Failed to sign {scriptName}: {result.ErrorMessage}");
-            }
+            log.Success($"{scriptName} signed successfully");
+            progress?.UpdateProgress(15, $"{scriptName} signed successfully");
         }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            log.Error("File signing failed", ex);
-            progress?.UpdateProgress(15, "File signing failed - continuing with upload");
+            log.Error("Required code signing failed; publishing stopped", ex);
+            throw;
         }
     }
 

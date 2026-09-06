@@ -20,11 +20,37 @@ jobs:
       - name: Restore
         run: dotnet restore Packman.sln
 
+      - name: Verify third-party inventory
+        run: python scripts/update-third-party-notices.py --check
+
       - name: Build
         run: dotnet build Packman.sln --no-restore -c Release
 
       - name: Test
         run: dotnet test Packman.Tests/Packman.Tests.csproj --no-build -c Release --logger "trx;LogFileName=results.trx"
+
+      - name: Package community desktop build
+        run: dotnet publish Packman/Packman.csproj --no-build -c Release --self-contained false -o artifacts/Packman-community
+
+      - name: Smoke launch packaged application
+        shell: pwsh
+        run: |
+          $app = Start-Process -FilePath (Resolve-Path artifacts/Packman-community/Packman.exe) -PassThru
+          try {
+            Start-Sleep -Seconds 8
+            if ($app.HasExited) { throw "Packman exited during startup with code $($app.ExitCode)." }
+            if (-not $app.CloseMainWindow()) { throw "Packman did not create a main window." }
+            if (-not $app.WaitForExit(10000)) { throw "Packman did not close cleanly." }
+            if ($app.ExitCode -ne 0) { throw "Packman exited with code $($app.ExitCode)." }
+          } finally {
+            if (-not $app.HasExited) { Stop-Process -Id $app.Id -Force }
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Packman-community-windows
+          path: artifacts/Packman-community/
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         if: always()

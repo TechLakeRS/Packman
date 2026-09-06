@@ -10,7 +10,7 @@ namespace Packman.Services;
 /// Authenticode signer over SignerSignEx2: no PowerShell, no temp PFX on disk.
 /// The certificate comes from CurrentUser\My or LocalMachine\My by thumbprint.
 /// </summary>
-public class NativeCodeSigner
+public class NativeCodeSigner : IFileSigner
 {
     private readonly string _thumbprint;
     private readonly string _timestampServer;

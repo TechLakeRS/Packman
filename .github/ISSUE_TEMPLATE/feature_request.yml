@@ -1,0 +1,21 @@
+name: Feature request
+description: Describe a packaging workflow the community app could improve.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What packaging problem are you trying to solve?
+      description: Describe who needs it and the current steps or workaround.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What should the user be able to do?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant examples or documentation
