@@ -60,7 +60,7 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand OpenPackageFolderCommand { get; }
 
     /// <summary>Clears the wizard so a second package can be built without restarting.</summary>
-    public RelayCommand NewPackageCommand { get; }
+    public AsyncRelayCommand NewPackageCommand { get; }
 
     private int _currentStepIndex;
     public int CurrentStepIndex
@@ -206,7 +206,7 @@ public sealed class MainViewModel : ObservableObject
         OpenTestToolCommand      = new RelayCommand(() => ActiveTool = PackageTool.RemoteTest, () => HasPackage);
         CloseToolCommand         = new RelayCommand(() => ActiveTool = PackageTool.None);
         OpenPackageFolderCommand = new RelayCommand(OpenPackageFolder, () => HasPackage);
-        NewPackageCommand        = new RelayCommand(StartNewPackage, () => HasPackage && !Upload.Publish.IsRunning);
+        NewPackageCommand        = new AsyncRelayCommand(StartNewPackageAsync, () => HasPackage && !Upload.Publish.IsRunning);
 
         ContinueToUploadCommand = new RelayCommand(() =>
         {
@@ -267,8 +267,10 @@ public sealed class MainViewModel : ObservableObject
         NewPackageCommand.RaiseCanExecuteChanged();
     }
 
-    private void StartNewPackage()
+    private async Task StartNewPackageAsync()
     {
+        if (!await Editor.PromptSaveAllAsync()) return;
+
         ActiveTool = PackageTool.None;
         CreatePackage.Reset();
         Upgrade.Reset();
@@ -300,6 +302,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
+        if (!await Editor.PromptSaveAllAsync()) return;
         await Upload.UploadAsync();
     }
 

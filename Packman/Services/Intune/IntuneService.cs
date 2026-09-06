@@ -12,25 +12,42 @@ public partial class IntuneService
 
     private readonly GraphClient _graph;
 
-    // Swapped by reference, not mutated: reads and delete-invalidation can race.
-    private volatile IReadOnlyList<IntuneApplication>? _listCache;
+    private readonly object _cacheLock = new();
+    private IReadOnlyList<IntuneApplication>? _listCache;
+    private long _cacheGeneration;
 
     public IntuneService(Func<Task<string>> tokenProvider)
         => _graph = new GraphClient(tokenProvider);
 
+    /// <summary>Discard cached tenant data and reject in-flight results from the previous sign-in.</summary>
+    public void InvalidateApplicationCache()
+    {
+        lock (_cacheLock)
+        {
+            _listCache = null;
+            _cacheGeneration++;
+        }
+    }
+
     // ── List ────────────────────────────────────────────
     public async Task<List<IntuneApplication>> GetApplicationsAsync(bool forceRefresh = false, IProgress<int>? progress = null, CancellationToken ct = default)
     {
-        var cached = _listCache;
-        if (!forceRefresh && cached != null)
-            return cached.ToList();
+        long generation;
+        lock (_cacheLock)
+        {
+            if (!forceRefresh && _listCache != null)
+                return _listCache.ToList();
+            generation = _cacheGeneration;
+        }
 
         var apps = new List<IntuneApplication>();
         var url = $"{Base}?$filter=isof('microsoft.graph.win32LobApp')&$expand=categories&$top=100&$orderby=displayName";
 
         while (!string.IsNullOrEmpty(url))
         {
+            EnsureCacheGeneration(generation);
             var response = await _graph.GetAsync(url, "Fetch applications", ct, throwOnError: false);
+            EnsureCacheGeneration(generation);
             if (!response.IsSuccess)
             {
                 // Graph rejects $expand=categories now and then with a 400; drop it and go on
@@ -53,8 +70,19 @@ public partial class IntuneService
         }
 
         var sorted = apps.OrderBy(a => a.DisplayName).ToList();
-        _listCache = sorted;
-        return sorted.ToList();
+        lock (_cacheLock)
+        {
+            EnsureCacheGeneration(generation);
+            _listCache = sorted;
+            return sorted.ToList();
+        }
+    }
+
+    private void EnsureCacheGeneration(long generation)
+    {
+        lock (_cacheLock)
+            if (generation != _cacheGeneration)
+                throw new InvalidOperationException("The Intune session or application list changed while loading. Refresh the applications list.");
     }
 
     // ── Detail ──────────────────────────────────────────
@@ -80,6 +108,7 @@ public partial class IntuneService
             CreatedDateTime = app.GetSafeDateTime("createdDateTime"),
             LastModifiedDateTime = app.GetSafeDateTime("lastModifiedDateTime"),
             PublishingState = ReadStateString(app, "publishingState"),
+            MinimumOperatingSystem = ReadMinimumOperatingSystem(app),
         };
         detail.LastModified = detail.LastModifiedDateTime;
 
@@ -107,43 +136,54 @@ public partial class IntuneService
     public async Task<List<AssignedGroup>> GetAssignedGroupsAsync(string appId, CancellationToken ct = default)
     {
         var groups = new List<AssignedGroup>();
-        var response = await _graph.GetAsync($"{Base}/{appId}/assignments", "Read assignments", ct, throwOnError: false);
-        if (!response.IsSuccess)
-        {
-            Debug.WriteLine($"Assignments unavailable for {appId}: HTTP {response.StatusCode}");
-            return groups;
-        }
-
-        var root = response.Json;
-        if (!root.TryGetProperty("value", out var arr) || arr.ValueKind != JsonValueKind.Array)
-            return groups;
-
         var needNames = new List<(AssignedGroup group, string groupId)>();
-        foreach (var a in arr.EnumerateArray())
+        var url = $"{Base}/{appId}/assignments";
+        while (!string.IsNullOrEmpty(url))
         {
-            var assignmentId = a.GetSafeString("id");
-            var intent = a.GetSafeString("intent") is { Length: > 0 } i ? i : "Unknown";
-            if (!a.TryGetProperty("target", out var t)) continue;
-            var type = t.GetSafeString("@odata.type");
-
-            switch (type)
+            var response = await _graph.GetAsync(url, "Read assignments", ct, throwOnError: false);
+            if (!response.IsSuccess)
             {
-                case "#microsoft.graph.groupAssignmentTarget":
-                    var gid = t.GetSafeString("groupId");
-                    if (string.IsNullOrEmpty(gid)) break;
-                    var group = new AssignedGroup { AssignmentId = assignmentId, GroupId = gid, GroupName = $"Group {Shorten(gid)}", AssignmentType = intent };
-                    groups.Add(group);
-                    needNames.Add((group, gid));
-                    break;
-                case "#microsoft.graph.allLicensedUsersAssignmentTarget":
-                    groups.Add(new AssignedGroup { AssignmentId = assignmentId, GroupName = "All Licensed Users", AssignmentType = intent });
-                    break;
-                case "#microsoft.graph.allDevicesAssignmentTarget":
-                    groups.Add(new AssignedGroup { AssignmentId = assignmentId, GroupName = "All Devices", AssignmentType = intent });
-                    break;
-                default:
-                    groups.Add(new AssignedGroup { AssignmentId = assignmentId, GroupName = type.Replace("#microsoft.graph.", ""), AssignmentType = intent });
-                    break;
+                Debug.WriteLine($"Assignments unavailable for {appId}: HTTP {response.StatusCode}");
+                return new List<AssignedGroup>();
+            }
+
+            var root = response.Json;
+            url = root.GetSafeString("@odata.nextLink");
+            if (!root.TryGetProperty("value", out var arr) || arr.ValueKind != JsonValueKind.Array)
+                continue;
+
+            foreach (var a in arr.EnumerateArray())
+            {
+                var assignmentId = a.GetSafeString("id");
+                var intent = a.GetSafeString("intent") is { Length: > 0 } i ? i : "Unknown";
+                if (!a.TryGetProperty("target", out var t)) continue;
+                var type = t.GetSafeString("@odata.type");
+
+                switch (type)
+                {
+                    case "#microsoft.graph.groupAssignmentTarget":
+                    case "#microsoft.graph.exclusionGroupAssignmentTarget":
+                        var gid = t.GetSafeString("groupId");
+                        if (string.IsNullOrEmpty(gid)) break;
+                        var group = new AssignedGroup
+                        {
+                            AssignmentId = assignmentId, GroupId = gid,
+                            GroupName = $"Group {Shorten(gid)}", AssignmentType = intent,
+                            IsExcluded = type == "#microsoft.graph.exclusionGroupAssignmentTarget",
+                        };
+                        groups.Add(group);
+                        needNames.Add((group, gid));
+                        break;
+                    case "#microsoft.graph.allLicensedUsersAssignmentTarget":
+                        groups.Add(new AssignedGroup { AssignmentId = assignmentId, GroupName = "All Licensed Users", AssignmentType = intent });
+                        break;
+                    case "#microsoft.graph.allDevicesAssignmentTarget":
+                        groups.Add(new AssignedGroup { AssignmentId = assignmentId, GroupName = "All Devices", AssignmentType = intent });
+                        break;
+                    default:
+                        groups.Add(new AssignedGroup { AssignmentId = assignmentId, GroupName = type.Replace("#microsoft.graph.", ""), AssignmentType = intent });
+                        break;
+                }
             }
         }
 
@@ -229,9 +269,12 @@ public partial class IntuneService
     {
         await _graph.DeleteAsync($"{Base}/{id}", "Delete app", ct);
 
-        var cached = _listCache;
-        if (cached != null)
-            _listCache = cached.Where(a => a.Id != id).ToList();
+        lock (_cacheLock)
+        {
+            _cacheGeneration++;
+            if (_listCache != null)
+                _listCache = _listCache.Where(a => a.Id != id).ToList();
+        }
     }
 
     // ── Parsing ─────────────────────────────────────────
@@ -257,6 +300,24 @@ public partial class IntuneService
             LastModified = app.GetSafeDateTime("lastModifiedDateTime"),
             PublishingState = ReadStateString(app, "publishingState"),
         };
+    }
+
+    private static string ReadMinimumOperatingSystem(JsonElement app)
+    {
+        var release = app.GetSafeString("minimumSupportedWindowsRelease");
+        if (!string.IsNullOrEmpty(release)) return RequirementInfo.FormatWindowsRelease(release);
+
+        if (app.TryGetProperty("minimumSupportedOperatingSystem", out var legacy))
+        {
+            // Older apps can still expose only the boolean OS object. Prefer the newest
+            // flagged release if the response includes more than one flag.
+            foreach (var version in new[] { "21H1", "2H20", "2004", "1909", "1903", "1809", "1803", "1709", "1703", "1607" })
+                if (legacy.GetSafeBool($"v10_{version}")) return RequirementInfo.FormatWindowsRelease(version);
+            if (legacy.GetSafeBool("v10_0")) return "Windows 10";
+            if (legacy.GetSafeBool("v8_1")) return "Windows 8.1";
+            if (legacy.GetSafeBool("v8_0")) return "Windows 8";
+        }
+        return "Not specified";
     }
 
     // Enum-ish properties come back as strings on beta and as numbers on some older records.

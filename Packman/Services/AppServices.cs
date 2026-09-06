@@ -6,6 +6,9 @@ namespace Packman.Services;
 /// </summary>
 public static class AppServices
 {
+    static AppServices()
+        => Auth.StateChanged += Apps.InvalidateApplicationCache;
+
     public static SettingsService Settings { get; } = new();
     public static IntuneAuthService Auth { get; } = new();
     public static IntuneService Apps { get; } = new(() => Auth.GetAccessTokenAsync());

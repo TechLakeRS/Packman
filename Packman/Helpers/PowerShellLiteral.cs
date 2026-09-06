@@ -1,3 +1,5 @@
+using System.Management.Automation.Language;
+
 namespace Packman.Helpers;
 
 /// <summary>
@@ -7,11 +9,15 @@ namespace Packman.Helpers;
 public static class PowerShellLiteral
 {
     /// <summary>Body of a single-quoted string.</summary>
-    public static string SingleQuoted(string? value) => (value ?? "").Replace("'", "''");
+    public static string SingleQuoted(string? value) => CodeGeneration.EscapeSingleQuotedStringContent(value ?? "");
 
     /// <summary>Body of a double-quoted string.</summary>
     public static string DoubleQuoted(string? value) => (value ?? "")
         .Replace("`", "``")
         .Replace("\"", "`\"")
+        // PowerShell also recognizes typographic quotes as string delimiters.
+        .Replace("\u201c", "`\u201c")
+        .Replace("\u201d", "`\u201d")
+        .Replace("\u201e", "`\u201e")
         .Replace("$", "`$");
 }

@@ -148,7 +148,11 @@ public sealed class PsadtScript
     private static string Unquote(string literal)
     {
         if (literal.Length >= 2 && literal[0] == '\'' && literal[^1] == '\'')
-            return literal[1..^1].Replace("''", "'");
+            return literal[1..^1].Replace("''", "'")
+                .Replace("\u2018\u2018", "\u2018")
+                .Replace("\u2019\u2019", "\u2019")
+                .Replace("\u201a\u201a", "\u201a")
+                .Replace("\u201b\u201b", "\u201b");
 
         if (literal.Length >= 2 && literal[0] == '"' && literal[^1] == '"')
             return UnescapeDoubleQuoted(literal[1..^1]);

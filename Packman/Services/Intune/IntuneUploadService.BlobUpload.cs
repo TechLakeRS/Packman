@@ -1,5 +1,6 @@
 using Packman.Helpers;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
@@ -17,8 +18,9 @@ public partial class IntuneUploadService
     private const string BlockIdFormat = "00000";
     private const int MaxBlockAttempts = 5;
 
-    // SAS URIs from Intune are good for about 15 minutes; renew well inside that.
+    // Renew periodically, and earlier when the SAS expiry is approaching.
     private static readonly TimeSpan SasRenewalInterval = TimeSpan.FromMinutes(7);
+    private static readonly TimeSpan SasExpiryMargin = TimeSpan.FromMinutes(1);
 
     // Per-request timeouts come from a linked token; the client itself never times out.
     private static readonly HttpClient AzureBlob = new() { Timeout = Timeout.InfiniteTimeSpan };
@@ -54,7 +56,8 @@ public partial class IntuneUploadService
     /// and an absent state keep waiting; Failed and TimedOut are terminal and throw
     /// <see cref="UploadStateException"/>; Graph's own 429/5xx are retried by the client.
     /// </summary>
-    private async Task<JsonElement> WaitForUploadStateAsync(string fileUrl, string stage, TimeSpan timeout, TimeSpan interval, CancellationToken ct)
+    private async Task<JsonElement> WaitForUploadStateAsync(string fileUrl, string stage, TimeSpan timeout, TimeSpan interval,
+        CancellationToken ct, Func<JsonElement, bool>? isReady = null)
     {
         var deadline = DateTime.UtcNow + timeout;
         var success = stage + "Success";
@@ -67,7 +70,7 @@ public partial class IntuneUploadService
             var file = (await _graph.GetAsync(fileUrl, $"Read upload state ({stage})", ct)).Json;
             var state = file.GetSafeString("uploadState");
 
-            if (state.Equals(success, StringComparison.OrdinalIgnoreCase))
+            if (state.Equals(success, StringComparison.OrdinalIgnoreCase) && (isReady?.Invoke(file) ?? true))
                 return file;
 
             if (state.EndsWith("Failed", StringComparison.OrdinalIgnoreCase) ||
@@ -109,6 +112,17 @@ public partial class IntuneUploadService
         var sasTimer = Stopwatch.StartNew();
         var currentSasUri = sasUri;
 
+        async Task<string> GetSasUriAsync(bool forceRenewal, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (forceRenewal || SasNeedsRenewal(currentSasUri, sasTimer.Elapsed))
+            {
+                currentSasUri = await RenewSasUriAsync(fileUrl, currentSasUri, log, token);
+                sasTimer.Restart();
+            }
+            return currentSasUri;
+        }
+
         // One buffer for the run: a fresh 6 MB array per chunk goes straight to the LOH.
         var buffer = new byte[chunkSize];
 
@@ -132,27 +146,25 @@ public partial class IntuneUploadService
             var band = 60 + (int)((chunkIndex + 1.0) / totalChunks * 22);
             progress?.UpdateProgress(band, $"Uploading chunk {chunkIndex + 1}/{totalChunks} ({percent}%)");
 
-            if (chunkIndex < totalChunks - 1 && sasTimer.Elapsed >= SasRenewalInterval)
-            {
-                progress?.UpdateProgress(band, "Renewing upload URL...");
-                currentSasUri = await RenewSasUriAsync(fileUrl, log, ct);
-                sasTimer.Restart();
-            }
-
-            var chunkUri = $"{currentSasUri}&comp=block&blockid={Uri.EscapeDataString(blockId)}";
-            await PutBlockAsync(chunkUri, buffer, read, chunkIndex, totalChunks, ct);
+            await PutBlockAsync(GetSasUriAsync, blockId, buffer, read, chunkIndex, totalChunks, ct);
         }
 
         progress?.UpdateProgress(83, "Finalizing Azure upload...");
-        await PutBlockListAsync(currentSasUri, blockIds, ct);
+        await PutBlockListAsync(GetSasUriAsync, blockIds, ct);
         progress?.UpdateProgress(84, "Package uploaded to Azure");
     }
 
-    private static async Task PutBlockAsync(string chunkUri, byte[] buffer, int length, int chunkIndex, int totalChunks, CancellationToken ct)
+    private static async Task PutBlockAsync(Func<bool, CancellationToken, Task<string>> getSasUriAsync, string blockId,
+        byte[] buffer, int length, int chunkIndex, int totalChunks, CancellationToken ct)
     {
+        var forceRenewal = false;
+        var renewedAfterAuthFailure = false;
         for (int attempt = 1; ; attempt++)
         {
             ct.ThrowIfCancellationRequested();
+            var sasUri = await getSasUriAsync(forceRenewal, ct);
+            forceRenewal = false;
+            var chunkUri = $"{sasUri}&comp=block&blockid={Uri.EscapeDataString(blockId)}";
 
             HttpStatusCode? status = null;
             string failure;
@@ -167,20 +179,23 @@ public partial class IntuneUploadService
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(timeout);
 
-                using var response = await AzureBlob.SendAsync(request, cts.Token);
+                using var response = await AzureBlob.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
                 if (response.IsSuccessStatusCode) return;
 
                 status = response.StatusCode;
-                failure = $"{(int)response.StatusCode} {await response.Content.ReadAsStringAsync(ct)}";
+                failure = AzureFailure(response);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (OperationCanceledException) { failure = "timed out"; }
-            catch (HttpRequestException ex) { failure = ex.Message; }
+            catch (HttpRequestException ex) { failure = $"network error ({ex.HttpRequestError})"; }
 
             Debug.WriteLine($"Block {chunkIndex + 1}/{totalChunks} attempt {attempt}/{MaxBlockAttempts} failed: {failure}");
 
-            // A 4xx other than 408/429 will not get better on retry: an expired SAS, a bad block.
-            if (status is { } s && (int)s is >= 400 and < 500 && s != HttpStatusCode.RequestTimeout && (int)s != 429)
+            // Expired SAS tokens can reject a request after a long attempt. Refresh once
+            // for an authentication failure, preserving this block's ID and exact bytes.
+            forceRenewal = (status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) && !renewedAfterAuthFailure;
+            if (forceRenewal) renewedAfterAuthFailure = true;
+            if (!forceRenewal && IsPermanentAzureFailure(status))
                 throw new Exception($"Azure Storage rejected block {chunkIndex + 1}: {failure}");
 
             if (attempt >= MaxBlockAttempts)
@@ -191,7 +206,8 @@ public partial class IntuneUploadService
         }
     }
 
-    private static async Task PutBlockListAsync(string sasUri, List<string> blockIds, CancellationToken ct)
+    private static async Task PutBlockListAsync(Func<bool, CancellationToken, Task<string>> getSasUriAsync,
+        List<string> blockIds, CancellationToken ct)
     {
         var xml = new StringBuilder("<?xml version=\"1.0\" encoding=\"utf-8\"?><BlockList>");
         foreach (var blockId in blockIds)
@@ -199,10 +215,15 @@ public partial class IntuneUploadService
         xml.Append("</BlockList>");
         var body = xml.ToString();
 
+        var forceRenewal = false;
+        var renewedAfterAuthFailure = false;
         for (int attempt = 1; ; attempt++)
         {
             ct.ThrowIfCancellationRequested();
+            var sasUri = await getSasUriAsync(forceRenewal, ct);
+            forceRenewal = false;
 
+            HttpStatusCode? status = null;
             string failure;
             try
             {
@@ -213,15 +234,20 @@ public partial class IntuneUploadService
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 cts.CancelAfter(TimeSpan.FromMinutes(10));
 
-                using var response = await AzureBlob.SendAsync(request, cts.Token);
+                using var response = await AzureBlob.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
                 if (response.IsSuccessStatusCode) return;
-                failure = $"{(int)response.StatusCode} {await response.Content.ReadAsStringAsync(ct)}";
+                status = response.StatusCode;
+                failure = AzureFailure(response);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (OperationCanceledException) { failure = "timed out"; }
-            catch (HttpRequestException ex) { failure = ex.Message; }
+            catch (HttpRequestException ex) { failure = $"network error ({ex.HttpRequestError})"; }
 
             Debug.WriteLine($"Block list commit attempt {attempt}/{MaxBlockAttempts} failed: {failure}");
+            forceRenewal = (status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden) && !renewedAfterAuthFailure;
+            if (forceRenewal) renewedAfterAuthFailure = true;
+            if (!forceRenewal && IsPermanentAzureFailure(status))
+                throw new Exception($"Azure Storage rejected the block list: {failure}");
             if (attempt >= MaxBlockAttempts)
                 throw new Exception($"Failed to commit block list after {MaxBlockAttempts} attempts: {failure}");
 
@@ -229,15 +255,57 @@ public partial class IntuneUploadService
         }
     }
 
+    private static bool SasNeedsRenewal(string sasUri, TimeSpan elapsed)
+    {
+        if (elapsed >= SasRenewalInterval) return true;
+        if (!Uri.TryCreate(sasUri, UriKind.Absolute, out var uri))
+            throw new InvalidOperationException("The Azure upload URL is invalid.");
+
+        foreach (var parameter in uri.Query.TrimStart('?').Split('&'))
+        {
+            var parts = parameter.Split('=', 2);
+            if (parts.Length == 2 && parts[0].Equals("se", StringComparison.OrdinalIgnoreCase) &&
+                DateTimeOffset.TryParse(Uri.UnescapeDataString(parts[1]), CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal, out var expiry))
+                return expiry <= DateTimeOffset.UtcNow + SasExpiryMargin;
+        }
+        return false;
+    }
+
+    private static bool IsPermanentAzureFailure(HttpStatusCode? status)
+        => status is { } value && (int)value is >= 400 and < 500 &&
+           value != HttpStatusCode.RequestTimeout && (int)value != 429;
+
+    private static string AzureFailure(HttpResponseMessage response)
+    {
+        // Storage error bodies may echo a SAS signature or signed URL. Only log the
+        // status and a validated service error code; never the raw body or request URI.
+        var code = response.Headers.TryGetValues("x-ms-error-code", out var values) ? values.FirstOrDefault() : null;
+        var safeCode = code is { Length: > 0 and <= 128 } && code.All(char.IsAsciiLetterOrDigit) ? $" ({code})" : "";
+        return $"HTTP {(int)response.StatusCode} {response.StatusCode}{safeCode}";
+    }
+
     /// <summary>Asks Intune for a fresh SAS URI. One retry; after that the upload cannot continue anyway.</summary>
-    private async Task<string> RenewSasUriAsync(string fileUrl, UploadLogger log, CancellationToken ct)
+    private async Task<string> RenewSasUriAsync(string fileUrl, string previousSasUri, UploadLogger log, CancellationToken ct)
     {
         for (int attempt = 1; ; attempt++)
         {
+            var outcomeUncertain = false;
             try
             {
-                await _graph.PostAsync($"{fileUrl}/renewUpload", "{}", "Renew upload URL", ct);
-                var file = await WaitForUploadStateAsync(fileUrl, "azureStorageUriRenewal", TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(10), ct);
+                try
+                {
+                    // renewUpload has no request body. If its response is lost, observe
+                    // the known file's renewal state instead of immediately posting again.
+                    await _graph.SendAsync(HttpMethod.Post, $"{fileUrl}/renewUpload", null, "Renew upload URL", ct);
+                }
+                catch (GraphMutationUncertainException)
+                {
+                    outcomeUncertain = true;
+                    log.Warning("Upload URL renewal response was inconclusive; checking the file's renewal state");
+                }
+                var file = await WaitForUploadStateAsync(fileUrl, "azureStorageUriRenewal", TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(10), ct,
+                    candidate => candidate.GetSafeString("azureStorageUri") != previousSasUri);
                 var renewed = file.GetSafeString("azureStorageUri");
                 if (string.IsNullOrEmpty(renewed))
                     throw new UploadStateException("the renewed Azure Storage URI", "azureStorageUriRenewalSuccess without a URI");
@@ -245,9 +313,9 @@ public partial class IntuneUploadService
                 return renewed;
             }
             catch (OperationCanceledException) { throw; }
-            catch (Exception ex) when (attempt == 1)
+            catch (Exception ex) when (attempt == 1 && !outcomeUncertain)
             {
-                log.Warning($"Upload URL renewal failed, retrying once: {ex.Message}");
+                log.Warning($"Upload URL renewal failed, retrying once ({ex.GetType().Name})");
             }
         }
     }
@@ -279,17 +347,39 @@ public partial class IntuneUploadService
         };
 
         var url = $"{GraphClient.MobileApps}/{appId}";
-        var response = await _graph.PatchAsync(url, body, "Publish app", ct, throwOnError: false);
+        IntuneFollowUpException Unconfirmed(Exception cause) => new(appId,
+            $"Publish result unconfirmed. Intune may have accepted content version {contentVersionId}. " +
+            "The app has been retained; check its content version and publishing state in Intune before retrying.", cause);
+
+        GraphResponse response;
+        try
+        {
+            response = await _graph.PatchAsync(url, body, "Publish app", ct, throwOnError: false);
+        }
+        catch (Exception ex)
+        {
+            // A lost response or cancellation can happen after Graph committed the
+            // version. Never let the upload's rollback delete that potentially live app.
+            throw Unconfirmed(ex);
+        }
         if (response.IsSuccess) return;
 
-        // A gateway 5xx often means the backend finished but exceeded the sync timeout;
-        // read the committed version back before calling it a failure.
-        if (response.StatusCode >= 500)
+        // A gateway failure may follow a committed change. Even a later rejection
+        // cannot rule out an earlier attempt; verify the version before reporting it.
+        if (response.HadUncertainAttempt || response.StatusCode == 408 || response.StatusCode >= 500)
         {
-            await Task.Delay(TimeSpan.FromSeconds(30), ct);
-            var app = await _graph.GetAsync(url, "Verify publish", ct, throwOnError: false);
-            if (app.IsSuccess && app.Json.GetSafeString("committedContentVersion") == contentVersionId)
-                return;
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), ct);
+                var app = await _graph.GetAsync(url, "Verify publish", ct, throwOnError: false);
+                if (app.IsSuccess && app.Json.GetSafeString("committedContentVersion") == contentVersionId)
+                    return;
+            }
+            catch (Exception ex)
+            {
+                throw Unconfirmed(ex);
+            }
+            throw Unconfirmed(response.ToException("Publish app"));
         }
 
         throw response.ToException("Publish app");

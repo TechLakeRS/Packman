@@ -488,7 +488,7 @@ public class UploadStepViewModel : ObservableObject
             ? new NativeCodeSigner(settings.CodeSigning.CertificateThumbprint, settings.CodeSigning.TimestampServer)
             : null;
 
-        var uploadService = new IntuneUploadService(_auth.GetAccessTokenAsync, signer, settings.NetworkPaths.IntuneWinAppUtil);
+        var uploadService = new IntuneUploadService(_auth.CreateSessionTokenProvider(), signer, settings.NetworkPaths.IntuneWinAppUtil);
 
         await Publish.RunAsync(
             $"Publishing {appInfo.Manufacturer} {appInfo.Name}…".Trim(),
@@ -506,7 +506,7 @@ public class UploadStepViewModel : ObservableObject
             {
                 true => "Upload cancelled. The partially created app was removed from Intune.",
                 false => "Upload cancelled. The partially created app could not be removed; delete it in the Intune admin center.",
-                null => "Upload cancelled before anything was created in Intune.",
+                null => "Upload cancelled. Check Intune for any app created before cancellation; no app ID was confirmed.",
             });
     }
 

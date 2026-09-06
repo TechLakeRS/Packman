@@ -76,12 +76,21 @@ public partial class StepEdit : UserControl, IMonacoHost
         EditorWebView.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(message));
 
     /// <summary>Reads a buffer out of Monaco; null when it no longer holds one.</summary>
-    public async Task<string?> GetBufferAsync(string path)
+    public async Task<EditorBufferSnapshot?> GetBufferAsync(string path)
     {
         if (EditorWebView.CoreWebView2 == null) return null;
         var json = await EditorWebView.CoreWebView2.ExecuteScriptAsync(
             $"window.packmanContent({JsonSerializer.Serialize(path)})");
-        return json is null or "null" ? null : JsonSerializer.Deserialize<string>(json);
+        return json is null or "null" ? null : JsonSerializer.Deserialize<EditorBufferSnapshot>(
+            json, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
+
+    public async Task<bool> TryReloadAsync(object message)
+    {
+        if (EditorWebView.CoreWebView2 == null) return false;
+        var json = await EditorWebView.CoreWebView2.ExecuteScriptAsync(
+            $"window.packmanReload({JsonSerializer.Serialize(message)})");
+        return json == "true";
     }
 
     // Loaded and IsVisibleChanged both call this; a second EnsureCoreWebView2Async with a
@@ -105,12 +114,23 @@ public partial class StepEdit : UserControl, IMonacoHost
 
             var assetsFolder = Path.Combine(AppContext.BaseDirectory, "MonacoEditor");
             core.SetVirtualHostNameToFolderMapping(
-                "packman-editor", assetsFolder, CoreWebView2HostResourceAccessKind.Allow);
+                "packman-editor", assetsFolder, CoreWebView2HostResourceAccessKind.DenyCors);
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.AreDevToolsEnabled = false;
             core.WebMessageReceived += Editor_WebMessageReceived;
             core.ProcessFailed += Editor_ProcessFailed;
             core.NavigationCompleted += Editor_NavigationCompleted;
+            core.NavigationStarting += (_, e) => { if (!IsEditorOrigin(e.Uri)) e.Cancel = true; };
+            core.NewWindowRequested += (_, e) =>
+            {
+                e.Handled = true;
+                if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri) && uri.Scheme is "https" or "http")
+                    ErrorReporter.FireAndForget(() =>
+                    {
+                        Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+                        return Task.CompletedTask;
+                    });
+            };
             ApplyEditorTheme();
             core.Navigate("https://packman-editor/index.html");
         }
@@ -150,6 +170,7 @@ public partial class StepEdit : UserControl, IMonacoHost
 
     private void Editor_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
+        if (!IsEditorOrigin(e.Source)) return;
         using var doc = JsonDocument.Parse(e.WebMessageAsJson);
         var root = doc.RootElement;
 
@@ -207,6 +228,10 @@ public partial class StepEdit : UserControl, IMonacoHost
         if (_editorReady) Post(new { type = "theme", background = CodeBackgroundHex(), dark = ThemeService.IsDark });
     }
 
+    private static bool IsEditorOrigin(string value)
+        => Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == "https"
+            && uri.Host == "packman-editor" && uri.IsDefaultPort && string.IsNullOrEmpty(uri.UserInfo);
+
     private static object BuildCatalogPayload()
     {
         _catalog ??= PSADTFunctionCatalog.LoadFromCsv(PSADTFunctionCatalog.GetCsvPath());
@@ -233,15 +258,35 @@ public partial class StepEdit : UserControl, IMonacoHost
 
     private void OnTreeRefreshRequested() => ErrorReporter.FireAndForget(RefreshTreeAsync);
 
+    private bool _treeRefreshRunning;
+    private bool _treeRefreshPending;
+
     private async Task RefreshTreeAsync()
     {
-        var appFolder = _session?.ApplicationFolder;
-        if (appFolder == null || !Directory.Exists(appFolder)) return;
+        if (_treeRefreshRunning) { _treeRefreshPending = true; return; }
+        _treeRefreshRunning = true;
+        try
+        {
+            do
+            {
+                _treeRefreshPending = false;
+                await RefreshTreeCoreAsync();
+            } while (_treeRefreshPending);
+        }
+        finally { _treeRefreshRunning = false; }
+    }
+
+    private async Task RefreshTreeCoreAsync()
+    {
+        var session = _session;
+        var appFolder = session?.ApplicationFolder;
+        if (appFolder == null) return;
 
         var expanded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         CaptureExpanded(FileTree.Items, expanded);
 
         var roots = await Task.Run(() => ScanFolder(appFolder));
+        if (!ReferenceEquals(session, _session) || !string.Equals(appFolder, _session?.ApplicationFolder, StringComparison.OrdinalIgnoreCase)) return;
 
         _suppressTreeSelection = true;
         FileTree.Items.Clear();
@@ -276,10 +321,25 @@ public partial class StepEdit : UserControl, IMonacoHost
         {
             Header = BuildNodeHeader(node),
             Tag = node.Path,
-            IsExpanded = node.IsDirectory && expanded.Contains(node.Path),
         };
-        foreach (var child in node.Children)
-            item.Items.Add(BuildTreeItem(child, expanded));
+        if (node.Children.Count == 0) return item;
+
+        // Collapsed folders keep one placeholder, not a control for every descendant.
+        var childrenLoaded = false;
+        void LoadChildren()
+        {
+            if (childrenLoaded) return;
+            childrenLoaded = true;
+            item.Items.Clear();
+            foreach (var child in node.Children) item.Items.Add(BuildTreeItem(child, expanded));
+        }
+        item.Expanded += (_, e) => { if (ReferenceEquals(e.OriginalSource, item)) LoadChildren(); };
+        if (expanded.Contains(node.Path))
+        {
+            LoadChildren();
+            item.IsExpanded = true;
+        }
+        else item.Items.Add(new TreeViewItem { Header = "Loading…", IsEnabled = false });
         return item;
     }
 
@@ -338,6 +398,8 @@ public partial class StepEdit : UserControl, IMonacoHost
         foreach (TreeViewItem item in items)
         {
             if (item.Tag as string == path) return item;
+            if (item.Tag is string parent && path.StartsWith(parent.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                item.IsExpanded = true;
             var hit = FindTreeItem(item.Items, path);
             if (hit != null) return hit;
         }

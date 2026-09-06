@@ -26,17 +26,18 @@
 
         <TextBlock Text="Assignment groups" Style="{StaticResource FieldLabel}" Margin="0,16,0,7"/>
         <Grid>
-            <TextBox AutomationProperties.Name="Assignment groups" Style="{StaticResource TextField}" Padding="11,0,92,0"
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox AutomationProperties.Name="Assignment groups" Style="{StaticResource TextField}"
                      local:PlaceholderText.Text="Search Entra groups…"
                      Text="{Binding GroupQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                 <TextBox.InputBindings>
                     <KeyBinding Key="Enter" Command="{Binding SearchGroupsCommand}"/>
                 </TextBox.InputBindings>
             </TextBox>
-            <Button Style="{StaticResource MiniButton}" HorizontalAlignment="Right" VerticalAlignment="Stretch"
-                    Margin="0,2,2,2" Command="{Binding SearchGroupsCommand}">
-                <TextBlock Text="Search" VerticalAlignment="Center"/>
-            </Button>
+            <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Search" Command="{Binding SearchGroupsCommand}"/>
         </Grid>
 
         <TextBlock Text="{Binding GroupSearchHint}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,7,0,0" TextWrapping="Wrap">

@@ -82,8 +82,11 @@ public sealed class PublishRunViewModel : ObservableObject
 
     /// <summary>Started but not finished. Drives the spinner.</summary>
     public bool IsRunning => _isPublishing && !_isComplete;
-    public bool IsSucceeded => _isComplete && _succeeded;
+    public bool IsSucceeded => _isComplete && _succeeded && !HasWarnings;
     public bool IsFailed => _isComplete && !_succeeded;
+
+    private bool _hasWarnings;
+    public bool HasWarnings { get => _hasWarnings; private set => Set(ref _hasWarnings, value); }
 
     private string _title = "";
     public string Title { get => _title; private set => Set(ref _title, value); }
@@ -125,6 +128,7 @@ public sealed class PublishRunViewModel : ObservableObject
         StatusText = "Starting upload…";
         ProgressValue = 0;
         _succeeded = false;
+        HasWarnings = false;
         IsComplete = false;
         IsPublishing = true;
 
@@ -142,6 +146,17 @@ public sealed class PublishRunViewModel : ObservableObject
             StatusText = $"Uploaded to Intune · App ID {appId}";
             _succeeded = true;
             return appId;
+        }
+        catch (IntuneFollowUpException ex)
+        {
+            ProgressValue = 100;
+            foreach (var step in Steps) step.State = "done";
+            Steps[^1].State = "error";
+            HasWarnings = true;
+            _succeeded = true; // The app exists: refresh callers when the result is dismissed.
+            StatusText = "App retained in Intune · follow-up incomplete";
+            ResultText = $"App ID {ex.AppId}{Environment.NewLine}{ex.Message}{Environment.NewLine}Review this app in Intune before publishing another copy.";
+            return ex.AppId;
         }
         catch (OperationCanceledException)
         {

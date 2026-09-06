@@ -293,7 +293,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
 
         if (DetectionRules.Count == 0)
         {
-            Fail("Add at least one detection rule before publishing; Intune would accept the app and never detect it.");
+            ValidationError = "Add at least one detection rule before publishing; Intune would accept the app and never detect it.";
             return;
         }
         ValidationError = "";
@@ -313,7 +313,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
             ? new NativeCodeSigner(settings.CodeSigning.CertificateThumbprint, settings.CodeSigning.TimestampServer)
             : null;
 
-        var uploadService = new IntuneUploadService(_auth.GetAccessTokenAsync, signer, settings.NetworkPaths.IntuneWinAppUtil);
+        var uploadService = new IntuneUploadService(_auth.CreateSessionTokenProvider(), signer, settings.NetworkPaths.IntuneWinAppUtil);
         var packageRoot = PackageRoot;
         var rules = DetectionRules.ToList();
         var groups = GroupPicker.AssignableGroups;
@@ -335,7 +335,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
             {
                 true => "Upload cancelled. The partially created app was removed from Intune.",
                 false => "Upload cancelled. The partially created app could not be removed; delete it in the Intune admin center.",
-                null => "Upload cancelled before anything was created in Intune.",
+                null => "Upload cancelled. Check Intune for any app created before cancellation; no app ID was confirmed.",
             });
     }
 

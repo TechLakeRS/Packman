@@ -203,18 +203,20 @@
                         <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                             <StackPanel>
                                 <TextBlock Text="Package source" Style="{StaticResource H2}" Margin="0,0,0,12"/>
-                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
-                                                   FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Height="28" Padding="10,0" Margin="10,0,0,0"
-                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="12"/>
-                                    </Grid>
-                                </Border>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                            CornerRadius="4" Padding="12,9" MinHeight="40">
+                                        <TextBlock Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
+                                                   FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding SourcePathDisplay}"/>
+                                    </Border>
+                                    <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Copy"
+                                            Click="CopyPath_Click" IsEnabled="{Binding HasSource}"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -225,18 +227,20 @@
                             <StackPanel>
                                 <TextBlock Text="Package source" Style="{StaticResource H2}"/>
                                 <TextBlock Text="Network share location" Style="{StaticResource FieldLabel}" Margin="0,14,0,6"/>
-                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
-                                                   FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <Button Grid.Column="1" Style="{StaticResource GhostButton}" Height="28" Padding="10,0" Margin="10,0,0,0"
-                                                Click="CopyPath_Click" IsEnabled="{Binding HasSource}" Content="Copy" FontSize="12"/>
-                                    </Grid>
-                                </Border>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+                                            CornerRadius="4" Padding="12,9" MinHeight="40">
+                                        <TextBlock Text="{Binding SourcePathDisplay}" FontFamily="{StaticResource MonoFontFamily}"
+                                                   FontSize="12" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding SourcePathDisplay}"/>
+                                    </Border>
+                                    <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Copy"
+                                            Click="CopyPath_Click" IsEnabled="{Binding HasSource}"/>
+                                </Grid>
                                 <DockPanel Margin="0,12,0,0">
                                     <Button DockPanel.Dock="Left" Style="{StaticResource GhostButton}" VerticalAlignment="Top" Click="OpenFolder_Click" IsEnabled="{Binding HasSource}">
                                         <StackPanel Orientation="Horizontal">
@@ -336,31 +340,29 @@
                             <StackPanel>
                                 <TextBlock Text="Command lines" Style="{StaticResource H2}" Margin="0,0,0,16"/>
                                 <TextBlock Text="Install command" Style="{StaticResource FieldLabel}" Margin="0,0,0,6"/>
-                                <Border Background="{DynamicResource CodeBgBrush}" CornerRadius="4" Padding="13,9">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding Detail.InstallCommand}" Foreground="{DynamicResource CodeTxtBrush}"
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{DynamicResource CodeBgBrush}" CornerRadius="4" Padding="13,9" MinHeight="40">
+                                        <TextBlock Text="{Binding Detail.InstallCommand}" Foreground="{DynamicResource CodeTxtBrush}"
                                                    FontFamily="{StaticResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                        <Button Grid.Column="1" Style="{StaticResource MiniButton}" Content="Copy" Click="CopyInstall_Click"
-                                                Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Border>
+                                    </Border>
+                                    <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Copy" Click="CopyInstall_Click"/>
+                                </Grid>
                                 <TextBlock Text="Uninstall command" Style="{StaticResource FieldLabel}" Margin="0,14,0,6"/>
-                                <Border Background="{DynamicResource CodeBgBrush}" CornerRadius="4" Padding="13,9">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding Detail.UninstallCommand}" Foreground="{DynamicResource CodeTxtBrush}"
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Background="{DynamicResource CodeBgBrush}" CornerRadius="4" Padding="13,9" MinHeight="40">
+                                        <TextBlock Text="{Binding Detail.UninstallCommand}" Foreground="{DynamicResource CodeTxtBrush}"
                                                    FontFamily="{StaticResource MonoFontFamily}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                        <Button Grid.Column="1" Style="{StaticResource MiniButton}" Content="Copy" Click="CopyUninstall_Click"
-                                                Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Border>
+                                    </Border>
+                                    <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Copy" Click="CopyUninstall_Click"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -374,7 +376,7 @@
                                                    Margin="12,0,0,0" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                        <ComboBox AutomationProperties.Name="New rule type" x:Name="NewRuleType" Width="110" Height="34" SelectedIndex="0">
+                                        <ComboBox AutomationProperties.Name="New rule type" x:Name="NewRuleType" Width="110" SelectedIndex="0">
                                             <ComboBoxItem Content="MSI"/>
                                             <ComboBoxItem Content="File"/>
                                             <ComboBoxItem Content="Registry"/>
@@ -524,6 +526,12 @@
                         <Border Style="{StaticResource Card}" Margin="0,18,0,0">
                             <StackPanel>
                                 <TextBlock Text="Requirements" Style="{StaticResource H2}" Margin="0,0,0,12"/>
+                                <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <TextBlock Text="Minimum Windows release" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="{Binding Detail.MinimumOperatingSystem}" TextWrapping="Wrap" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" Margin="0,3,0,0"/>
+                                    </StackPanel>
+                                </Border>
                                 <UniformGrid Columns="2" Margin="0,0,-10,-10">
                                     <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="4" Padding="12,9" Margin="0,0,10,10">
                                         <StackPanel>
@@ -624,10 +632,10 @@
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox Grid.Column="0" Style="{StaticResource TextField}" Height="38"
+                                            <TextBox Grid.Column="0" Style="{StaticResource TextField}"
                                                      local:PlaceholderText.Text="Search Entra groups…"
                                                      Text="{Binding GroupSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                            <ComboBox Grid.Column="1" Width="120" Height="38" Margin="10,0,0,0"
+                                            <ComboBox Grid.Column="1" Width="120" Margin="10,0,0,0"
                                                       ItemsSource="{Binding IntentChoices}" SelectedItem="{Binding SelectedIntent, Mode=TwoWay}"/>
                                             <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Content="Add group"
                                                     Click="AddAssignment_Click" IsEnabled="{Binding CanAddAssignment}"/>

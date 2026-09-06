@@ -7,12 +7,16 @@ using System.Windows.Threading;
 
 namespace Packman.ViewModels;
 
+/// <summary>The text and Monaco version captured together for one save.</summary>
+public sealed record EditorBufferSnapshot(string Content, int VersionId, bool IsDirty = false);
+
 /// <summary>What the editor session needs from the view: a channel to Monaco.</summary>
 public interface IMonacoHost
 {
     bool IsReady { get; }
     void Post(object message);
-    Task<string?> GetBufferAsync(string path);
+    Task<EditorBufferSnapshot?> GetBufferAsync(string path);
+    Task<bool> TryReloadAsync(object message);
 }
 
 /// <summary>
@@ -23,6 +27,7 @@ public interface IMonacoHost
 /// </summary>
 public sealed class EditorSessionViewModel : ObservableObject
 {
+    private const long MaxEditorFileBytes = 8 * 1024 * 1024;
     private static readonly IReadOnlySet<string> TextExtensions = PackageFileSearch.TextExtensions;
     private static readonly IReadOnlySet<string> PowerShellExtensions = PackageFileSearch.PowerShellExtensions;
 
@@ -30,6 +35,7 @@ public sealed class EditorSessionViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly DispatcherTimer _watchTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
 
     private IMonacoHost? _host;
     private FileSystemWatcher? _watcher;
@@ -282,7 +288,7 @@ public sealed class EditorSessionViewModel : ObservableObject
             }
             else
             {
-                await ReadIntoEditorAsync(file);
+                await ReadIntoEditorAsync(file, preserveEdits: true);
             }
         }
     }
@@ -311,54 +317,98 @@ public sealed class EditorSessionViewModel : ObservableObject
     }
 
     /// <summary>Reads the file off the share (not on the UI thread) and hands the text to Monaco.</summary>
-    private async Task ReadIntoEditorAsync(OpenFile file)
+    private async Task ReadIntoEditorAsync(OpenFile file, bool preserveEdits = false)
     {
+        var beforeRead = preserveEdits && _host != null ? await _host.GetBufferAsync(file.Path) : null;
+        if (preserveEdits && (beforeRead == null || beforeRead.IsDirty || file.IsDirty))
+        {
+            FlagChangedOnDisk(file);
+            return;
+        }
+
         var ext = Path.GetExtension(file.Path);
         string content;
+        var encoding = file.Encoding;
+        var crlf = file.Crlf;
+        string encodingLabel;
+        bool isReadOnly;
 
         if (!TextExtensions.Contains(ext))
         {
             content = $"[Binary file — open in an external editor to view]\n\n{file.Path}";
-            file.IsReadOnly = true;
-            file.EncodingLabel = "binary";
+            isReadOnly = true;
+            encodingLabel = "binary";
         }
         else
         {
             try
             {
-                var text = await Task.Run(() => TextFileIO.Read(file.Path));
+                var text = await Task.Run(() =>
+                {
+                    if (new FileInfo(file.Path).Length > MaxEditorFileBytes)
+                        throw new IOException("This file exceeds the 8 MB editor limit. Open it in the external editor to view it.");
+                    return TextFileIO.Read(file.Path);
+                });
                 content = text.Content;
-                file.Encoding = text.Encoding;
-                file.Crlf = text.Crlf;
-                file.EncodingLabel = EncodingLabel(text.Encoding);
-                file.IsReadOnly = false;
+                encoding = text.Encoding;
+                crlf = text.Crlf;
+                encodingLabel = EncodingLabel(text.Encoding);
+                isReadOnly = false;
             }
             catch (Exception ex)
             {
                 content = $"Could not read file: {ex.Message}";
-                file.IsReadOnly = true;
-                file.EncodingLabel = "—";
+                isReadOnly = true;
+                encodingLabel = "—";
             }
         }
 
         // The tab may have been closed while the read was in flight.
         if (!OpenFiles.Contains(file)) return;
 
-        file.LastWriteUtc = File.Exists(file.Path) ? File.GetLastWriteTimeUtc(file.Path) : DateTime.MinValue;
-        file.ChangedOnDisk = false;
-        file.IsPowerShell = PowerShellExtensions.Contains(ext);
-
-        _host?.Post(new
+        var lastWriteUtc = File.Exists(file.Path) ? File.GetLastWriteTimeUtc(file.Path) : DateTime.MinValue;
+        var isPowerShell = PowerShellExtensions.Contains(ext);
+        var message = new
         {
             type = "open",
             path = file.Path,
             content,
-            language = file.IsPowerShell ? "powershell" : "plaintext",
-            readOnly = file.IsReadOnly,
-            eol = file.Crlf ? "crlf" : "lf",
+            language = isPowerShell ? "powershell" : "plaintext",
+            readOnly = isReadOnly,
+            eol = crlf ? "crlf" : "lf",
             activate = file == _active,
-        });
+            expectedVersionId = beforeRead?.VersionId,
+        };
 
+        if (preserveEdits)
+        {
+            // Check and replace atomically inside Monaco. A C# check followed by Post
+            // would still allow a keystroke between those two browser operations.
+            if (_host == null || !await _host.TryReloadAsync(message))
+            {
+                FlagChangedOnDisk(file);
+                return;
+            }
+        }
+        else
+        {
+            _host?.Post(message);
+        }
+
+        file.Encoding = encoding;
+        file.Crlf = crlf;
+        file.EncodingLabel = encodingLabel;
+        file.IsReadOnly = isReadOnly;
+        file.LastWriteUtc = lastWriteUtc;
+        file.ChangedOnDisk = false;
+        file.IsPowerShell = isPowerShell;
+
+        if (file == _active) RefreshStatus();
+    }
+
+    private void FlagChangedOnDisk(OpenFile file)
+    {
+        file.ChangedOnDisk = true;
         if (file == _active) RefreshStatus();
     }
 
@@ -382,10 +432,25 @@ public sealed class EditorSessionViewModel : ObservableObject
     /// <summary>Writes the buffer back in the file's original encoding. False when it did not happen.</summary>
     public async Task<bool> SaveAsync(OpenFile file)
     {
+        // Ctrl+S and a close/save prompt can overlap. Serialize writes to the same
+        // temporary file and capture each buffer only after the preceding save ends.
+        await _saveGate.WaitAsync();
+        try
+        {
+            return await SaveCoreAsync(file);
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
+    }
+
+    private async Task<bool> SaveCoreAsync(OpenFile file)
+    {
         if (file.IsReadOnly || _host == null) return true;
 
-        var content = await _host.GetBufferAsync(file.Path);
-        if (content == null)
+        var buffer = await _host.GetBufferAsync(file.Path);
+        if (buffer == null)
         {
             _dialogs.Warn($"Could not read the editor buffer for {file.Name}.", "Save failed");
             return false;
@@ -401,7 +466,7 @@ public sealed class EditorSessionViewModel : ObservableObject
 
         try
         {
-            await Task.Run(() => TextFileIO.Write(file.Path, content, file.Encoding));
+            await Task.Run(() => TextFileIO.Write(file.Path, buffer.Content, file.Encoding));
         }
         catch (Exception ex)
         {
@@ -411,9 +476,13 @@ public sealed class EditorSessionViewModel : ObservableObject
 
         file.LastWriteUtc = File.GetLastWriteTimeUtc(file.Path);
         file.ChangedOnDisk = false;
-        _host.Post(new { type = "markSaved", path = file.Path });
+        _host.Post(new { type = "markSaved", path = file.Path, versionId = buffer.VersionId });
         if (file == _active) RefreshStatus();
-        return true;
+
+        // A save-and-close must stop if the user kept typing during the share write.
+        // Monaco retains those edits as dirty; a later save can persist them.
+        var current = await _host.GetBufferAsync(file.Path);
+        return current?.VersionId == buffer.VersionId;
     }
 
     private async Task ReloadActiveAsync()

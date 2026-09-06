@@ -2,19 +2,19 @@
 
 Packman is a Windows desktop application for preparing PSADT packages and managing Win32 applications in Intune. The community edition includes the workflows documented in [README.md](README.md). See [ROADMAP.md](ROADMAP.md) for the boundary between community work and planned commercial integrations.
 
-## Build and test
+## Build and validate
 
 Use Windows with the .NET 10 SDK. Visual Studio is optional.
 
 ```powershell
 dotnet restore Packman.sln
 dotnet build Packman.sln -c Release --no-restore
-dotnet test Packman.Tests/Packman.Tests.csproj -c Release --no-build
+dotnet run --file scripts/RenderUiPreviews.cs -c Release -- artifacts/ui-previews
 ```
 
 The repository's NuGet feed is the vendored `packages/` directory. Keep package references and the vendored feed in sync when changing dependencies. Preserve their licenses and notices.
 
-Windows tests render the main views, both themes, Settings sections and Application Detail tabs. CI attaches the results as `test-results` and the screenshots as `ui-previews`. They use sample data and do not connect to a tenant or deploy an application. The README describes the separate non-Windows helper-test path.
+The standalone Windows preview utility renders the main views, both themes, Settings sections and Application Detail tabs. CI attaches the screenshots as `ui-previews` and launches/closes the packaged application. Previews use sample data and do not connect to a tenant or deploy an application. The solution contains only the desktop project; validate behavior changes with focused reproducible checks and report the evidence in the pull request.
 
 ## Making a change
 

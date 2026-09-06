@@ -14,6 +14,7 @@
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource SubText}">
                         <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasWarnings}" Value="True"><Setter Property="Foreground" Value="{DynamicResource WarnBrush}"/></DataTrigger>
                             <DataTrigger Binding="{Binding IsFailed}" Value="True"><Setter Property="Foreground" Value="{DynamicResource BadBrush}"/></DataTrigger>
                         </Style.Triggers>
                     </Style>

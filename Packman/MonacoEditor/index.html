@@ -17,13 +17,14 @@
   //   { type: 'init', catalog: [...], background, dark }
   //   { type: 'open', path, content, language, readOnly, eol, activate }
   //   { type: 'activate', path } | { type: 'close', path }
-  //   { type: 'markSaved', path } | { type: 'reveal', line }
+  //   { type: 'markSaved', path, versionId } | { type: 'reveal', line }
   //   { type: 'theme', background, dark } | { type: 'markers', path, markers: [...] }
   // Messages to C#:
   //   { type: 'ready' } | { type: 'dirty', path, dirty } | { type: 'save' }
   //   { type: 'cursor', line, column, selected }
   //   { type: 'validate', path, content }
-  // C# reads buffers directly through packmanContent(path) / packmanDirty().
+  // C# reads buffers through packmanContent(path) / packmanDirty(), and applies
+  // watcher reloads conditionally through packmanReload(message).
   let editor = null;
   let catalog = [];
   let byName = new Map();
@@ -136,7 +137,18 @@
   // Called from C# via ExecuteScriptAsync.
   window.packmanContent = path => {
     const f = files.get(path);
-    return f ? f.model.getValue() : null;
+    return f ? {
+      content: f.model.getValue(),
+      versionId: f.model.getAlternativeVersionId(),
+      isDirty: f.model.getAlternativeVersionId() !== f.savedVersionId
+    } : null;
+  };
+  window.packmanReload = msg => {
+    const f = files.get(msg.path);
+    if (!f || f.model.getAlternativeVersionId() !== msg.expectedVersionId ||
+        f.model.getAlternativeVersionId() !== f.savedVersionId) return false;
+    openFile(msg);
+    return true;
   };
   window.packmanDirty = () => [...files.entries()].filter(([, f]) => f.dirty).map(([p]) => p);
 
@@ -319,9 +331,8 @@
       case 'markSaved': {
         const f = files.get(msg.path);
         if (f) {
-          f.savedVersionId = f.model.getAlternativeVersionId();
-          f.dirty = false;
-          post({ type: 'dirty', path: msg.path, dirty: false });
+          f.savedVersionId = msg.versionId;
+          refreshDirty(msg.path);
         }
         break;
       }

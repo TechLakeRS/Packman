@@ -50,6 +50,12 @@ public sealed class RemoteTestViewModel : ObservableObject
     private int? _copyPercent;
     private DetectionRule? _discoveredRule;
     private string _discoveredSummary = "";
+    private int _contextVersion;
+
+    private sealed record DetectionContext(int Revision, string Computer, string AppName, string Version, string SourcePath);
+
+    private DetectionContext CaptureDetectionContext() =>
+        new(_contextVersion, _targetComputer, _packageAppName, _packageVersion, _packageSourcePath);
 
     public ObservableCollection<RemoteTestLine> Lines { get; } = new();
     public ObservableCollection<string> RecentComputers { get; } = new();
@@ -81,7 +87,7 @@ public sealed class RemoteTestViewModel : ObservableObject
         UninstallCommand      = new AsyncRelayCommand(() => RunAsync("Uninstall"), CanRun);
         DetectCommand         = new AsyncRelayCommand(DiscoverAsync, () => !_isRunning && IsValidTarget);
         CheckOnlineCommand    = new AsyncRelayCommand(CheckOnlineAsync, () => !_isRunning && IsValidTarget);
-        ApplyDetectionCommand = new RelayCommand(ApplyDetection, () => _discoveredRule != null && _isGeneratedPackage);
+        ApplyDetectionCommand = new RelayCommand(ApplyDetection, () => !_isRunning && _discoveredRule != null && _isGeneratedPackage);
         ClearLogCommand       = new RelayCommand(() => { Lines.Clear(); lock (_pending) _pending.Clear(); });
 
         // Nothing to follow on the standalone page.
@@ -141,6 +147,7 @@ public sealed class RemoteTestViewModel : ObservableObject
     {
         _packagePath = path;
         _isGeneratedPackage = fromWizard;
+        InvalidateDetection();
         OnPropertyChanged(nameof(PackagePath));
         OnPropertyChanged(nameof(HasPackage));
         OnPropertyChanged(nameof(NeedsPackage));
@@ -185,6 +192,7 @@ public sealed class RemoteTestViewModel : ObservableObject
         set
         {
             if (!Set(ref _targetComputer, value)) return;
+            InvalidateDetection();
             IsOnline = false;
             StatusText = IsValidTarget ? "not checked" : "enter a computer name";
             RaiseCommandStates();
@@ -240,6 +248,15 @@ public sealed class RemoteTestViewModel : ObservableObject
     public bool HasDiscoveredRule => _discoveredRule != null;
     public string DiscoveredSummary { get => _discoveredSummary; private set => Set(ref _discoveredSummary, value); }
 
+    private void InvalidateDetection()
+    {
+        _contextVersion++;
+        _discoveredRule = null;
+        DiscoveredSummary = "";
+        OnPropertyChanged(nameof(HasDiscoveredRule));
+        ApplyDetectionCommand.RaiseCanExecuteChanged();
+    }
+
     private bool CanRun() => !_isRunning && IsValidTarget && HasPackage;
 
     private void RaiseCommandStates()
@@ -255,24 +272,28 @@ public sealed class RemoteTestViewModel : ObservableObject
     // ── Actions ────────────────────────────────────────────────────────
     private async Task CheckOnlineAsync()
     {
+        var context = CaptureDetectionContext();
         StatusText = "checking…";
         bool online = await Task.Run(() =>
         {
             try
             {
                 using var ping = new System.Net.NetworkInformation.Ping();
-                return ping.Send(_targetComputer, 2000).Status == System.Net.NetworkInformation.IPStatus.Success;
+                return ping.Send(context.Computer, 2000).Status == System.Net.NetworkInformation.IPStatus.Success;
             }
             catch { return false; }
         });
 
+        if (context.Revision != _contextVersion || IsRunning) return;
         IsOnline = online;
         StatusText = online ? "online" : "unreachable";
-        if (online) RememberComputer(_targetComputer);
+        if (online) RememberComputer(context.Computer);
     }
 
     private async Task RunAsync(string deploymentType)
     {
+        if (!CanRun()) return;
+
         Lines.Clear();
         lock (_pending) _pending.Clear();
         _discoveredRule = null;
@@ -282,7 +303,7 @@ public sealed class RemoteTestViewModel : ObservableObject
         IsRunning = true;
         StatusText = $"{deploymentType.ToLowerInvariant()} running…";
         _flushTimer.Start();
-        RememberComputer(_targetComputer);
+        var context = CaptureDetectionContext();
 
         string packagePath = _packagePath;
         bool runAsUser = _runAsUser;
@@ -291,18 +312,41 @@ public sealed class RemoteTestViewModel : ObservableObject
         int exitCode = -1;
         try
         {
-            exitCode = await Task.Run(() => new RemoteTestService().Deploy(
-                _targetComputer, packagePath, deploymentType, cleanup, runAsUser,
-                Append, percent => CopyPercent = percent));
-        }
-        catch (PSRemotingTransportException ex)
-        {
-            Append($"ERROR: WinRM connection failed: {ex.Message}");
-            Append("Enable WinRM on the target (Enable-PSRemoting) and check the firewall.");
-        }
-        catch (Exception ex)
-        {
-            Append($"ERROR: {ex.Message}");
+            RememberComputer(context.Computer);
+            try
+            {
+                exitCode = await Task.Run(() => new RemoteTestService().Deploy(
+                    context.Computer, packagePath, deploymentType, cleanup, runAsUser,
+                    Append, percent => CopyPercent = percent));
+            }
+            catch (PSRemotingTransportException ex)
+            {
+                Append($"ERROR: WinRM connection failed: {ex.Message}");
+                Append("Enable WinRM on the target (Enable-PSRemoting) and check the firewall.");
+            }
+            catch (Exception ex)
+            {
+                Append($"ERROR: {ex.Message}");
+            }
+            CopyPercent = null;
+
+            bool success = RemoteTestService.IsSuccess(exitCode);
+            Append("========================================");
+            Append(success ? $"✓ {deploymentType.ToUpperInvariant()} SUCCEEDED" : $"✗ {deploymentType.ToUpperInvariant()} FAILED");
+            Append("========================================");
+            Flush();
+            StatusText = success ? $"{deploymentType.ToLowerInvariant()} succeeded (exit {exitCode})" : $"{deploymentType.ToLowerInvariant()} failed (exit {exitCode})";
+
+            // Keep the operation busy through follow-up discovery so another action
+            // cannot uninstall the app or change the target during this delay.
+            if (success && deploymentType == "Install")
+            {
+                Append("Waiting for the registry to settle…");
+                Flush();
+                await Task.Delay(3000);
+                if (context.Revision == _contextVersion)
+                    await DiscoverCoreAsync(context);
+            }
         }
         finally
         {
@@ -311,34 +355,38 @@ public sealed class RemoteTestViewModel : ObservableObject
             Flush();
             IsRunning = false;
         }
-
-        bool success = RemoteTestService.IsSuccess(exitCode);
-        Append("========================================");
-        Append(success ? $"✓ {deploymentType.ToUpperInvariant()} SUCCEEDED" : $"✗ {deploymentType.ToUpperInvariant()} FAILED");
-        Append("========================================");
-        Flush();
-        StatusText = success ? $"{deploymentType.ToLowerInvariant()} succeeded (exit {exitCode})" : $"{deploymentType.ToLowerInvariant()} failed (exit {exitCode})";
-
-        // Detection only means anything once the app is installed.
-        if (success && deploymentType == "Install")
-        {
-            Append("Waiting for the registry to settle…");
-            Flush();
-            await Task.Delay(3000);
-            await DiscoverAsync();
-        }
     }
 
     private async Task DiscoverAsync()
     {
+        if (IsRunning || !IsValidTarget) return;
+
         IsRunning = true;
-        StatusText = "discovering detection rule…";
         _flushTimer.Start();
+        try
+        {
+            await DiscoverCoreAsync(CaptureDetectionContext());
+        }
+        finally
+        {
+            _flushTimer.Stop();
+            Flush();
+            IsRunning = false;
+        }
+    }
+
+    private async Task DiscoverCoreAsync(DetectionContext context)
+    {
+        StatusText = "discovering detection rule…";
 
         try
         {
             var result = await new DetectionDiscoveryService()
-                .DiscoverAsync(_targetComputer, _packageAppName, _packageVersion, _packageSourcePath);
+                .DiscoverAsync(context.Computer, context.AppName, context.Version, context.SourcePath);
+
+            // The wizard can replace its package while this tool is running in the
+            // background. Only the context that requested discovery owns its result.
+            if (context.Revision != _contextVersion) return;
 
             foreach (var message in result.Messages) Append(message);
 
@@ -360,23 +408,23 @@ public sealed class RemoteTestViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            if (context.Revision != _contextVersion) return;
             _discoveredRule = null;
+            DiscoveredSummary = "";
             Append($"ERROR: {ex.Message}");
             StatusText = "detection failed";
         }
         finally
         {
             OnPropertyChanged(nameof(HasDiscoveredRule));
-            _flushTimer.Stop();
-            Flush();
-            IsRunning = false;
+            ApplyDetectionCommand.RaiseCanExecuteChanged();
         }
     }
 
     /// <summary>Pushes the discovered rule into the publish step's detection fields.</summary>
     private void ApplyDetection()
     {
-        if (_discoveredRule == null || !_hasPublishStep) return;
+        if (IsRunning || _discoveredRule == null || !_hasPublishStep || !_isGeneratedPackage) return;
 
         ApplyDetectionRequested?.Invoke(_discoveredRule);
 

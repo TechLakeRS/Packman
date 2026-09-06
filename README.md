@@ -116,7 +116,7 @@ These are native Windows CI renders with sample data; they do not show a live te
   Uninstall), searched live from Entra.
 - Optional **per-package groups** — an install group and/or an uninstall group created (or
   reused) from a name template on every upload.
-- **Cancel** mid-upload: a half-created app is deleted from the tenant rather than left as a shell.
+- **Cancel** mid-upload: cleanup is attempted for a known incomplete app; confirmed or uncertain publication retains the app for review.
 - A per-upload **log file**, and a **marker file** in the package folder recording the Intune App ID.
 
 ### Tenant management
@@ -139,7 +139,7 @@ These are native Windows CI renders with sample data; they do not show a live te
 
 - Interactive (browser) sign-in or app-registration + certificate sign-in via MSAL, with the
   Windows broker.
-- **Test connection** — checks each required Graph scope individually and reports what is missing.
+- **Test connection** — probes Graph read access and reports service errors; write permissions still need the documented consent and roles.
 - Dark / Light / System theme, applied and remembered immediately.
 - Crash and error logging to disk; a failed background task reports rather than killing the app.
 
@@ -154,7 +154,7 @@ These are native Windows CI renders with sample data; they do not show a live te
 | **Editor host** | Microsoft Edge **WebView2 Runtime** (for the in-app script editor; without it the editor falls back to "open in VS Code") |
 | **PSADT v4 template** | A folder holding `Invoke-AppDeployToolkit.ps1` **plus the runtime** (`Invoke-AppDeployToolkit.exe` and the `PSAppDeployToolkit` module). A script-only starter ships in `Packman/PSADT/` — see `Packman/PSADT/README.md` |
 | **Content prep tool** | `IntuneWinAppUtil.exe` (Microsoft Win32 Content Prep Tool) |
-| **Tenant** | Microsoft Intune, with an account or app registration holding `DeviceManagementApps.ReadWrite.All`, `Group.ReadWrite.All` (group search, plus creating the per-package groups), `User.Read`, `User.ReadBasic.All` (user search on the Advanced page), `Device.Read.All`, `GroupMember.ReadWrite.All` |
+| **Tenant** | An active Microsoft Intune license and Microsoft Graph permissions for the selected [authentication mode](#authentication) |
 | **Remote test (optional)** | A test machine with WinRM enabled and reachable, and administrative rights on it (the package is staged over the `C$` admin share) |
 
 ## Build and run
@@ -180,12 +180,14 @@ dotnet run --project Packman/Packman.csproj
 
 Or open `Packman.sln` in a Visual Studio installation with .NET 10 support and run.
 
-Tests cover script editing, package paths, Graph payloads, preflight and signing failures.
-Windows runs also render the views in both themes using sample data:
+Windows CI builds and launches the packaged app, then exports native view previews in both themes.
+The standalone preview utility uses sample data and does not deploy anything:
 
+```powershell
+dotnet run --file scripts/RenderUiPreviews.cs -c Release -- artifacts/ui-previews
 ```
-dotnet test Packman.sln
-```
+
+The solution contains only the desktop application; no separate test project is required.
 
 ## Offline builds
 
@@ -258,11 +260,26 @@ Two modes:
   blank for `organizations`.
 - **App Registration** — enter **Tenant ID** and **Application (Client) ID**, then pick the
   authentication **certificate** from the `CurrentUser\My` store or paste its thumbprint. The
-  registration needs application permissions for the scopes listed above.
+  registration needs application permissions and admin consent as listed below.
 
-**Test connection** exercises each required scope separately and reports a per-scope pass/fail, so
-a missing consent shows up as one red row rather than a generic failure. The footer status dot
-turns green and reads *Connected to Microsoft Intune · you@tenant* once signed in.
+Graph permissions for the available features:
+
+- **Interactive (delegated):** `User.Read`, `DeviceManagementApps.ReadWrite.All`,
+  `Group.ReadWrite.All`, `User.ReadBasic.All`, `Device.Read.All`, and `GroupMember.ReadWrite.All`.
+- **App Registration (application):** `DeviceManagementApps.ReadWrite.All`,
+  `Group.ReadWrite.All`, `User.ReadBasic.All`, and `GroupMember.ReadWrite.All`.
+  Use `Device.ReadWrite.All` to add devices to groups; `Device.Read.All` suffices for device
+  lookup if device membership changes are not used. `User.Read` is a delegated permission.
+
+Group changes in interactive mode also require a supported Entra role or group ownership;
+Intune operations remain subject to tenant permissions. Microsoft's
+[add-member contract](https://learn.microsoft.com/en-us/graph/api/group-post-members?view=graph-rest-beta)
+lists the different delegated and application permissions and supported roles.
+
+**Test connection** reads apps, groups, devices and users and reports each read check separately.
+Passing these checks does not verify write permissions or administrator roles for publishing and
+group changes. The footer status dot turns green and reads
+*Connected to Microsoft Intune · you@tenant* once signed in.
 
 ### Code Signing (optional)
 
@@ -499,17 +516,18 @@ Use **Silent** for unattended Intune deployment. Microsoft's Win32 guidance requ
    options are on in Settings, creates (or reuses) the per-package **install group** and
    **uninstall group** from their name templates and assigns those too.
 
-Cancelling removes the half-created app from the tenant; the result line says whether that
-succeeded.
+Before publication, cancelling attempts to remove a known half-created app; the result line
+reports cleanup success or failure. If no app ID was confirmed, check Intune before retrying.
 
 On success the status reads **Uploaded to Intune · App ID …**, a marker file recording the App ID is
 written into the package folder, and — if the package came from the upgrade flow — a
 **supersedence** relationship is written marking the previous app as superseded by this one.
 
-**Cancel** during the upload deletes anything already created in the tenant, so a cancelled or
-failed run leaves no half-built shell behind. Once the app is published, a later assignment or
-supersedence failure is logged as a warning and does **not** roll the app back — the app is live,
-the assignment simply is not, and the log names the group that failed.
+Packman waits for Intune to report the app as published before assigning groups. If final
+publication is uncertain, or later assignment or supersedence work fails or is cancelled,
+Packman retains the app and shows its ID with a warning. Review its content, publishing state
+and assignments in Intune before creating another copy; a lost response does not prove that
+the change failed.
 
 ---
 
@@ -724,7 +742,7 @@ Known limits, so you do not go looking:
 | *No `.intunewin` file found after conversion.* | The template needs the full PSADT v4 **runtime**, not just the script. See `Packman/PSADT/README.md`. |
 | *Package version … already exists.* | Confirm the replace prompt (create), or delete the version folder / pick another version (upgrade). |
 | *Sign in to Intune on the Settings page first.* | Sign in, then **Test connection**, before uploading. |
-| Connection test shows a red scope | That scope has not been consented. For interactive sign-in, have an admin consent; for app registration, add the application permission and grant consent. |
+| Connection test shows a failed read check | Review the HTTP error, consent and tenant access for that service. A successful read check does not verify write permissions or administrator roles. |
 | *Detection needs a path and a file name.* | The upload is blocked deliberately — Intune would accept an incomplete rule and then never detect the app. |
 | The app installs but Intune keeps reinstalling it | The detection rule does not match reality. Remote-test the package and use **Discover detection rule**, or fix the rule on the app's Deployment tab. |
 | An EXE package "succeeds" but installs nothing | The `<silent flags>` placeholder was never replaced. Open the script and put the installer's real silent switches in. |
@@ -766,10 +784,9 @@ Packman/
   PSADT/          bundled PSADT v4 template (script only)
   Tools/          Update-PsadtCatalog.ps1, regenerates the function catalog
   PSADT_v4_Functions*.csv   function catalog behind the editor's IntelliSense
-Packman.Tests/    xunit tests for scripts, package paths, preflight and Graph payloads;
-                  Windows-only WPF layout smoke tests with light/dark PNG previews
+scripts/         native Windows preview utility and third-party inventory tooling
 packages/         vendored .nupkg files for offline restore
-.github/workflows/build.yml   restore, build and test on windows-latest
+.github/workflows/build.yml   restore, build, native previews and app startup on windows-latest
 ```
 
 ---
@@ -783,4 +800,4 @@ packages/         vendored .nupkg files for offline restore
 
 The desktop UI uses a shared type scale, sentence-case actions, larger form controls and keyboard focus indicators. The installer appears before its editable metadata, with a live package summary beside it. Configuration and assignments use the available width; publishing feedback is shared by both entry points. Application Detail distinguishes **Republish content**, version upgrades and **Delete from Intune**.
 
-See [the UI design notes](docs/UI-DESIGN.md) for scope, component structure and verification. Windows CI runs on `main`, `codex/**` branches and pull requests, and publishes `ui-previews` artifacts from the WPF layout tests.
+See [the UI design notes](docs/UI-DESIGN.md) for scope, component structure and verification, and [the September code review](docs/CODE-AUDIT-2026-09.md) for corrected behavior and validation limits. Windows CI runs on `main`, `codex/**` branches and pull requests, and publishes `ui-previews` artifacts from the standalone Windows preview utility.

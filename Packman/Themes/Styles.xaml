@@ -128,7 +128,7 @@
     </Style>
 
     <!-- ═══════════════ Buttons ═══════════════ -->
-    <!-- Fluent buttons: 4px radius, 34px minimum height, SemiBold label. -->
+    <!-- Fluent buttons: 4px radius, 40px minimum height, SemiBold label. -->
     <Style x:Key="PrimaryButton" TargetType="{x:Type Button}">
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="FontFamily" Value="{StaticResource UIFontFamily}"/>
@@ -264,9 +264,14 @@
     <Style x:Key="BackButton" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}"/>
 
 
-    <!-- Browse (sits inside a field, so it matches the field's inner height) -->
-    <Style x:Key="BrowseButton" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}">
-        <Setter Property="Padding" Value="10,6"/>
+    <!-- Field actions occupy their own grid column, separated from the input. -->
+    <Style x:Key="FieldActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="MinWidth" Value="88"/>
+        <Setter Property="Padding" Value="14,7"/>
+        <Setter Property="Margin" Value="10,0,0,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Background" Value="{DynamicResource PrimaryFaintBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
 
     <Style x:Key="CardActionButton" TargetType="{x:Type Button}" BasedOn="{StaticResource GhostButton}">

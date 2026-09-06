@@ -52,20 +52,23 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="220"/></Grid.ColumnDefinitions>
             <Border x:Name="SourceFields" Style="{StaticResource Card}" Padding="22,20,22,22" IsEnabled="{Binding CanEditPackageInputs}">
                 <StackPanel>
-                    <!-- Sources path: browse sits inside the field, hint sits under it -->
+                    <!-- Keep the input and its Browse action separate. -->
                     <StackPanel Margin="0,0,0,24">
                         <TextBlock Style="{StaticResource FieldLabel}">
                             <Run Text="Source installer"/><Run Text=" *" Foreground="{DynamicResource AccentTextBrush}"/>
                         </TextBlock>
                         <Grid Margin="0,6,0,0">
-                            <TextBox AutomationProperties.Name="Source installer" Style="{StaticResource MonoField}" Padding="11,0,86,0"
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox AutomationProperties.Name="Source installer" Style="{StaticResource MonoField}"
                                      local:PlaceholderText.Text="Choose or drop an MSI / EXE installer"
                                      Text="{Binding CreatePackage.SourcesPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PreviewDragOver="SourcesPath_DragOver" Drop="SourcesPath_Drop"
                                      AllowDrop="True"/>
-                            <Button Style="{StaticResource BrowseButton}" Content="Browse…"
-                                    HorizontalAlignment="Right" VerticalAlignment="Center"
-                                    Margin="0,0,5,0" Click="BrowseButton_Click"/>
+                            <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Browse…"
+                                    Click="BrowseButton_Click"/>
                         </Grid>
                         <TextBlock Text="Drop an MSI or EXE here — metadata, icon and product code are read automatically."
                                    FontFamily="{StaticResource MonoFontFamily}" FontSize="12" LineHeight="18"
@@ -246,12 +249,15 @@
                 <StackPanel>
                     <TextBlock Text="Existing Package Folder" Style="{StaticResource FieldLabel}"/>
                     <Grid Margin="0,6,0,0">
-                        <TextBox AutomationProperties.Name="Existing Package Folder" Style="{StaticResource MonoField}" Padding="11,0,86,0" IsReadOnly="True"
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox AutomationProperties.Name="Existing Package Folder" Style="{StaticResource MonoField}" IsReadOnly="True"
                                  local:PlaceholderText.Text="Select the existing PSADT package folder"
                                  Text="{Binding Upgrade.ExistingPackagePath, Mode=OneWay}"/>
-                        <Button Style="{StaticResource BrowseButton}" Content="Browse…"
-                                HorizontalAlignment="Right" VerticalAlignment="Center"
-                                Margin="0,0,5,0" Click="BrowseUpgradePackage_Click"/>
+                        <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Browse…"
+                                Click="BrowseUpgradePackage_Click"/>
                     </Grid>
 
                     <Border Background="{DynamicResource RailBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -281,12 +287,15 @@
                         <StackPanel Grid.Column="0">
                             <TextBlock Text="New Source File" Style="{StaticResource FieldLabel}"/>
                             <Grid Margin="0,6,0,0">
-                                <TextBox AutomationProperties.Name="New Source File" Style="{StaticResource MonoField}" Padding="11,0,86,0" IsReadOnly="True"
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox AutomationProperties.Name="New Source File" Style="{StaticResource MonoField}" IsReadOnly="True"
                                          local:PlaceholderText.Text="Select the new MSI/EXE"
                                          Text="{Binding Upgrade.NewSourcePath, Mode=OneWay}"/>
-                                <Button Style="{StaticResource BrowseButton}" Content="Browse…"
-                                        HorizontalAlignment="Right" VerticalAlignment="Center"
-                                        Margin="0,0,5,0" Click="BrowseUpgradeSource_Click"/>
+                                <Button Grid.Column="1" Style="{StaticResource FieldActionButton}" Content="Browse…"
+                                        Click="BrowseUpgradeSource_Click"/>
                             </Grid>
                         </StackPanel>
 
