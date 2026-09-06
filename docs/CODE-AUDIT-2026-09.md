@@ -26,7 +26,7 @@ This review covered the WPF workflows, editor state, packaging services, authent
 
 ## Validation
 
-- The application and standalone preview utility cross-compile with .NET 10.
+- The application and standalone preview utility cross-compile with .NET 10. The [Windows CI run](https://github.com/TechLakeRS/Packman/actions/runs/34045696653) also passed offline restore, a build with zero warnings/errors, 52 native renders, and packaged application startup/shutdown. Representative field layouts and Settings/Application Detail views were visually inspected in both themes.
 - 35 existing packaging, path, preflight, signing and script checks passed from a temporary validation folder.
 - 27 parser/metadata checks passed, covering ASCII and typographic quotes without executing PowerShell scripts.
 - 93 focused Graph checks covered detection, request payloads, OS readback, cache invalidation, assignment pagination and exclusions.
