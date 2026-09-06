@@ -299,7 +299,7 @@ public class RemoteTestService
         if (progress != null)
         {
             long totalBytes = GetDirectorySize(source);
-            while (!process.WaitForExit(500))
+            while (!process.WaitForExit(5000))
             {
                 if (totalBytes > 0)
                 {
@@ -323,7 +323,7 @@ public class RemoteTestService
     {
         try
         {
-            return Directory.GetFiles(path, "*", SearchOption.AllDirectories)
+            return Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
                 .Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } });
         }
         catch

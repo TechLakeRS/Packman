@@ -155,7 +155,7 @@
                     <Grid>
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Left">
                             <TextBlock Text="Connection test" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
-                            <TextBlock Text="Verify the sign-in reaches Intune and the required Graph scopes are consented" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                            <TextBlock Text="Check read access to Intune and Entra ID" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
                         <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Right" Command="{Binding TestConnectionCommand}">
                             <StackPanel Orientation="Horizontal">
@@ -166,7 +166,7 @@
                             </StackPanel>
                         </Button>
                     </Grid>
-                    <!-- Per-scope results -->
+                    <!-- Read-access results -->
                     <ItemsControl ItemsSource="{Binding ConnectionChecks}" Margin="0,12,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>

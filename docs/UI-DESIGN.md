@@ -15,7 +15,7 @@ The UI centers on the working sequence: select an installer, prepare its PSADT p
 
 ## Shared components
 
-`Styles.xaml` owns type, buttons, fields, editable dropdowns, focus and definition rows. `SectionHeader` wraps captions beneath headings. `ReturnCodeEditor` is shared by Settings and Configure. `PublishStatusControl` and `PublishStepList` share progress, cancellation and result presentation across both publishing entry points. `GroupPickerControl` retains a separate intent for every selected group and renders long group names in bounded rows.
+`Styles.xaml` owns type, buttons, fields, editable dropdowns, focus and definition rows. Browse, Search and Copy actions occupy separate columns with a 10-pixel gap and 40-pixel minimum height; action buttons no longer overlap input borders. `SectionHeader` wraps captions beneath headings. `ReturnCodeEditor` is shared by Settings and Configure. `PublishStatusControl` and `PublishStepList` share progress, cancellation and result presentation across both publishing entry points. `GroupPickerControl` retains a separate intent for every selected group and renders long group names in bounded rows.
 
 ## Packaging and Intune behavior
 
@@ -33,6 +33,6 @@ The existing scope limits remain: wizard detection uses one rule; standalone pub
 
 ## Verification
 
-The solution can be cross-compiled with .NET 10 and `EnableWindowsTargeting=true`. The non-Windows test path needs the additional packages described in the test project; the repository's offline feed is unchanged. The pure regression suite covers package generation/upgrades, Graph payloads, preflight behavior and required signing failures.
+The solution can be cross-compiled with .NET 10 and `EnableWindowsTargeting=true`. The separate test project has been removed; Windows CI retains the offline desktop build, packaged-app startup/shutdown check and standalone `scripts/RenderUiPreviews.cs` utility.
 
-Windows CI additionally loads and renders representative views, all Settings sections, Application Detail tabs and the editable computer dropdown in both palettes. It exports PNG previews as the `ui-previews` artifact. These layout tests do not authenticate, upload, test a remote device or execute a deployment script. Manual Windows validation should include keyboard navigation, 125%/150% display scaling, long tenant/group names, an actual MSI/EXE package, install/uninstall on a test device, and a pilot Intune assignment.
+Windows CI additionally loads and renders representative views, all Settings sections, Application Detail tabs and the editable computer dropdown in both palettes. It exports PNG previews as the `ui-previews` artifact. These previews do not authenticate, upload, test a remote device or execute a deployment script. Manual Windows validation should include keyboard navigation, 125%/150% display scaling, long tenant/group names, an actual MSI/EXE package, install/uninstall on a test device, and a pilot Intune assignment.

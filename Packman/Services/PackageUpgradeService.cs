@@ -15,12 +15,17 @@ public class PackageUpgradeService
 
     public PackageUpgradeService(string baseOutputPath) => _baseOutputPath = baseOutputPath;
 
-    public async Task<string> UpgradePackageAsync(
+    public Task<string> UpgradePackageAsync(
         string existingPackagePath,
         string newVersion,
         string newSourcesPath,
         CancellationToken cancellationToken = default)
+        => Task.Run(() => UpgradePackage(existingPackagePath, newVersion, newSourcesPath, cancellationToken), cancellationToken);
+
+    private string UpgradePackage(string existingPackagePath, string newVersion, string newSourcesPath,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var existingScriptPath = PsadtScript.Find(existingPackagePath)
             ?? throw new FileNotFoundException(
                 $"{PsadtLayout.ScriptName} not found in the existing package. Packman upgrades PSADT v4 packages only.");
@@ -53,22 +58,20 @@ public class PackageUpgradeService
 
         try
         {
-            await Task.Run(() =>
-            {
-                foreach (var folder in new[] { "Application", "Icon", "Intune" })
-                    Directory.CreateDirectory(Path.Combine(newPackagePath, folder));
+            foreach (var folder in new[] { "Application", "Icon", "Intune" })
+                Directory.CreateDirectory(Path.Combine(newPackagePath, folder));
 
-                // Everything but the old installer comes across.
-                DirectoryCopy.Copy(existingApplication, Path.Combine(newPackagePath, "Application"), cancellationToken, "Files");
+            // Everything but the old installer comes across.
+            DirectoryCopy.Copy(existingApplication, Path.Combine(newPackagePath, "Application"), cancellationToken, "Files");
 
-                var files = Path.Combine(newPackagePath, "Application", "Files");
-                Directory.CreateDirectory(files);
-                File.Copy(newSourcesPath, Path.Combine(files, newSourceFileName), true);
+            var files = Path.Combine(newPackagePath, "Application", "Files");
+            Directory.CreateDirectory(files);
+            File.Copy(newSourcesPath, Path.Combine(files, newSourceFileName), true);
 
-                var icon = Path.Combine(existingPackagePath, "Icon");
-                if (Directory.Exists(icon))
-                    DirectoryCopy.Copy(icon, Path.Combine(newPackagePath, "Icon"), cancellationToken);
-            }, cancellationToken);
+            var icon = Path.Combine(existingPackagePath, "Icon");
+            if (Directory.Exists(icon))
+                DirectoryCopy.Copy(icon, Path.Combine(newPackagePath, "Icon"), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
             UpdateScript(newPackagePath, manufacturer, appName, newVersion, newSourceFileName, newIsMsi, oldProductCode, newProductCode);
             return newPackagePath;

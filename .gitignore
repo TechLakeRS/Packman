@@ -31,6 +31,9 @@ Thumbs.db
 ## Test output
 TestResults/
 
+## Desktop builds and native UI previews
+artifacts/
+
 ## design-sync (Claude Design) - staged converter, build output, machine state
 .ds-sync/
 ds-bundle/

@@ -17,9 +17,8 @@ public sealed class ConnectionTestResult
 public partial class IntuneService
 {
     /// <summary>
-    /// Probes one read endpoint per scope family to confirm sign-in and consent. The
-    /// probes only read, so they prove the ReadWrite scopes were consented rather than
-    /// exercising the writes themselves.
+    /// Probes read access to each service. Successful reads do not establish write
+    /// permissions or the administrator roles required for publishing and group changes.
     /// </summary>
     public async Task<ConnectionTestResult> TestConnectionAsync(CancellationToken ct = default)
     {
@@ -38,10 +37,10 @@ public partial class IntuneService
 
         var checks = new List<ConnectionCheck>
         {
-            await ProbeAsync("Intune apps · DeviceManagementApps.ReadWrite.All", $"{Base}?$top=1&$select=id", ct),
-            await ProbeAsync("Entra groups · Group.ReadWrite.All", $"{GraphClient.Groups}?$top=1&$select=id", ct),
-            await ProbeAsync("Entra devices · Device.Read.All", $"{GraphClient.Devices}?$top=1&$select=id", ct),
-            await ProbeAsync("Entra users · User.ReadBasic.All", $"{GraphClient.Users}?$top=1&$select=id", ct),
+            await ProbeAsync("Intune apps · read access", $"{Base}?$top=1&$select=id", ct),
+            await ProbeAsync("Entra groups · read access", $"{GraphClient.Groups}?$top=1&$select=id", ct),
+            await ProbeAsync("Entra devices · read access", $"{GraphClient.Devices}?$top=1&$select=id", ct),
+            await ProbeAsync("Entra users · read access", $"{GraphClient.Users}?$top=1&$select=id", ct),
         };
 
         var ok = checks.All(c => c.Ok);
@@ -49,8 +48,8 @@ public partial class IntuneService
         {
             Success = ok,
             Message = ok
-                ? "Connected to Microsoft Intune. All required scopes are available."
-                : "Connected to Microsoft Graph, but one or more required scopes are missing or not consented.",
+                ? "Read checks passed. Publishing and group changes also require write permissions and applicable administrator roles; these checks do not verify them."
+                : "One or more Microsoft Graph read checks failed. Check the results below; write access has not been verified.",
             Checks = checks,
         };
     }
@@ -64,7 +63,7 @@ public partial class IntuneService
                 return new ConnectionCheck { Name = name, Ok = true, Detail = "OK" };
 
             var detail = response.StatusCode is 401 or 403
-                ? "Access denied — scope not consented"
+                ? "Read access denied"
                 : $"HTTP {response.StatusCode}";
             return new ConnectionCheck { Name = name, Ok = false, Detail = detail };
         }

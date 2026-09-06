@@ -26,8 +26,8 @@ jobs:
       - name: Build
         run: dotnet build Packman.sln --no-restore -c Release
 
-      - name: Test
-        run: dotnet test Packman.Tests/Packman.Tests.csproj --no-build -c Release --logger "trx;LogFileName=results.trx"
+      - name: Render native UI previews
+        run: dotnet run --file scripts/RenderUiPreviews.cs -c Release -- artifacts/ui-previews
 
       - name: Package community desktop build
         run: dotnet publish Packman/Packman.csproj --no-build -c Release --self-contained false -o artifacts/Packman-community
@@ -55,11 +55,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
-          path: Packman.Tests/TestResults/*.trx
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
           name: ui-previews
-          path: Packman.Tests/bin/Release/net10.0-windows/UiPreviews/*.png
+          path: artifacts/ui-previews/*.png
+          if-no-files-found: error

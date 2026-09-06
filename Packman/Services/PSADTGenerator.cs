@@ -31,9 +31,14 @@ public class PSADTGenerator
         };
     }
 
-    public async Task<PackageCreationResult> CreatePackageAsync(ApplicationInfo appInfo,
+    public Task<PackageCreationResult> CreatePackageAsync(ApplicationInfo appInfo,
         bool overwriteExisting = false, CancellationToken cancellationToken = default)
+        => Task.Run(() => CreatePackageCoreAsync(appInfo, overwriteExisting, cancellationToken), cancellationToken);
+
+    private async Task<PackageCreationResult> CreatePackageCoreAsync(ApplicationInfo appInfo,
+        bool overwriteExisting, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var appFolderName = PackagePaths.AppFolderName(appInfo.Manufacturer, appInfo.Name);
         var packagePath = PackagePaths.VersionFolder(_baseOutputPath, appFolderName, appInfo.Version);
 
@@ -53,15 +58,12 @@ public class PSADTGenerator
 
         try
         {
-            await Task.Run(() =>
-            {
-                DirectoryCopy.Copy(template, Path.Combine(packagePath, "Application"), cancellationToken);
-                // Created up front so new and upgraded packages share one layout.
-                Directory.CreateDirectory(Path.Combine(packagePath, "Intune"));
-                Directory.CreateDirectory(Path.Combine(packagePath, "Icon"));
-                CopySourceFiles(appInfo.SourcesPath, packagePath, cancellationToken);
-            }, cancellationToken);
-
+            DirectoryCopy.Copy(template, Path.Combine(packagePath, "Application"), cancellationToken);
+            // Created up front so new and upgraded packages share one layout.
+            Directory.CreateDirectory(Path.Combine(packagePath, "Intune"));
+            Directory.CreateDirectory(Path.Combine(packagePath, "Icon"));
+            CopySourceFiles(appInfo.SourcesPath, packagePath, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             var warnings = ModifyScript(packagePath, appInfo);
 
             Debug.WriteLine($"Package created at: {packagePath}");

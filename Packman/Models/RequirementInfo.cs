@@ -35,18 +35,29 @@ public class RequirementInfo
         => int.TryParse(text?.Trim(), out var value) && value > 0 ? value : null;
 
     /// <summary>
-    /// Maps the friendly OS name to the Graph minimumSupportedOperatingSystem flag.
+    /// Maps the saved friendly OS name to Graph's minimumSupportedWindowsRelease value.
+    /// The older boolean OS object cannot distinguish recent Windows 10 and 11 releases.
     /// </summary>
     [JsonIgnore]
-    public string OperatingSystemFlag => MinimumOperatingSystem switch
+    public string MinimumSupportedWindowsRelease => MinimumOperatingSystem switch
     {
-        "Windows 10 1809" => "v10_1809",
-        "Windows 10 1903" => "v10_1903",
-        "Windows 10 2004" => "v10_2004",
-        "Windows 10 21H2" => "v10_21H2",
-        "Windows 10 22H2" => "v10_22H2",
-        "Windows 11 21H2" => "v10_21H2",
-        "Windows 11 22H2" => "v10_22H2",
-        _ => "v10_1607"
+        "Windows 10 1809" => "1809",
+        "Windows 10 1903" => "1903",
+        "Windows 10 2004" => "2004",
+        "Windows 10 21H2" => "Windows10_21H2",
+        "Windows 10 22H2" => "Windows10_22H2",
+        "Windows 11 21H2" => "Windows11_21H2",
+        "Windows 11 22H2" => "Windows11_22H2",
+        _ => "1607"
     };
+
+    public static string FormatWindowsRelease(string release)
+    {
+        if (string.IsNullOrWhiteSpace(release)) return "Not specified";
+        if (release.StartsWith("Windows11_", StringComparison.OrdinalIgnoreCase))
+            return "Windows 11 " + release[10..];
+        if (release.StartsWith("Windows10_", StringComparison.OrdinalIgnoreCase))
+            return "Windows 10 " + release[10..];
+        return "Windows 10 " + (release == "2H20" ? "20H2" : release);
+    }
 }

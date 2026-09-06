@@ -14,7 +14,7 @@ full explanation in **[README.md](README.md)**.
 Open **Settings** and complete two sections, then press **Save settings**:
 
 1. **Authentication** — press **Sign in** (interactive needs no app registration), then
-   **Test connection** to confirm every Graph scope is consented.
+   **Test connection** to check Graph read access. Review the documented permissions for publishing and group changes.
 2. **Network Paths** — **Intune Applications Path** (where packages are written), **PSADT Template
    Path**, and **IntuneWinAppUtil Path**.
 

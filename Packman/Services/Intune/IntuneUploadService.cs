@@ -31,6 +31,7 @@ public partial class IntuneUploadService
 
     /// <summary>Whether the half-built app was removed after a failure or cancel. Null when nothing had been created.</summary>
     public bool? RollbackSucceeded { get; private set; }
+    private readonly List<string> _followUpWarnings = [];
 
     public IntuneUploadService(Func<Task<string>> tokenProvider, IFileSigner? signer, string converterPath)
     {
@@ -60,7 +61,9 @@ public partial class IntuneUploadService
     {
         using var log = new UploadLogger(appInfo.Name);
         string? createdAppId = null;
+        string? committedAppId = null;
         RollbackSucceeded = null;
+        _followUpWarnings.Clear();
 
         try
         {
@@ -95,8 +98,11 @@ public partial class IntuneUploadService
 
             // Published: a later supersedence or assignment failure must not roll it back.
             createdAppId = null;
+            committedAppId = appId;
 
             PackageMarker.SaveMarker(packagePath, appId, appInfo.Name, appInfo.Version);
+            Report(progress, log, 97, "Waiting for Intune to finish publishing...");
+            await WaitForApplicationPublishedAsync(appId, ct);
 
             if (!string.IsNullOrEmpty(predecessorAppId))
                 await WriteSupersedenceAsync(appId, predecessorAppId, log, ct);
@@ -109,10 +115,22 @@ public partial class IntuneUploadService
                 await AssignGroupsAsync(appId, appInfo, groupAssignment ?? new AppSettings.GroupAssignmentConfig(), picked, log, ct);
             }
 
+            if (_followUpWarnings.Count > 0)
+                throw new IntuneFollowUpException(appId, string.Join(Environment.NewLine, _followUpWarnings));
+
             Report(progress, log, 100, "Upload complete!");
             log.Section("UPLOAD COMPLETE");
             log.Success($"Application '{appInfo.Name}' uploaded successfully! ID: {appId}");
             return appId;
+        }
+        catch (IntuneFollowUpException) { throw; }
+        catch (Exception ex) when (committedAppId != null)
+        {
+            var message = ex is OperationCanceledException
+                ? "Follow-up was cancelled after Intune accepted the content. Publishing, assignments or supersedence may still need attention."
+                : $"Intune accepted the content, but follow-up did not finish: {ex.Message}";
+            log.Warning(message);
+            throw new IntuneFollowUpException(committedAppId, message, ex);
         }
         catch (OperationCanceledException)
         {
@@ -127,6 +145,32 @@ public partial class IntuneUploadService
             await RollbackCreatedAppAsync(createdAppId, log);
             throw;
         }
+    }
+
+    private async Task WaitForApplicationPublishedAsync(string appId, CancellationToken ct)
+    {
+        var timeout = TimeSpan.FromMinutes(10);
+        var deadline = DateTime.UtcNow + timeout;
+        using var deadlineCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadlineCts.CancelAfter(timeout);
+        try
+        {
+            while (DateTime.UtcNow < deadline)
+            {
+                deadlineCts.Token.ThrowIfCancellationRequested();
+                var response = await _graph.GetAsync($"{GraphClient.MobileApps}/{appId}?$select=publishingState", "Check publishing state", deadlineCts.Token);
+                if (response.Json.GetSafeString("publishingState") == "published") return;
+                await Task.Delay(TimeSpan.FromSeconds(5), deadlineCts.Token);
+            }
+        }
+        catch (OperationCanceledException) when (deadlineCts.IsCancellationRequested && !ct.IsCancellationRequested) { }
+        throw new TimeoutException("Intune has not confirmed the app is published. Check its publishing state before assigning it.");
+    }
+
+    private void RecordFollowUpWarning(string message, UploadLogger log)
+    {
+        _followUpWarnings.Add(message);
+        log.Warning(message);
     }
 
     private static void Report(IUploadProgress? progress, UploadLogger log, int pct, string message)
@@ -241,12 +285,12 @@ public partial class IntuneUploadService
             if (response.IsSuccess)
                 log.Success($"Marked previous app {predecessorAppId} as superseded");
             else
-                log.Warning($"Could not write supersedence (HTTP {response.StatusCode}): {GraphException.ExtractMessage(response.Body)}");
+                RecordFollowUpWarning($"Could not write supersedence (HTTP {response.StatusCode}): {GraphException.ExtractMessage(response.Body)}", log);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
-            log.Warning($"Could not write supersedence: {ex.Message}");
+            RecordFollowUpWarning($"Could not write supersedence: {ex.Message}", log);
         }
     }
 }

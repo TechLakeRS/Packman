@@ -56,7 +56,7 @@ public class DetectionRule : INotifyPropertyChanged
 
     /// <summary>
     /// Graph detectionType.
-    /// File: exists, doesNotExist, string, version, sizeInMB, modifiedDate.
+    /// File: exists, doesNotExist, version, sizeInMB, modifiedDate, createdDate.
     /// Registry: exists, doesNotExist, string, integer, version.
     /// </summary>
     public string DetectionType
@@ -130,7 +130,7 @@ public class DetectionRule : INotifyPropertyChanged
             "version" => $"File: {fullPath} (Version {GetOperatorDisplayText()} {DetectionValue})",
             "sizeInMB" => $"File: {fullPath} (Size {GetOperatorDisplayText()} {DetectionValue} MB)",
             "modifiedDate" => $"File: {fullPath} (Modified date {GetOperatorDisplayText()} {DetectionValue})",
-            "string" => $"File: {fullPath} (String {GetOperatorDisplayText()} \"{DetectionValue}\")",
+            "createdDate" => $"File: {fullPath} (Created date {GetOperatorDisplayText()} {DetectionValue})",
             _ => CheckVersion ? $"File: {fullPath} (Check Version)" : $"File: {fullPath}"
         };
     }
@@ -156,7 +156,7 @@ public class DetectionRule : INotifyPropertyChanged
         "version" => $"Checks file version of '{FileOrFolderName}' in '{Path}' ({GetOperatorDisplayText()} {DetectionValue})",
         "sizeInMB" => $"Checks file size of '{FileOrFolderName}' in '{Path}' ({GetOperatorDisplayText()} {DetectionValue} MB)",
         "modifiedDate" => $"Checks modified date of '{FileOrFolderName}' in '{Path}' ({GetOperatorDisplayText()} {DetectionValue})",
-        "string" => $"Compares string value of '{FileOrFolderName}' in '{Path}' ({GetOperatorDisplayText()} \"{DetectionValue}\")",
+        "createdDate" => $"Checks created date of '{FileOrFolderName}' in '{Path}' ({GetOperatorDisplayText()} {DetectionValue})",
         _ => CheckVersion
             ? $"Detects file '{FileOrFolderName}' in path '{Path}' and validates its version"
             : $"Detects presence of file '{FileOrFolderName}' in path '{Path}'"

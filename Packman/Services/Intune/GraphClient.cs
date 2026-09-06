@@ -48,6 +48,24 @@ public sealed class GraphException : Exception
     }
 }
 
+/// <summary>A mutation may have reached Graph, but its outcome could not be confirmed.</summary>
+public sealed class GraphMutationUncertainException : Exception
+{
+    public string Operation { get; }
+    public int? StatusCode { get; }
+    public string? RequestId { get; }
+
+    public GraphMutationUncertainException(string operation, int? statusCode = null, string? requestId = null, Exception? innerException = null)
+        : base($"{operation} may have completed, but its result could not be confirmed" +
+               (statusCode is { } status ? $" (HTTP {status})" : " because the connection failed or timed out") +
+               ". Check the affected app or group in Intune or Entra before retrying to avoid duplicate changes.", innerException)
+    {
+        Operation = operation;
+        StatusCode = statusCode;
+        RequestId = requestId;
+    }
+}
+
 /// <summary>Status and body of one Graph call.</summary>
 public sealed class GraphResponse
 {
@@ -55,13 +73,16 @@ public sealed class GraphResponse
     public bool IsSuccess { get; }
     public string Body { get; }
     public string? RequestId { get; }
+    /// <summary>An earlier attempt lost its result; a later rejection does not disprove that attempt succeeded.</summary>
+    public bool HadUncertainAttempt { get; }
 
-    internal GraphResponse(int statusCode, bool isSuccess, string body, string? requestId)
+    internal GraphResponse(int statusCode, bool isSuccess, string body, string? requestId, bool hadUncertainAttempt = false)
     {
         StatusCode = statusCode;
         IsSuccess = isSuccess;
         Body = body;
         RequestId = requestId;
+        HadUncertainAttempt = hadUncertainAttempt;
     }
 
     /// <summary>The parsed body; an undefined element when there is none.</summary>
@@ -72,8 +93,8 @@ public sealed class GraphResponse
 
 /// <summary>
 /// The one HTTP path to Microsoft Graph: bearer token per call, JSON in and out,
-/// Retry-After honoured on 429/503/504, transient network failures retried, and every
-/// failure surfaced as a <see cref="GraphException"/> with the status and Graph's message.
+/// throttling retries, and transient retries for reads and idempotent updates.
+/// Ambiguous POST outcomes require callers to verify the change before retrying.
 /// </summary>
 public sealed class GraphClient
 {
@@ -116,11 +137,19 @@ public sealed class GraphClient
 
     /// <summary>
     /// Sends one request. <paramref name="body"/> is serialised as JSON, or sent verbatim
-    /// when it is already a string.
+    /// when it is already a string. Uncertain mutations throw even when
+    /// <paramref name="throwOnError"/> is false because there is no confirmed result.
     /// </summary>
     public async Task<GraphResponse> SendAsync(HttpMethod method, string url, object? body, string operation,
         CancellationToken ct = default, bool throwOnError = true)
     {
+        // These PATCH callers replace properties with fixed values. POST creates resources
+        // or invokes actions, so replaying a lost response can duplicate a committed change.
+        var canReplay = method == HttpMethod.Get || method == HttpMethod.Head || method == HttpMethod.Options ||
+                        method == HttpMethod.Put || method == HttpMethod.Patch || method == HttpMethod.Delete;
+        var json = body is null ? null : body as string ?? JsonSerializer.Serialize(body, BodyOptions);
+        var hadUncertainAttempt = false;
+
         for (var attempt = 1; ; attempt++)
         {
             ct.ThrowIfCancellationRequested();
@@ -128,9 +157,8 @@ public sealed class GraphClient
             var token = await _tokenProvider();
             using var request = new HttpRequestMessage(method, url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            if (body != null)
+            if (json != null)
             {
-                var json = body as string ?? JsonSerializer.Serialize(body, BodyOptions);
                 request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             }
 
@@ -139,14 +167,22 @@ public sealed class GraphClient
             {
                 response = await Http.SendAsync(request, ct);
             }
-            catch (HttpRequestException) when (attempt < MaxAttempts)
+            catch (HttpRequestException ex)
             {
+                if (!canReplay)
+                    throw new GraphMutationUncertainException(operation, innerException: ex);
+                if (attempt >= MaxAttempts) throw;
+                hadUncertainAttempt = true;
                 await Task.Delay(Backoff(attempt), ct);
                 continue;
             }
-            catch (TaskCanceledException) when (!ct.IsCancellationRequested && attempt < MaxAttempts)
+            catch (OperationCanceledException ex) when (!ct.IsCancellationRequested)
             {
                 // HttpClient timeout, not the caller's token.
+                if (!canReplay)
+                    throw new GraphMutationUncertainException(operation, innerException: ex);
+                if (attempt >= MaxAttempts) throw;
+                hadUncertainAttempt = true;
                 await Task.Delay(Backoff(attempt), ct);
                 continue;
             }
@@ -156,13 +192,18 @@ public sealed class GraphClient
                 var text = await response.Content.ReadAsStringAsync(ct);
                 var status = (int)response.StatusCode;
 
-                if (status is 429 or 503 or 504 && attempt < MaxAttempts)
+                if (!canReplay && (status == 408 || status >= 500))
+                    throw new GraphMutationUncertainException(operation, status, Header(response, "request-id"));
+
+                // HTTP 429 explicitly rejects the request, so it is safe to retry a POST.
+                if ((status == 429 || (canReplay && (status is 503 or 504))) && attempt < MaxAttempts)
                 {
+                    if (status != 429) hadUncertainAttempt = true;
                     await Task.Delay(RetryAfter(response) ?? Backoff(attempt), ct);
                     continue;
                 }
 
-                var result = new GraphResponse(status, response.IsSuccessStatusCode, text, Header(response, "request-id"));
+                var result = new GraphResponse(status, response.IsSuccessStatusCode, text, Header(response, "request-id"), hadUncertainAttempt);
                 if (!result.IsSuccess && throwOnError)
                     throw result.ToException(operation);
                 return result;

@@ -211,11 +211,9 @@ public partial class IntuneUploadService
             ["displayVersion"] = appInfo.Version,
             ["installCommandLine"] = installCommand,
             ["uninstallCommandLine"] = uninstallCommand,
-            ["applicableArchitectures"] = "x86,x64,arm64",
-            ["minimumSupportedOperatingSystem"] = new Dictionary<string, object>
-            {
-                [(requirements ?? new RequirementInfo()).OperatingSystemFlag] = true,
-            },
+            ["applicableArchitectures"] = "none",
+            ["allowedArchitectures"] = "x86,x64,arm64",
+            ["minimumSupportedWindowsRelease"] = (requirements ?? new RequirementInfo()).MinimumSupportedWindowsRelease,
             ["fileName"] = intuneWin.FileName,
             ["setupFilePath"] = PsadtLayout.SetupFileName,
             ["installExperience"] = new Dictionary<string, object>

@@ -7,7 +7,7 @@ public partial class IntuneUploadService
 {
     /// <summary>
     /// Assigns the published app to the groups picked for this upload plus the ones set on
-    /// the Settings page. Failures are logged as warnings and never fail the upload.
+    /// the Settings page. Follow-up failures are reported without rolling back committed content.
     /// </summary>
     private async Task AssignGroupsAsync(string appId, ApplicationInfo appInfo, AppSettings.GroupAssignmentConfig config,
                                          IEnumerable<AssignedGroup>? pickedGroups, UploadLogger log, CancellationToken ct)
@@ -24,7 +24,7 @@ public partial class IntuneUploadService
             var groupId = await ResolveGroupIdAsync(existing.GroupName, log, ct);
             if (groupId == null)
             {
-                log.Warning($"Group '{existing.GroupName}' not found in Entra ID - skipped");
+                RecordFollowUpWarning($"Group '{existing.GroupName}' not found in Entra ID - skipped", log);
                 continue;
             }
             await CreateGroupAssignmentAsync(appId, groupId, existing.Intent, existing.GroupName, log, ct);
@@ -43,7 +43,7 @@ public partial class IntuneUploadService
         var name = GroupAssignmentNamer.Build(template, appInfo.Manufacturer, appInfo.Name, appInfo.Version);
         if (string.IsNullOrWhiteSpace(name))
         {
-            log.Warning($"Per-package group name for the {intent} assignment resolved to empty - skipped");
+            RecordFollowUpWarning($"Per-package group name for the {intent} assignment resolved to empty - skipped", log);
             return;
         }
         // Reuse an existing group with this name before creating one.
@@ -55,16 +55,21 @@ public partial class IntuneUploadService
     private async Task<string?> ResolveGroupIdAsync(string displayName, UploadLogger log, CancellationToken ct)
     {
         var filter = Uri.EscapeDataString($"displayName eq '{OData.Literal(displayName.Trim())}'");
-        var response = await _graph.GetAsync($"{GraphClient.Groups}?$filter={filter}&$select=id", "Group lookup", ct, throwOnError: false);
-        if (!response.IsSuccess)
-        {
-            log.Warning($"Could not look up group '{displayName}' (HTTP {response.StatusCode}): {GraphException.ExtractMessage(response.Body)}");
-            return null;
-        }
-
+        var response = await _graph.GetAsync($"{GraphClient.Groups}?$filter={filter}&$select=id&$top=2", "Group lookup", ct);
         var page = response.Json;
-        if (page.TryGetProperty("value", out var arr) && arr.ValueKind == System.Text.Json.JsonValueKind.Array && arr.GetArrayLength() > 0)
-            return arr[0].GetSafeString("id") is { Length: > 0 } id ? id : null;
+        if (page.ValueKind != System.Text.Json.JsonValueKind.Object ||
+            !page.TryGetProperty("value", out var arr) || arr.ValueKind != System.Text.Json.JsonValueKind.Array)
+            throw new InvalidOperationException($"Entra returned an invalid lookup result for group '{displayName}'. Check the group before retrying.");
+        if (!string.IsNullOrEmpty(page.GetSafeString("@odata.nextLink")))
+            throw new InvalidOperationException($"The lookup for group '{displayName}' was incomplete. Select the intended group by ID before assigning.");
+        if (arr.GetArrayLength() > 1)
+            throw new InvalidOperationException($"Multiple Entra groups are named '{displayName}'. Select the intended group by ID before assigning.");
+        if (arr.GetArrayLength() == 1)
+        {
+            var id = arr[0].GetSafeString("id");
+            if (string.IsNullOrEmpty(id)) throw new InvalidOperationException($"Group '{displayName}' was returned without an ID.");
+            return id;
+        }
         return null;
     }
 
@@ -82,13 +87,15 @@ public partial class IntuneUploadService
         if (!response.IsSuccess)
         {
             var hint = response.StatusCode == 403 ? " (needs Group.ReadWrite.All; sign out and in again to consent)" : "";
-            log.Warning($"Could not create group '{displayName}' (HTTP {response.StatusCode}){hint}: {GraphException.ExtractMessage(response.Body)}");
+            RecordFollowUpWarning($"Could not create group '{displayName}' (HTTP {response.StatusCode}){hint}: {GraphException.ExtractMessage(response.Body)}", log);
             return null;
         }
 
         var id = response.Json.GetSafeString("id");
+        if (string.IsNullOrEmpty(id))
+            throw new InvalidOperationException($"Entra accepted the group '{displayName}' but did not return an ID. Check the group before retrying.");
         log.Success($"Created group '{displayName}'");
-        return string.IsNullOrEmpty(id) ? null : id;
+        return id;
     }
 
     private async Task CreateGroupAssignmentAsync(string appId, string groupId, AssignmentIntent intent, string groupName, UploadLogger log, CancellationToken ct)
@@ -112,7 +119,7 @@ public partial class IntuneUploadService
         if (response.IsSuccess)
             log.Success($"Assigned '{groupName}' ({intent})");
         else
-            log.Warning($"Could not assign '{groupName}' (HTTP {response.StatusCode}): {GraphException.ExtractMessage(response.Body)}");
+            RecordFollowUpWarning($"Could not assign '{groupName}' (HTTP {response.StatusCode}): {GraphException.ExtractMessage(response.Body)}", log);
     }
 
     private static AssignmentIntent ParseIntent(string intent) => intent.ToLowerInvariant() switch

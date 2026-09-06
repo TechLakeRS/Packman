@@ -5,7 +5,7 @@ Packman Community is the public Apache 2.0 desktop application in this repositor
 ## Community foundation
 
 - Consistent, accessible Windows UI in dark and light themes.
-- Package preflight, reliable signing failure handling and meaningful regression tests.
+- Package preflight, reliable signing failure handling and focused behavior validation.
 - Native Windows screen previews and downloadable CI builds.
 - Contribution guidance, private security reports and dependency notices.
 - Public integration contracts that keep the community app independently buildable.

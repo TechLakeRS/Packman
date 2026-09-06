@@ -12,6 +12,7 @@ public class ApplicationDetail : IntuneApplication
     public string RestartBehavior { get; set; } = "";
     public int MaxRunTimeMinutes { get; set; }
     public int MinDiskSpaceMB { get; set; }
+    public string MinimumOperatingSystem { get; set; } = "Not specified";
     public string Notes { get; set; } = "";
     public string FileName { get; set; } = "";
     public long Size { get; set; }
@@ -76,16 +77,18 @@ public class AssignedGroup
     public string GroupId { get; set; } = "";
     public string GroupName { get; set; } = "";
     public string AssignmentType { get; set; } = "";   // required | available | uninstall
+    public bool IsExcluded { get; set; }
 
     // StatusBadgeTemplate binds StatusLabel + StatusKind.
-    public string StatusLabel => AssignmentType?.ToLowerInvariant() switch
+    public string StatusLabel => IsExcluded ? $"Excluded · {IntentLabel}" : IntentLabel;
+    private string IntentLabel => AssignmentType?.ToLowerInvariant() switch
     {
         "required" => "Required",
         "uninstall" => "Uninstall",
         "available" or "availablewithoutenrollment" => "Available",
         _ => string.IsNullOrEmpty(AssignmentType) ? "Unknown" : AssignmentType,
     };
-    public string StatusKind => AssignmentType?.ToLowerInvariant() switch
+    public string StatusKind => IsExcluded ? "mut" : AssignmentType?.ToLowerInvariant() switch
     {
         "required" => "ok",
         "uninstall" => "bad",

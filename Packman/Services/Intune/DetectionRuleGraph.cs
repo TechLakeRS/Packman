@@ -119,7 +119,7 @@ public static class DetectionRuleGraph
     }
 
     private static bool OperatorNeedsValue(string detectionType) =>
-        detectionType is "version" or "string" or "integer" or "sizeInMB" or "modifiedDate";
+        detectionType is "version" or "string" or "integer" or "sizeInMB" or "modifiedDate" or "createdDate";
 
     private static string DefaultOperator(string op) =>
         string.IsNullOrEmpty(op) || op == "notConfigured" ? "equal" : op;

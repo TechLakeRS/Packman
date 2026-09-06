@@ -214,7 +214,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         try
         {
             var uploadService = new IntuneUploadService(
-                AppServices.Auth.GetAccessTokenAsync, signer, settings.NetworkPaths.IntuneWinAppUtil);
+                AppServices.Auth.CreateSessionTokenProvider(), signer, settings.NetworkPaths.IntuneWinAppUtil);
 
             var progress = new DetailProgress(this);
             var appId = Detail.Id;
@@ -232,7 +232,7 @@ public sealed class ApplicationDetailViewModel : ObservableObject
         }
         catch (OperationCanceledException)
         {
-            StatusText = "Package update cancelled — the app still serves the previous content.";
+            StatusText = "Package update cancelled. Check the committed content version in Intune before retrying; the final request may already have completed.";
             return false;
         }
         catch (Exception ex)
@@ -633,7 +633,7 @@ public sealed class DetectionRuleDisplay : ObservableObject
     private static readonly Option[] FileTypes =
     {
         new("Exists", "exists"), new("Does not exist", "doesNotExist"), new("Version", "version"),
-        new("String", "string"), new("Size (MB)", "sizeInMB"), new("Modified date", "modifiedDate"),
+        new("Size (MB)", "sizeInMB"), new("Modified date", "modifiedDate"), new("Created date", "createdDate"),
     };
     private static readonly Option[] RegistryTypes =
     {
@@ -684,7 +684,7 @@ public sealed class DetectionRuleDisplay : ObservableObject
     /// <summary>Whether the operator + value inputs apply to the current edit state.</summary>
     public bool EditNeedsValue => IsMsi
         ? EditCheckVersion
-        : _editDetectionType is "version" or "string" or "integer" or "sizeInMB" or "modifiedDate";
+        : _editDetectionType is "version" or "string" or "integer" or "sizeInMB" or "modifiedDate" or "createdDate";
 
     private string _editOperator = "equal";
     public string EditOperator { get => _editOperator; set => Set(ref _editOperator, value); }
@@ -718,6 +718,7 @@ public sealed class DetectionRuleDisplay : ObservableObject
         {
             Rule.FileOrFolderName = EditName.Trim();
             Rule.DetectionType = EditDetectionType;
+            Rule.CheckVersion = IsFile && EditDetectionType == "version";
             Rule.Operator = EditNeedsValue ? EditOperator : "";
             Rule.DetectionValue = EditNeedsValue ? EditValue.Trim() : "";
         }
@@ -760,6 +761,7 @@ public sealed class DetectionRuleDisplay : ObservableObject
         "integer" => $"integer {OperatorSymbol(r.Operator)} {r.DetectionValue}",
         "sizeInMB" => $"size {OperatorSymbol(r.Operator)} {r.DetectionValue} MB",
         "modifiedDate" => $"modified {OperatorSymbol(r.Operator)} {r.DetectionValue}",
+        "createdDate" => $"created {OperatorSymbol(r.Operator)} {r.DetectionValue}",
         _ => string.IsNullOrEmpty(r.DetectionType) ? "exists" : r.DetectionType,
     };
 
