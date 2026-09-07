@@ -12,7 +12,17 @@ public class CertificateInfo
     public string FriendlyName { get; init; } = "";
     public string Subject { get; init; } = "";
     public string Thumbprint { get; init; } = "";
-    public override string ToString() => string.IsNullOrEmpty(FriendlyName) ? Subject : FriendlyName;
+    public string SubjectName { get; init; } = "";
+    public string IssuerName { get; init; } = "";
+    public DateTime NotAfter { get; init; }
+    public bool HasPrivateKey { get; init; }
+    public string DisplayName => !string.IsNullOrWhiteSpace(FriendlyName) ? FriendlyName
+        : !string.IsNullOrWhiteSpace(SubjectName) ? SubjectName
+        : !string.IsNullOrWhiteSpace(Subject) ? Subject : "Unnamed certificate";
+    public string Detail => $"{IssuerName} · expires {NotAfter:d MMM yyyy}"
+        + (!HasPrivateKey ? " · no private key" : "")
+        + (NotAfter < DateTime.Now ? " · expired" : "");
+    public override string ToString() => DisplayName;
 }
 
 /// <summary>A single row in the connection-test results list (one required Graph scope).</summary>
@@ -366,14 +376,14 @@ public sealed class SettingsViewModel : ObservableObject
         TenantId = s.Authentication.TenantId;
         ClientId = s.Authentication.ClientId;
         AuthThumbprint = s.Authentication.CertificateThumbprint;
-        AuthUseStoreCert = !string.IsNullOrEmpty(AuthThumbprint) ? false : true;
+        AuthUseStoreCert = true;
 
         CodeSigningEnabled = s.CodeSigning.Enabled;
         CodeSignThumbprint = s.CodeSigning.CertificateThumbprint;
         CodeSignCertName = s.CodeSigning.CertificateName;
         CodeSignCertSubject = s.CodeSigning.CertificateSubject;
         CodeSignTimestampServer = s.CodeSigning.TimestampServer;
-        CodeSignUseStoreCert = !string.IsNullOrEmpty(CodeSignThumbprint) ? false : true;
+        CodeSignUseStoreCert = true;
 
         IntuneApplicationsPath = s.NetworkPaths.IntuneApplications;
         PSADTTemplatePath = s.NetworkPaths.PSADTTemplate;
@@ -434,22 +444,34 @@ public sealed class SettingsViewModel : ObservableObject
     private void LoadCertificatesFromStore()
     {
         AvailableCertificates.Clear();
-        try
+        foreach (var location in new[] { StoreLocation.CurrentUser, StoreLocation.LocalMachine })
         {
-            using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
-            store.Open(OpenFlags.ReadOnly);
-            foreach (var cert in store.Certificates)
+            try
             {
-                AvailableCertificates.Add(new CertificateInfo
+                using var store = new X509Store(StoreName.My, location);
+                store.Open(OpenFlags.ReadOnly);
+                foreach (var cert in store.Certificates)
                 {
-                    FriendlyName = cert.FriendlyName,
-                    Subject = cert.Subject,
-                    Thumbprint = cert.Thumbprint
-                });
+                    using (cert)
+                    {
+                        AvailableCertificates.Add(new CertificateInfo
+                        {
+                            FriendlyName = cert.FriendlyName,
+                            Subject = cert.Subject,
+                            SubjectName = cert.GetNameInfo(X509NameType.SimpleName, false),
+                            IssuerName = cert.GetNameInfo(X509NameType.SimpleName, true),
+                            NotAfter = cert.NotAfter,
+                            HasPrivateKey = cert.HasPrivateKey,
+                            Thumbprint = cert.Thumbprint
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SaveStatus = $"Could not read the {location} certificate store: {ex.Message}";
             }
         }
-        catch { /* store not accessible in this environment */ }
-
         if (!string.IsNullOrEmpty(AuthThumbprint))
             SelectedAuthCert = AvailableCertificates.FirstOrDefault(c => c.Thumbprint == AuthThumbprint);
         if (!string.IsNullOrEmpty(CodeSignThumbprint))

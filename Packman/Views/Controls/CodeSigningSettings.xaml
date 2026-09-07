@@ -59,7 +59,8 @@
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="0,2">
-                                <TextBlock Text="{Binding FriendlyName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Detail}" FontSize="11" TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Text="{Binding Thumbprint}" FontSize="12" Foreground="{DynamicResource MutedBrush}" FontFamily="{StaticResource MonoFontFamily}" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                         </DataTemplate>

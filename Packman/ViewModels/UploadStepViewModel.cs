@@ -433,6 +433,19 @@ public class UploadStepViewModel : ObservableObject
             return;
         }
 
+        if (!_auth.IsSignedIn && _settingsService.Settings.AuthMode == AuthMode.AppRegistration)
+        {
+            try
+            {
+                await _auth.SignInAsync(AuthMode.AppRegistration, _settingsService.Settings.Authentication, nint.Zero);
+            }
+            catch (Exception ex)
+            {
+                StatusText = $"Certificate connection failed: {ex.Message}";
+                return;
+            }
+        }
+
         if (!_auth.IsSignedIn)
         {
             StatusText = "Sign in to Intune on the Settings page first.";
