@@ -15,14 +15,14 @@ public class PackageUpgradeService
 
     public PackageUpgradeService(string baseOutputPath) => _baseOutputPath = baseOutputPath;
 
-    public Task<string> UpgradePackageAsync(
+    public Task<PackageCreationResult> UpgradePackageAsync(
         string existingPackagePath,
         string newVersion,
         string newSourcesPath,
         CancellationToken cancellationToken = default)
         => Task.Run(() => UpgradePackage(existingPackagePath, newVersion, newSourcesPath, cancellationToken), cancellationToken);
 
-    private string UpgradePackage(string existingPackagePath, string newVersion, string newSourcesPath,
+    private PackageCreationResult UpgradePackage(string existingPackagePath, string newVersion, string newSourcesPath,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -55,17 +55,29 @@ public class PackageUpgradeService
         var oldProductCode = existingScript.MsiProductCode ?? ReadProductCodeFromFiles(existingApplication);
         var newProductCode = newIsMsi ? ReadProductCode(newSourcesPath) : null;
         var newSourceFileName = Path.GetFileName(newSourcesPath);
+        var oldSourceFileName = existingScript.SourceFileName;
+        var warnings = new List<string>();
 
         try
         {
             foreach (var folder in new[] { "Application", "Icon", "Intune" })
                 Directory.CreateDirectory(Path.Combine(newPackagePath, folder));
 
-            // Everything but the old installer comes across.
-            DirectoryCopy.Copy(existingApplication, Path.Combine(newPackagePath, "Application"), cancellationToken, "Files");
+            // Files\ comes across whole: transforms, config and licence files the script
+            // references sit there next to the installer. Only the installer is swapped.
+            DirectoryCopy.Copy(existingApplication, Path.Combine(newPackagePath, "Application"), cancellationToken);
 
             var files = Path.Combine(newPackagePath, "Application", "Files");
             Directory.CreateDirectory(files);
+
+            if (oldSourceFileName == null)
+                warnings.Add("The script names no installer under Files, so the previous one was left next to the new installer; remove it if it is no longer needed.");
+            else if (!oldSourceFileName.Equals(newSourceFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                var oldInstaller = Path.Combine(files, oldSourceFileName);
+                if (File.Exists(oldInstaller)) File.Delete(oldInstaller);
+            }
+
             File.Copy(newSourcesPath, Path.Combine(files, newSourceFileName), true);
 
             var icon = Path.Combine(existingPackagePath, "Icon");
@@ -74,7 +86,7 @@ public class PackageUpgradeService
             cancellationToken.ThrowIfCancellationRequested();
 
             UpdateScript(newPackagePath, manufacturer, appName, newVersion, newSourceFileName, newIsMsi, oldProductCode, newProductCode);
-            return newPackagePath;
+            return new PackageCreationResult(newPackagePath, warnings);
         }
         catch
         {

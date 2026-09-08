@@ -541,9 +541,11 @@ From **Create Package**, switch the mode toggle to **Upgrade existing**:
    you disagree).
 3. Press **Upgrade package**.
 
-The old package is copied forward — **keeping your script edits** — the new installer replaces the
-old one under `Files\`, the script metadata and MSI product code are refreshed, and the icon is
-carried over. The wizard then continues exactly as for a new package; on upload the previous app
+The old package is copied forward — **keeping your script edits and everything under `Files\`**
+(transforms, config and licence files stay put) — only the installer the script points at is
+replaced by the new one, the script metadata and MSI product code are refreshed, and the icon is
+carried over. If the script names no installer, the old one is left next to the new one and the
+status line says so. The wizard then continues exactly as for a new package; on upload the previous app
 (identified by the marker file in the old package folder) is marked as superseded.
 
 Unlike Create, an upgrade **fails** rather than prompting if the target version folder already
