@@ -284,7 +284,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
     public PublishRunViewModel Publish { get; } = new();
 
     public bool UploadEnabled =>
-        IsValidated && _auth.IsSignedIn && !Publish.IsPublishing &&
+        IsValidated && (_auth.IsSignedIn || _settings.Settings.AuthMode == AuthMode.AppRegistration) && !Publish.IsPublishing &&
         !string.IsNullOrWhiteSpace(_settings.Settings.NetworkPaths.IntuneWinAppUtil);
 
     private async Task UploadAsync()
@@ -299,6 +299,18 @@ public sealed class UploadToIntuneViewModel : ObservableObject
         ValidationError = "";
 
         var settings = _settings.Settings;
+        if (!_auth.IsSignedIn && settings.AuthMode == AuthMode.AppRegistration)
+        {
+            try
+            {
+                await _auth.SignInAsync(AuthMode.AppRegistration, settings.Authentication, nint.Zero);
+            }
+            catch (Exception ex)
+            {
+                ValidationError = $"Certificate connection failed: {ex.Message}";
+                return;
+            }
+        }
         var appInfo = new ApplicationInfo
         {
             Name = AppName.Trim(),

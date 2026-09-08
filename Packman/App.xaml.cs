@@ -21,6 +21,41 @@ public partial class App : Application
         ErrorReporter.Reported += ex => Report(ex, "Something went wrong.");
 
         ThemeService.Apply(AppServices.Settings.Settings.Theme);
+        ConnectSavedAppRegistration();
+    }
+
+    /// <summary>
+    /// App-only auth needs no user interaction, so a configured app registration is
+    /// connected at launch. Without it the app sits at "Not connected" pointing the user
+    /// at a browser sign-in that app registration mode does not use.
+    /// </summary>
+    private static void ConnectSavedAppRegistration()
+    {
+        var settings = AppServices.Settings.Settings;
+        if (settings.AuthMode != Models.AuthMode.AppRegistration) return;
+
+        var cfg = settings.Authentication;
+        if (string.IsNullOrWhiteSpace(cfg.TenantId) ||
+            string.IsNullOrWhiteSpace(cfg.ClientId) ||
+            string.IsNullOrWhiteSpace(cfg.CertificateThumbprint)) return;
+
+        // Not awaited: startup carries on while the token is fetched. Left on the UI thread
+        // so the sign-in notification lands there, like every other sign-in does.
+        _ = SignInSilentlyAsync(cfg);
+    }
+
+    private static async Task SignInSilentlyAsync(Models.AppSettings.AuthConfig cfg)
+    {
+        try
+        {
+            await AppServices.Auth.SignInAsync(Models.AuthMode.AppRegistration, cfg, nint.Zero);
+        }
+        catch (Exception ex)
+        {
+            // A missing certificate or withdrawn consent must not block startup. The user
+            // sees "Not connected" and the Settings connection test explains why.
+            Debug.WriteLine($"App registration sign-in at startup failed: {ex.Message}");
+        }
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

@@ -12,7 +12,17 @@ public class CertificateInfo
     public string FriendlyName { get; init; } = "";
     public string Subject { get; init; } = "";
     public string Thumbprint { get; init; } = "";
-    public override string ToString() => string.IsNullOrEmpty(FriendlyName) ? Subject : FriendlyName;
+    public string SubjectName { get; init; } = "";
+    public string IssuerName { get; init; } = "";
+    public DateTime NotAfter { get; init; }
+    public bool HasPrivateKey { get; init; }
+    public string DisplayName => !string.IsNullOrWhiteSpace(FriendlyName) ? FriendlyName
+        : !string.IsNullOrWhiteSpace(SubjectName) ? SubjectName
+        : !string.IsNullOrWhiteSpace(Subject) ? Subject : "Unnamed certificate";
+    public string Detail => $"{IssuerName} · expires {NotAfter:d MMM yyyy}"
+        + (!HasPrivateKey ? " · no private key" : "")
+        + (NotAfter < DateTime.Now ? " · expired" : "");
+    public override string ToString() => DisplayName;
 }
 
 /// <summary>A single row in the connection-test results list (one required Graph scope).</summary>
@@ -349,6 +359,11 @@ public sealed class SettingsViewModel : ObservableObject
         LoadFromSettings();
         LoadCertificatesFromStore();
 
+        // The view is built once but the sign-in lives in AppServices.Auth, so read the
+        // current state and follow it rather than assuming this page did the signing in.
+        SyncSignInState();
+        _auth.StateChanged += SyncSignInState;
+
         // An unparseable file was set aside at startup; say so rather than looking fresh.
         if (_svc.LoadError != null) SaveStatus = _svc.LoadError;
     }
@@ -361,14 +376,14 @@ public sealed class SettingsViewModel : ObservableObject
         TenantId = s.Authentication.TenantId;
         ClientId = s.Authentication.ClientId;
         AuthThumbprint = s.Authentication.CertificateThumbprint;
-        AuthUseStoreCert = !string.IsNullOrEmpty(AuthThumbprint) ? false : true;
+        AuthUseStoreCert = true;
 
         CodeSigningEnabled = s.CodeSigning.Enabled;
         CodeSignThumbprint = s.CodeSigning.CertificateThumbprint;
         CodeSignCertName = s.CodeSigning.CertificateName;
         CodeSignCertSubject = s.CodeSigning.CertificateSubject;
         CodeSignTimestampServer = s.CodeSigning.TimestampServer;
-        CodeSignUseStoreCert = !string.IsNullOrEmpty(CodeSignThumbprint) ? false : true;
+        CodeSignUseStoreCert = true;
 
         IntuneApplicationsPath = s.NetworkPaths.IntuneApplications;
         PSADTTemplatePath = s.NetworkPaths.PSADTTemplate;
@@ -429,22 +444,34 @@ public sealed class SettingsViewModel : ObservableObject
     private void LoadCertificatesFromStore()
     {
         AvailableCertificates.Clear();
-        try
+        foreach (var location in new[] { StoreLocation.CurrentUser, StoreLocation.LocalMachine })
         {
-            using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
-            store.Open(OpenFlags.ReadOnly);
-            foreach (var cert in store.Certificates)
+            try
             {
-                AvailableCertificates.Add(new CertificateInfo
+                using var store = new X509Store(StoreName.My, location);
+                store.Open(OpenFlags.ReadOnly);
+                foreach (var cert in store.Certificates)
                 {
-                    FriendlyName = cert.FriendlyName,
-                    Subject = cert.Subject,
-                    Thumbprint = cert.Thumbprint
-                });
+                    using (cert)
+                    {
+                        AvailableCertificates.Add(new CertificateInfo
+                        {
+                            FriendlyName = cert.FriendlyName,
+                            Subject = cert.Subject,
+                            SubjectName = cert.GetNameInfo(X509NameType.SimpleName, false),
+                            IssuerName = cert.GetNameInfo(X509NameType.SimpleName, true),
+                            NotAfter = cert.NotAfter,
+                            HasPrivateKey = cert.HasPrivateKey,
+                            Thumbprint = cert.Thumbprint
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                SaveStatus = $"Could not read the {location} certificate store: {ex.Message}";
             }
         }
-        catch { /* store not accessible in this environment */ }
-
         if (!string.IsNullOrEmpty(AuthThumbprint))
             SelectedAuthCert = AvailableCertificates.FirstOrDefault(c => c.Thumbprint == AuthThumbprint);
         if (!string.IsNullOrEmpty(CodeSignThumbprint))
@@ -459,15 +486,7 @@ public sealed class SettingsViewModel : ObservableObject
             var hwnd = new System.Windows.Interop.WindowInteropHelper(
                 System.Windows.Application.Current.MainWindow).Handle;
             var mode = IsInteractive ? AuthMode.Interactive : AuthMode.AppRegistration;
-            var cfg = new AppSettings.AuthConfig
-            {
-                TenantId = TenantId,
-                ClientId = ClientId,
-                CertificateThumbprint = IsAppRegistration ? AuthThumbprint : ""
-            };
-            await _auth.SignInAsync(mode, cfg, hwnd);
-            IsSignedIn = true;
-            SignedInUser = _auth.SignedInUser ?? "";
+            await _auth.SignInAsync(mode, CurrentAuthConfig(), hwnd);
             SaveStatus = "";
         }
         catch (MsalClientException ex) when (ex.ErrorCode == "authentication_canceled")
@@ -483,28 +502,54 @@ public sealed class SettingsViewModel : ObservableObject
     private async Task SignOutAsync()
     {
         await _auth.SignOutAsync();
-        IsSignedIn = false;
-        SignedInUser = "";
         ConnectionChecks.Clear();
         ConnectionStatus = "";
         ConnectionOk = false;
+    }
+
+    private void SyncSignInState()
+    {
+        IsSignedIn = _auth.IsSignedIn;
+        SignedInUser = _auth.SignedInUser ?? "";
     }
 
     private async Task TestConnectionAsync()
     {
         ConnectionChecks.Clear();
         ConnectionOk = false;
-
-        if (!_auth.IsSignedIn)
-        {
-            ConnectionStatus = "Sign in first, then test the connection.";
-            return;
-        }
-
         IsTesting = true;
-        ConnectionStatus = "Testing connection to Microsoft Intune…";
         try
         {
+            // App-only auth has no sign-in button of its own, so the test signs in with the
+            // tenant, client and certificate currently on screen. That also means editing a
+            // field and testing again uses the new values instead of the earlier sign-in.
+            if (IsAppRegistration)
+            {
+                var missing = AppRegistrationProblem();
+                if (missing != null)
+                {
+                    ConnectionStatus = missing;
+                    return;
+                }
+
+                ConnectionStatus = "Signing in with the app registration…";
+                try
+                {
+                    await _auth.SignInAsync(AuthMode.AppRegistration, CurrentAuthConfig(), nint.Zero);
+                }
+                catch (Exception ex)
+                {
+                    ConnectionStatus = $"App registration sign-in failed: {ex.Message}";
+                    return;
+                }
+            }
+            else if (!_auth.IsSignedIn)
+            {
+                ConnectionStatus = "Sign in first, then test the connection.";
+                return;
+            }
+
+            ConnectionStatus = "Testing connection to Microsoft Intune…";
             var result = await AppServices.Apps.TestConnectionAsync();
             foreach (var c in result.Checks)
                 ConnectionChecks.Add(new ConnectionCheckRow { Name = c.Name, Ok = c.Ok, Detail = c.Detail });
@@ -519,6 +564,27 @@ public sealed class SettingsViewModel : ObservableObject
         {
             IsTesting = false;
         }
+    }
+
+    private AppSettings.AuthConfig CurrentAuthConfig() => new()
+    {
+        TenantId = TenantId.Trim(),
+        ClientId = ClientId.Trim(),
+        CertificateThumbprint = IsAppRegistration ? AuthThumbprint.Trim() : ""
+    };
+
+    /// <summary>The first app-registration field still missing, phrased for the user; null when complete.</summary>
+    private string? AppRegistrationProblem()
+    {
+        if (string.IsNullOrWhiteSpace(TenantId))
+            return "Enter a Tenant ID before testing the connection.";
+        if (string.IsNullOrWhiteSpace(ClientId))
+            return "Enter an Application (Client) ID before testing the connection.";
+        if (string.IsNullOrWhiteSpace(AuthThumbprint))
+            return AuthUseStoreCert
+                ? "Select a certificate before testing the connection."
+                : "Enter a certificate thumbprint before testing the connection.";
+        return null;
     }
 
     private void Reset()

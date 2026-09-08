@@ -131,6 +131,8 @@ public class IntuneAuthService
         var certificate = FindCertificate(cfg.CertificateThumbprint);
         try
         {
+            if (!certificate.HasPrivateKey)
+                throw new InvalidOperationException("The selected certificate has no private key. Import it with its private key first.");
             var authority = $"https://login.microsoftonline.com/{cfg.TenantId.Trim()}";
             var client = ConfidentialClientApplicationBuilder
                 .Create(cfg.ClientId.Trim())
