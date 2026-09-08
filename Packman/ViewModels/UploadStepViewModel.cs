@@ -220,10 +220,9 @@ public class UploadStepViewModel : ObservableObject
     }
 
     // ── Deploy mode ────────────────────────────────────────────────────
-    /// <summary>PSADT's own default; appends no -DeployMode switch.</summary>
-    public const string DeployModeDefault = "Auto";
+    public const string DeployModeDefault = PsadtLayout.DeployModeDefault;
 
-    public List<string> DeployModes { get; } = new() { "Auto", "Interactive", "NonInteractive", "Silent" };
+    public IReadOnlyList<string> DeployModes => PsadtLayout.DeployModes;
 
     /// <summary>Deploy mode baked into the install and uninstall command lines.</summary>
     public string SelectedDeployMode
@@ -240,20 +239,8 @@ public class UploadStepViewModel : ObservableObject
         _ => "PSADT selects the mode from the session and toolkit configuration. Use Silent for unattended Intune deployment.",
     };
 
-    public string InstallCommandPreview => WithDeployMode(_settingsService.Settings.IntuneDefaults.InstallCommand);
-    public string UninstallCommandPreview => WithDeployMode(_settingsService.Settings.IntuneDefaults.UninstallCommand);
-
-    /// <summary>
-    /// Appends -DeployMode to a command line. Auto is the PSADT default so it is left off,
-    /// and a command that already sets the switch is used as written.
-    /// </summary>
-    private string WithDeployMode(string command)
-    {
-        command = (command ?? "").Trim();
-        if (_selectedDeployMode == DeployModeDefault) return command;
-        if (command.Contains("-DeployMode", StringComparison.OrdinalIgnoreCase)) return command;
-        return $"{command} -DeployMode {_selectedDeployMode}";
-    }
+    public string InstallCommandPreview => PsadtLayout.WithDeployMode(_settingsService.Settings.IntuneDefaults.InstallCommand, _selectedDeployMode);
+    public string UninstallCommandPreview => PsadtLayout.WithDeployMode(_settingsService.Settings.IntuneDefaults.UninstallCommand, _selectedDeployMode);
 
     // ── Assignment groups ──────────────────────────────────────────────
     /// <summary>Seeded from Settings, then editable for this package.</summary>

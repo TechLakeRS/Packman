@@ -44,6 +44,7 @@ public sealed class RemoteTestViewModel : ObservableObject
     private bool _isGeneratedPackage;
     private string _targetComputer = "";
     private bool _runAsUser;
+    private string _selectedDeployMode = PsadtLayout.DeployModeDefault;
     private bool _isRunning;
     private bool _isOnline;
     private string _statusText = "no target selected";
@@ -227,6 +228,28 @@ public sealed class RemoteTestViewModel : ObservableObject
         ? "Runs in the logged-on user's session — their profile and HKCU, PSADT dialogs visible."
         : "Runs as NT AUTHORITY\\SYSTEM via a scheduled task, the same identity the Intune Management Extension uses.";
 
+    // ── Deploy mode ────────────────────────────────────────────────────
+    public IReadOnlyList<string> DeployModes => PsadtLayout.DeployModes;
+
+    /// <summary>Appended to the command line as -DeployMode, exactly as the publish step does.</summary>
+    public string SelectedDeployMode
+    {
+        get => _selectedDeployMode;
+        set { if (Set(ref _selectedDeployMode, value)) OnPropertyChanged(nameof(CommandPreview)); }
+    }
+
+    /// <summary>The install and uninstall command lines the test will run, as Intune would.</summary>
+    public string CommandPreview =>
+        $"{CommandLine("Install")}   ·   {CommandLine("Uninstall")}";
+
+    // The same defaults the publish step uses, so a test exercises what ships.
+    private string CommandLine(string deploymentType)
+    {
+        var defaults = _settingsService.Settings.IntuneDefaults;
+        return PsadtLayout.WithDeployMode(
+            deploymentType == "Install" ? defaults.InstallCommand : defaults.UninstallCommand, _selectedDeployMode);
+    }
+
     // ── Run state ──────────────────────────────────────────────────────
     public bool IsRunning
     {
@@ -306,6 +329,7 @@ public sealed class RemoteTestViewModel : ObservableObject
         var context = CaptureDetectionContext();
 
         string packagePath = _packagePath;
+        string commandLine = CommandLine(deploymentType);
         bool runAsUser = _runAsUser;
         bool cleanup = CleanupAfterRun;
 
@@ -316,7 +340,7 @@ public sealed class RemoteTestViewModel : ObservableObject
             try
             {
                 exitCode = await Task.Run(() => new RemoteTestService().Deploy(
-                    context.Computer, packagePath, deploymentType, cleanup, runAsUser,
+                    context.Computer, packagePath, deploymentType, commandLine, cleanup, runAsUser,
                     Append, percent => CopyPercent = percent));
             }
             catch (PSRemotingTransportException ex)
@@ -447,12 +471,13 @@ public sealed class RemoteTestViewModel : ObservableObject
     }
 
     // ── Recent computers ───────────────────────────────────────────────
-    /// <summary>Re-reads the saved machines. The wizard writes the same list.</summary>
+    /// <summary>Re-reads the saved machines and command lines. The wizard writes the same list.</summary>
     public void RefreshRecentComputers()
     {
         RecentComputers.Clear();
         foreach (var name in _settingsService.Settings.RemoteTest.RecentComputers)
             RecentComputers.Add(name);
+        OnPropertyChanged(nameof(CommandPreview));
     }
 
     private void RememberComputer(string name)

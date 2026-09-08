@@ -71,6 +71,17 @@
                     <TextBlock Text="{Binding ContextHelpText}" Margin="0,9,0,0" FontSize="12" LineHeight="18"
                                TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}"/>
 
+                    <TextBlock Text="PSADT deploy mode" Style="{StaticResource FieldLabel}" Margin="0,16,0,0"/>
+                    <ComboBox AutomationProperties.Name="PSADT deploy mode" Margin="0,6,0,0" Height="34" HorizontalAlignment="Left" MinWidth="220"
+                              ItemsSource="{Binding DeployModes}"
+                              SelectedItem="{Binding SelectedDeployMode, Mode=TwoWay}"
+                              IsEnabled="{Binding IsIdle}"
+                              ToolTip="Appended to the command line as -DeployMode, the same way the publish step does it. Auto leaves the choice to PSADT."/>
+                    <TextBlock Margin="0,9,0,0" FontSize="12" LineHeight="18" TextWrapping="Wrap" Foreground="{DynamicResource Muted2Brush}">
+                        <Run Text="Runs the Intune command lines from the staged package: "/>
+                        <Run Text="{Binding CommandPreview, Mode=OneWay}" FontFamily="{StaticResource MonoFontFamily}" Foreground="{DynamicResource InkBrush}"/>
+                    </TextBlock>
+
                     <CheckBox Content="Delete the staged package from the target after the run"
                               Margin="0,16,0,0" FontSize="12"
                               IsChecked="{Binding CleanupAfterRun, Mode=TwoWay}" IsEnabled="{Binding IsIdle}"
