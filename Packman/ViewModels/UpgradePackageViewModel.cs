@@ -180,10 +180,12 @@ public class UpgradePackageViewModel : ObservableObject
         try
         {
             var service = new PackageUpgradeService(outputPath);
-            var newPath = await service.UpgradePackageAsync(ExistingPackagePath, NewVersion.Trim(), NewSourcePath.Trim());
+            var result = await service.UpgradePackageAsync(ExistingPackagePath, NewVersion.Trim(), NewSourcePath.Trim());
 
-            StatusText = $"New version {NewVersion} created.";
-            return newPath;
+            StatusText = result.Warnings.Count == 0
+                ? $"New version {NewVersion} created."
+                : $"New version {NewVersion} created · check Files: {string.Join(" ", result.Warnings)}";
+            return result.PackagePath;
         }
         catch (Exception ex)
         {

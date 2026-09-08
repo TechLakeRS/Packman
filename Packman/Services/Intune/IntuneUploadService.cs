@@ -57,6 +57,8 @@ public partial class IntuneUploadService
         string? privacyUrl = null,
         string? informationUrl = null,
         IEnumerable<AssignedGroup>? pickedGroups = null,
+        string? restartBehavior = null,
+        int? maxRunTimeMinutes = null,
         CancellationToken ct = default)
     {
         using var log = new UploadLogger(appInfo.Name);
@@ -75,6 +77,9 @@ public partial class IntuneUploadService
             log.LogMetadata("Install Command", installCommand);
             log.LogMetadata("Uninstall Command", uninstallCommand);
             log.LogMetadata("Install Context", installContext);
+            log.LogMetadata("Architectures", AllowedArchitectures(appInfo.Architecture));
+            log.LogMetadata("Restart Behavior", RestartBehavior(restartBehavior));
+            log.LogMetadata("Max Run Time", $"{maxRunTimeMinutes ?? AppSettings.IntuneDefaultsConfig.DefaultMaxRunTimeMinutes} min");
             log.LogMetadata("Detection Rules", $"{detectionRules.Count} rule(s)");
             log.Info($"Upload log file: {log.LogFilePath}");
 
@@ -90,7 +95,8 @@ public partial class IntuneUploadService
 
             Report(progress, log, 35, "Registering application in Intune...");
             var appId = await CreateWin32LobAppAsync(appInfo, installCommand, uninstallCommand, description, detectionRules,
-                installContext, intuneWin, iconPath, requirements, returnCodes, privacyUrl, informationUrl, ct);
+                installContext, intuneWin, iconPath, requirements, returnCodes, privacyUrl, informationUrl,
+                restartBehavior, maxRunTimeMinutes, ct);
             createdAppId = appId;
             log.Success($"Application registered with ID: {appId}");
 

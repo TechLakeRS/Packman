@@ -195,6 +195,8 @@ public partial class IntuneUploadService
         List<ReturnCodeInfo>? returnCodes,
         string? privacyUrl,
         string? informationUrl,
+        string? restartBehavior,
+        int? maxRunTimeMinutes,
         CancellationToken ct)
     {
         // A guessed rule uploads fine and then never detects the app, so refuse instead.
@@ -212,7 +214,7 @@ public partial class IntuneUploadService
             ["installCommandLine"] = installCommand,
             ["uninstallCommandLine"] = uninstallCommand,
             ["applicableArchitectures"] = "none",
-            ["allowedArchitectures"] = "x86,x64,arm64",
+            ["allowedArchitectures"] = AllowedArchitectures(appInfo.Architecture),
             ["minimumSupportedWindowsRelease"] = (requirements ?? new RequirementInfo()).MinimumSupportedWindowsRelease,
             ["fileName"] = intuneWin.FileName,
             ["setupFilePath"] = PsadtLayout.SetupFileName,
@@ -220,7 +222,9 @@ public partial class IntuneUploadService
             {
                 // Graph enum values are lower case; "System"/"User" only work by tolerance.
                 ["runAsAccount"] = installContext.Equals("User", StringComparison.OrdinalIgnoreCase) ? "user" : "system",
-                ["deviceRestartBehavior"] = "allow",
+                ["deviceRestartBehavior"] = RestartBehavior(restartBehavior),
+                // Intune accepts 1–1440 minutes.
+                ["maxRunTimeInMinutes"] = Math.Clamp(maxRunTimeMinutes ?? AppSettings.IntuneDefaultsConfig.DefaultMaxRunTimeMinutes, 1, 1440),
             },
             ["detectionRules"] = detectionRules.Select(DetectionRuleGraph.Serialize).ToList(),
             ["returnCodes"] = (returnCodes is { Count: > 0 } ? returnCodes : ReturnCodeInfo.Defaults())
@@ -248,6 +252,25 @@ public partial class IntuneUploadService
         var created = (await _graph.PostAsync(GraphClient.MobileApps, payload, "Create Win32 app", ct)).Json;
         return created.GetSafeString("id") is { Length: > 0 } id ? id : throw new Exception("App ID not returned from creation");
     }
+
+    /// <summary>
+    /// The package's architecture says what the installer is built for, so it only rules out
+    /// devices that cannot run it: an x64 package skips 32-bit Windows, a 32-bit package runs
+    /// everywhere, and ARM64 runs both through emulation. Unknown keeps every architecture.
+    /// </summary>
+    internal static string AllowedArchitectures(string? architecture) =>
+        architecture?.Trim().ToLowerInvariant() switch
+        {
+            "x64" or "amd64" => "x64,arm64",
+            "arm64" => "arm64",
+            _ => "x86,x64,arm64",
+        };
+
+    // A hand-edited settings file must not produce a Graph 400 at the end of an upload.
+    private static string RestartBehavior(string? value) =>
+        AppSettings.IntuneDefaultsConfig.RestartBehaviors.Any(o => o.Value == value)
+            ? value!
+            : AppSettings.IntuneDefaultsConfig.DefaultRestartBehavior;
 
     private static Dictionary<string, object>? ReadIcon(string iconPath)
     {

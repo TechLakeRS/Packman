@@ -14,6 +14,11 @@ namespace Packman.Services;
 /// WinRM is the transport only; the install runs from a one-shot scheduled task. A
 /// remote session runs as the connecting admin, not as SYSTEM, and the two differ in
 /// %TEMP%, HKCU and network identity, so it would not match what Intune does.
+///
+/// The task runs the same command line Intune will run — Invoke-AppDeployToolkit.exe
+/// plus the chosen -DeployMode — from the staged Application folder. The launcher
+/// starts Windows PowerShell hidden without forwarding its output, so live output
+/// comes from tailing the PSADT log the toolkit writes, not from stdout.
 /// </summary>
 public class RemoteTestService
 {
@@ -37,21 +42,28 @@ public class RemoteTestService
         Regex.IsMatch(computerName, @"^[A-Za-z0-9][A-Za-z0-9\.\-]{0,62}$");
 
     /// <summary>
-    /// Runs the deployment and returns the PSADT exit code.
+    /// Runs <paramref name="commandLine"/> — the install or uninstall command exactly as
+    /// Intune would, e.g. <c>Invoke-AppDeployToolkit.exe Install -DeployMode Silent</c> —
+    /// from the staged package and returns the exit code. <paramref name="deploymentType"/>
+    /// only labels the run.
     /// <paramref name="runAsUser"/>: false runs as SYSTEM (what Intune does), true runs in
     /// the logged-on user's session. <paramref name="copyProgress"/> reports 0-100, then null.
     /// Throws PSRemotingTransportException when WinRM is unreachable.
     /// </summary>
-    public int Deploy(string computerName, string sourcePath, string deploymentType,
+    public int Deploy(string computerName, string sourcePath, string deploymentType, string commandLine,
         bool cleanupAfterDeploy, bool runAsUser, Action<string> output,
         Action<int?>? copyProgress = null)
     {
         if (!IsValidComputerName(computerName))
             throw new ArgumentException($"'{computerName}' is not a valid computer name", nameof(computerName));
 
-        // Reaches the remote command line, so only the three PSADT verbs pass.
         if (!DeploymentTypes.Contains(deploymentType))
             throw new ArgumentException($"'{deploymentType}' is not a valid deployment type", nameof(deploymentType));
+
+        // Reaches a cmd.exe command line inside the task; one line, nothing else.
+        commandLine = (commandLine ?? "").Trim();
+        if (commandLine.Length == 0 || commandLine.IndexOfAny(['\r', '\n']) >= 0)
+            throw new ArgumentException("The command line must be a single non-empty line", nameof(commandLine));
 
         output("========================================");
         output("Packman Remote Test (WinRM)");
@@ -59,27 +71,35 @@ public class RemoteTestService
         output($"Target: {computerName}");
         output($"Source: {sourcePath}");
         output($"Type: {deploymentType}");
+        output($"Command: {commandLine}");
         output($"Run as: {(runAsUser ? "Logged-on user" : "NT AUTHORITY\\SYSTEM")}");
         output("");
 
         if (!Directory.Exists(sourcePath))
             throw new DirectoryNotFoundException($"Source path not found: {sourcePath}");
 
-        string relativeScriptPath;
+        string relativeApplicationPath;
         if (File.Exists(Path.Combine(sourcePath, "Application", PsadtLayout.ScriptName)))
         {
-            relativeScriptPath = $@"Application\{PsadtLayout.ScriptName}";
+            relativeApplicationPath = "Application";
             output($"[OK] Found {PsadtLayout.ScriptName} in Application subfolder");
         }
         else if (File.Exists(Path.Combine(sourcePath, PsadtLayout.ScriptName)))
         {
-            relativeScriptPath = PsadtLayout.ScriptName;
+            relativeApplicationPath = "";
             output($"[OK] Found {PsadtLayout.ScriptName} in root folder");
         }
         else
         {
             throw new FileNotFoundException($"{PsadtLayout.ScriptName} not found in package");
         }
+
+        // A script-only template has no launcher; cmd would report 9009 after the copy.
+        var runsLauncher = commandLine.StartsWith(PsadtLayout.SetupFileName, StringComparison.OrdinalIgnoreCase)
+                        || commandLine.StartsWith($".\\{PsadtLayout.SetupFileName}", StringComparison.OrdinalIgnoreCase);
+        if (runsLauncher && !File.Exists(Path.Combine(sourcePath, relativeApplicationPath, PsadtLayout.SetupFileName)))
+            throw new FileNotFoundException(
+                $"{PsadtLayout.SetupFileName} is missing from the package. The PSADT template needs the full v4 runtime, not just the script.");
 
         // ICMP is a hint only: plenty of fleets block it while WinRM is open.
         output($"Checking connectivity to {computerName}...");
@@ -137,20 +157,21 @@ public class RemoteTestService
         output($"Package size: {Math.Round(sizeMb, 2)} MB");
         output($"[OK] {copiedFiles.Length} files in sync after {Math.Round(copyTimer.Elapsed.TotalSeconds, 1)} seconds");
 
-        string remoteScriptPath = $@"{remotePackagePath}\{relativeScriptPath}";
-        string logPath = $@"{remotePackagePath}\Packman_Deploy.log";
-        string deployArgs = $"-ExecutionPolicy Bypass -NoProfile -File \"{remoteScriptPath}\" -DeploymentType {deploymentType}";
+        // Intune runs the command line from the content folder, so the task does too.
+        string workingDirectory = relativeApplicationPath.Length == 0 ? remotePackagePath : $@"{remotePackagePath}\{relativeApplicationPath}";
+        string configPath = $@"{workingDirectory}\Config\config.psd1";
+        string consoleLog = $@"{remotePackagePath}\Packman_Console.log";
 
         output("");
         output($"Registering scheduled task '{TaskName}' on target...");
-        output($"Command: powershell.exe {deployArgs}");
+        output($"Working directory: {workingDirectory}");
         output("");
 
         int exitCode = -1;
         using (var ps = PowerShell.Create())
         {
             ps.Runspace = runspace;
-            ps.AddScript(BuildTaskScript(runAsUser, deployArgs, logPath));
+            ps.AddScript(BuildTaskScript(runAsUser, commandLine, workingDirectory, consoleLog, configPath));
 
             var stdout = new PSDataCollection<PSObject>();
             stdout.DataAdded += (s, e) =>
@@ -174,6 +195,8 @@ public class RemoteTestService
 
         output("");
         output($"Exit code: {exitCode}");
+        if (exitCode == -1)
+            output("WARNING: The remote monitor returned no exit code; check the PSADT log on the target.");
 
         if (cleanupAfterDeploy)
         {
@@ -194,10 +217,13 @@ public class RemoteTestService
     }
 
     /// <summary>
-    /// Registers a one-shot task, starts it, tails its log back through the pipeline and
-    /// reports the exit code via the sentinel. Only the principal differs by context.
+    /// Registers a one-shot task that runs the command through cmd.exe from the package
+    /// folder, starts it, and streams two things back through the pipeline until it ends:
+    /// anything the command printed (rarely — the PSADT launcher swallows stdout) and the
+    /// PSADT log entries written since the task started. The exit code arrives via the
+    /// sentinel. Only the principal differs by context.
     /// </summary>
-    private static string BuildTaskScript(bool runAsUser, string deployArgs, string logPath)
+    private static string BuildTaskScript(bool runAsUser, string commandLine, string workingDirectory, string consoleLog, string configPath)
     {
         // S-1-5-18 rather than the account name: the SID is locale-independent.
         string principal = runAsUser
@@ -214,27 +240,123 @@ public class RemoteTestService
 
         return """
             $taskName = '__TASK_NAME__'
-            $logPath = '__LOG_PATH__'
+            $consoleLog = '__CONSOLE_LOG__'
+            $configPath = '__CONFIG_PATH__'
+            $workingDirectory = '__WORK_DIR__'
             $neverRan = __NEVER_RAN__
-            Remove-Item -Path $logPath -Force -ErrorAction SilentlyContinue
-            __PRINCIPAL__
-            $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c powershell.exe __DEPLOY_ARGS__ > "__LOG_PATH__" 2>&1'
-            Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-            Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal | Out-Null
-            Start-ScheduledTask -TaskName $taskName
-            "Deployment task started as $contextLabel"
-            $offset = 0
-            $elapsed = 0
-            while ($elapsed -lt 3600) {
-                Start-Sleep -Seconds 2
-                $elapsed += 2
-                if (Test-Path $logPath) {
-                    $content = Get-Content -Path $logPath -Raw -ErrorAction SilentlyContinue
-                    if ($content -and $content.Length -gt $offset) {
-                        $content.Substring($offset)
-                        $offset = $content.Length
+            $ErrorActionPreference = 'Continue'
+
+            # PSADT log folders: the package's own config first, the toolkit defaults after it.
+            # A non-admin run (user context) lands in LogPathNoAdminRights, so both are watched.
+            $logDirs = @("$env:SystemRoot\Logs\Software", "$env:ProgramData\Logs\Software")
+            if (Test-Path -LiteralPath $configPath) {
+                try {
+                    $toolkit = (Import-PowerShellDataFile -LiteralPath $configPath).Toolkit
+                    # Names the config may use for expansion, in both the $env: and legacy $envX forms.
+                    $envWinDir = $env:SystemRoot; $envSystemRoot = $env:SystemRoot; $envProgramData = $env:ProgramData
+                    $envProgramFiles = $env:ProgramFiles; $envLocalAppData = $env:LOCALAPPDATA; $envAppData = $env:APPDATA
+                    $envTemp = [IO.Path]::GetTempPath().TrimEnd('\')
+                    foreach ($key in 'LogPath', 'LogPathNoAdminRights') {
+                        $value = $toolkit[$key]
+                        if (-not $value) { continue }
+                        $expanded = $ExecutionContext.InvokeCommand.ExpandString($value)
+                        if ($expanded -and ($logDirs -notcontains $expanded)) { $logDirs = @($expanded) + $logDirs }
+                    }
+                    if ($toolkit['CompressLogs']) { "WARNING: CompressLogs is on in config.psd1; PSADT writes to a temp folder and zips at the end, so no live log output is available." }
+                }
+                catch { "WARNING: Could not read $configPath ($($_.Exception.Message)); watching the default PSADT log folders." }
+            }
+            "Watching PSADT logs in: $($logDirs -join '; ')"
+
+            $logFilter = '*_PSAppDeployToolkit_*.log'
+            function Get-PsadtLogs {
+                foreach ($dir in $logDirs) {
+                    if (Test-Path -LiteralPath $dir) {
+                        Get-ChildItem -LiteralPath $dir -Filter $logFilter -File -Recurse -ErrorAction SilentlyContinue
                     }
                 }
+            }
+
+            # Bytes already in each file before the run; only what follows is shown.
+            $offsets = @{}
+            $buffers = @{}
+            foreach ($f in Get-PsadtLogs) { $offsets[$f.FullName] = $f.Length }
+            Remove-Item -LiteralPath $consoleLog -Force -ErrorAction SilentlyContinue
+
+            # PSADT holds its log open, so read through a shared handle from the last offset.
+            function Read-NewText([string]$path) {
+                $offset = 0
+                if ($offsets.ContainsKey($path)) { $offset = $offsets[$path] }
+                $stream = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+                try {
+                    if ($stream.Length -le $offset) { return $null }
+                    $null = $stream.Seek($offset, [IO.SeekOrigin]::Begin)
+                    $bytes = New-Object byte[] ([int]($stream.Length - $offset))
+                    $read = $stream.Read($bytes, 0, $bytes.Length)
+                    $offsets[$path] = $offset + $read
+                    return [Text.Encoding]::UTF8.GetString($bytes, 0, $read)
+                }
+                finally { $stream.Dispose() }
+            }
+
+            # CMTrace entries carry their severity; Legacy lines are one entry per line.
+            $entryPattern = [regex]'(?s)<!\[LOG\[(?<msg>.*?)\]LOG\]!><time="[^"]*" date="[^"]*" component="[^"]*" context="[^"]*" type="(?<type>\d)"[^>]*>\r?\n?'
+            function Emit-PsadtEntries([string]$path, [bool]$final) {
+                $text = $buffers[$path]
+                if (-not $text) { return }
+                if ($text.Contains('<![LOG[')) {
+                    $last = 0
+                    foreach ($m in $entryPattern.Matches($text)) {
+                        $msg = $m.Groups['msg'].Value.TrimEnd()
+                        switch ($m.Groups['type'].Value) {
+                            '2' { "WARNING: $msg" }
+                            '3' { "ERROR: $msg" }
+                            default { $msg }
+                        }
+                        $last = $m.Index + $m.Length
+                    }
+                    $buffers[$path] = $text.Substring($last)
+                    return
+                }
+                $lines = $text -split "`r?`n"
+                $complete = $lines.Length - 1
+                if ($final) { $complete = $lines.Length }
+                for ($i = 0; $i -lt $complete; $i++) {
+                    $line = $lines[$i]
+                    if (-not $line) { continue }
+                    if ($line -match '\] \[Error\] ::') { "ERROR: $line" }
+                    elseif ($line -match '\] \[Warning\] ::') { "WARNING: $line" }
+                    else { $line }
+                }
+                if ($final) { $buffers[$path] = '' } else { $buffers[$path] = $lines[-1] }
+            }
+
+            function Pump-Output([bool]$final) {
+                if (Test-Path -LiteralPath $consoleLog) {
+                    $new = Read-NewText $consoleLog
+                    if ($new) { $new.TrimEnd() }
+                }
+                foreach ($f in Get-PsadtLogs) {
+                    # A log that already existed but was only found now (its folder appeared) is not ours.
+                    if (-not $offsets.ContainsKey($f.FullName) -and $f.LastWriteTime -lt $started) { $offsets[$f.FullName] = $f.Length; continue }
+                    $new = Read-NewText $f.FullName
+                    if ($new) { $buffers[$f.FullName] += $new }
+                    if ($new -or $final) { Emit-PsadtEntries $f.FullName $final }
+                }
+            }
+
+            __PRINCIPAL__
+            $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c __COMMAND__ > "__CONSOLE_LOG__" 2>&1' -WorkingDirectory $workingDirectory
+            Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+            Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal | Out-Null
+            $started = (Get-Date).AddSeconds(-5)
+            Start-ScheduledTask -TaskName $taskName
+            "Deployment task started as $contextLabel"
+            $elapsed = 0
+            while ($elapsed -lt 3600) {
+                Start-Sleep -Seconds 1
+                $elapsed += 1
+                Pump-Output $false
                 $state = (Get-ScheduledTask -TaskName $taskName).State
                 $result = (Get-ScheduledTaskInfo -TaskName $taskName).LastTaskResult
                 if ($state -eq 'Ready' -and $result -ne $neverRan) { break }
@@ -243,6 +365,9 @@ public class RemoteTestService
             $exitCode = (Get-ScheduledTaskInfo -TaskName $taskName).LastTaskResult
             Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
             Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
+            # The log is flushed a moment after the process exits.
+            Start-Sleep -Seconds 1
+            Pump-Output $true
             if ($elapsed -ge 3600) {
                 "ERROR: Deployment timed out after 60 minutes"
                 $exitCode = -3
@@ -251,17 +376,22 @@ public class RemoteTestService
                 "ERROR: The deployment task never started on the target"
                 $exitCode = -2
             }
+            elseif ($exitCode -eq 9009) {
+                "ERROR: cmd.exe could not find the command. Check that the command line names a file in $workingDirectory."
+            }
             "__SENTINEL__$exitCode"
             """
             .Replace("__PRINCIPAL__", principal)
-            .Replace("__DEPLOY_ARGS__", EscapeSingleQuoted(deployArgs))
-            .Replace("__LOG_PATH__", EscapeSingleQuoted(logPath))
+            .Replace("__COMMAND__", EscapeSingleQuoted(commandLine))
+            .Replace("__WORK_DIR__", EscapeSingleQuoted(workingDirectory))
+            .Replace("__CONSOLE_LOG__", EscapeSingleQuoted(consoleLog))
+            .Replace("__CONFIG_PATH__", EscapeSingleQuoted(configPath))
             .Replace("__TASK_NAME__", TaskName)
             .Replace("__NEVER_RAN__", NeverRan.ToString())
             .Replace("__SENTINEL__", ExitCodeSentinel);
     }
 
-    /// <summary>Both values land inside single-quoted PowerShell strings.</summary>
+    /// <summary>All substituted values land inside single-quoted PowerShell strings.</summary>
     private static string EscapeSingleQuoted(string value) => PowerShellLiteral.SingleQuoted(value);
 
     /// <summary>

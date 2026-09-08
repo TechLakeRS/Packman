@@ -86,6 +86,9 @@ public sealed class UploadToIntuneViewModel : ObservableObject
     private string _installContext = "System";
     public string InstallContext { get => _installContext; private set => Set(ref _installContext, value); }
 
+    // AppArch from the script; empty when it has none, which lets the upload allow every architecture.
+    private string _architecture = "";
+
     private string _sizeText = "";
     public string SizeText { get => _sizeText; private set => Set(ref _sizeText, value); }
 
@@ -123,6 +126,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
             AppName = script.AppName;
             Version = script.AppVersion;
             InstallContext = script.InstallContext;
+            _architecture = script.AppArch;
 
             IntuneDisplayName = GroupAssignmentNamer.Build(
                 _settings.Settings.IntuneDefaults.DisplayNameTemplate, Manufacturer, AppName, Version);
@@ -318,6 +322,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
             Version = string.IsNullOrWhiteSpace(Version) ? "1.0.0" : Version.Trim(),
             SourcesPath = PackageRoot,
             InstallContext = InstallContext,
+            Architecture = _architecture,
             DisplayName = IntuneDisplayName,
         };
 
@@ -339,7 +344,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
                 appInfo.DisplayName, appInfo.InstallContext, null, progress, null, null,
                 settings.IntuneDefaults.Requirements, settings.IntuneDefaults.ReturnCodes,
                 settings.IntuneDefaults.PrivacyUrl, settings.IntuneDefaults.InformationUrl,
-                groups, ct),
+                groups, settings.IntuneDefaults.RestartBehavior, settings.IntuneDefaults.MaxRunTimeMinutes, ct),
             appId => groups.Count > 0
                 ? $"Published and assigned to {groups.Count} group(s). App ID {appId}"
                 : $"Published successfully. App ID {appId}",
@@ -362,6 +367,7 @@ public sealed class UploadToIntuneViewModel : ObservableObject
         Manufacturer = "";
         Version = "";
         InstallContext = "System";
+        _architecture = "";
         SizeText = "";
         IntuneDisplayName = "";
         DetectionRules.Clear();

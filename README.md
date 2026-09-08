@@ -89,7 +89,10 @@ These are native Windows CI renders with sample data; they do not show a live te
 - **Remote test** a package on a real machine over WinRM before anything reaches Intune.
 - Runs as **NT AUTHORITY\SYSTEM** (what the Intune Management Extension does) or in the
   **logged-on user's** session, via a one-shot scheduled task.
-- Live PSADT console output, colour-coded, with copy progress while the package is staged.
+- Runs the **same command line Intune runs** — `Invoke-AppDeployToolkit.exe Install` from your
+  Intune Defaults, with the chosen **PSADT deploy mode** appended — from the staged package folder.
+- Live output, colour-coded: the PSADT log entries as the toolkit writes them, with copy progress
+  while the package is staged.
 - **Install**, **Uninstall**; exit codes `0` / `3010` / `1641` treated as success.
 - Optional cleanup of the staged copy on the target after each run.
 - Recent target machines remembered (last 8), with a **Ping** action.
@@ -109,6 +112,9 @@ These are native Windows CI renders with sample data; they do not show a live te
   (Auto / Interactive / NonInteractive / Silent) that appends `-DeployMode` and previews the
   resulting command.
 - **Requirements** (minimum OS, disk, memory, processors, CPU speed) and **return codes**.
+- **Architecture requirement** derived from the package: an x64 package is offered to x64 and ARM64
+  devices, an x86 package to all, a package without `AppArch` to all.
+- **Device restart behavior** and **maximum install time** from Intune Defaults, sent with every app.
 - Custom **display name** per app, from a token template.
 - Privacy and information URLs for Company Portal.
 - App **icon** taken from the installer.
@@ -313,6 +319,11 @@ Defaults applied to every upload started from the **Create Package** wizard:
 ### Intune Defaults
 
 - **Install / uninstall command lines** (default `Invoke-AppDeployToolkit.exe Install` / `Uninstall`).
+- **Device restart behavior** — the Intune `deviceRestartBehavior`: *based on return codes*, *app
+  install may force a device restart* (the admin center default), *no specific action*, or *force*.
+  PSADT packages usually map `3010` / `1641` to a soft reboot, so *based on return codes* lets the
+  installer decide.
+- **Maximum install time** in minutes (`maxRunTimeInMinutes`, 1–1440, default 60).
 - **Display name template** for the app title in Intune — same `%vendor%` / `%appName%` /
   `%appVersion%` tokens, with a preview.
 - **Requirements**: minimum OS, free disk space, memory, processors, CPU speed.
@@ -416,7 +427,10 @@ If the WebView2 Runtime is missing the editor is replaced by a note and the VS C
 before Intune ever sees the package. It is optional.
 
 WinRM is only the transport — the install itself runs from a one-shot **scheduled task**, because a
-remote session runs as the connecting admin and would not match Intune's identity.
+remote session runs as the connecting admin and would not match Intune's identity. The task runs
+the install or uninstall command line from Settings ▸ Intune Defaults (by default
+`Invoke-AppDeployToolkit.exe Install`) from the staged `Application` folder, exactly as the Intune
+Management Extension does, so the launcher, PowerShell edition and module isolation match production.
 
 1. **Package** — pre-filled with the package the wizard just generated. On the standalone
    **Remote Test** page (sidebar) there is no wizard package, so **Browse for package** and pick one
@@ -430,15 +444,22 @@ remote session runs as the connecting admin and would not match Intune's identit
    - **USER** — runs in the logged-on user's session, so their profile and HKCU apply and the PSADT
      dialogs can be visible when the deployment mode permits interaction. Somebody must be logged on.
    Choose the context that matches the app’s configured Intune install behavior.
-4. Optionally tick **Delete the staged package from the target after the run** (off by default, so
+4. **PSADT deploy mode** — Auto / Interactive / NonInteractive / Silent, appended to the command
+   line as `-DeployMode` the same way the Configure step does it. Pick the mode you intend to
+   publish with; the resulting install and uninstall commands are previewed underneath.
+5. Optionally tick **Delete the staged package from the target after the run** (off by default, so
    a re-run only copies what changed). The setting is remembered.
-5. **Run install** copies the package to `C:\Temp\Packman\...` over the admin share, registers the
-   task, and streams PSADT's output into the console. **Run uninstall** does the same with
-   `-DeploymentType Uninstall`.
-6. After a successful install Packman waits for the registry to settle and searches the target for
+6. **Run install** copies the package to `C:\Temp\Packman\...` over the admin share, registers the
+   task with the install command line, and streams the **PSADT log** into the console as the toolkit
+   writes it — the launcher itself prints nothing, so the log is the live view. Warnings and errors
+   are colour-coded from the log entry's own severity. **Run uninstall** does the same with the
+   uninstall command line. The log folder comes from the package's `Config\config.psd1`
+   (`Toolkit.LogPath`, falling back to `LogPathNoAdminRights` and the toolkit defaults); with
+   `CompressLogs` enabled PSADT writes to a temp folder and zips at the end, so nothing streams.
+7. After a successful install Packman waits for the registry to settle and searches the target for
    the executable that was installed, proposing a **detection rule** from its real path and
    version. **Discover detection rule** re-runs that search on its own.
-7. **Use for publishing** pushes that rule into the wizard's Configure step. This is only available for
+8. **Use for publishing** pushes that rule into the wizard's Configure step. This is only available for
    the wizard's own package — a package picked from the share has no publish step to feed.
 
 Exit codes `0`, `3010` and `1641` count as success (the latter two mean *reboot required*).
@@ -541,9 +562,11 @@ From **Create Package**, switch the mode toggle to **Upgrade existing**:
    you disagree).
 3. Press **Upgrade package**.
 
-The old package is copied forward — **keeping your script edits** — the new installer replaces the
-old one under `Files\`, the script metadata and MSI product code are refreshed, and the icon is
-carried over. The wizard then continues exactly as for a new package; on upload the previous app
+The old package is copied forward — **keeping your script edits and everything under `Files\`**
+(transforms, config and licence files stay put) — only the installer the script points at is
+replaced by the new one, the script metadata and MSI product code are refreshed, and the icon is
+carried over. If the script names no installer, the old one is left next to the new one and the
+status line says so. The wizard then continues exactly as for a new package; on upload the previous app
 (identified by the marker file in the old package folder) is marked as superseded.
 
 Unlike Create, an upgrade **fails** rather than prompting if the target version folder already
@@ -684,13 +707,18 @@ Known limits, so you do not go looking:
 - You cannot upload a **bare `.intunewin`** or an arbitrary installer — the package must have the
   PSADT layout.
 - Packman does **not** ship the PSADT runtime. The bundled template is script-only; without the
-  runtime in your template folder the `.intunewin` build produces nothing.
+  runtime in your template folder the `.intunewin` build produces nothing, and a remote test
+  refuses to start because `Invoke-AppDeployToolkit.exe` is missing.
 
 **Editing published apps**
 
 - On a published app you can edit **detection rules** and **assignments** only. Display name,
-  description, publisher, command lines, requirements, return codes and the icon cannot be changed
-  from Packman — publish a new version, or edit those in the Intune admin center.
+  description, publisher, command lines, requirements, return codes, restart behavior, install time
+  and the icon cannot be changed from Packman — publish a new version, or edit those in the Intune
+  admin center.
+- Restart behavior and maximum install time are tenant-wide defaults from Settings, not editable per
+  package in the wizard. The architecture requirement follows the package's `AppArch`; there is no
+  ARM64-only choice in the wizard.
 - **Republish content** rebuilds the existing source folder and replaces the content served by the same Intune app. It preserves metadata, detection, commands and assignments. For a new application version with supersedence, use **Create package → Upgrade existing**.
 - **PowerShell script** detection rules can be viewed but not edited.
 - **Delete from Intune** deletes the app in the tenant. There is no soft-retire, archive or undo. Use an Uninstall assignment to remove an installed app from devices.

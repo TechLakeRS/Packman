@@ -41,7 +41,9 @@ switches, then Ctrl+S.
 ## 4. Test it on a real machine (recommended)
 
 **Remote Test** → enter a computer name, then **Ping**. Choose **System** or **User** to match the
-app’s Intune install behavior, then **Run install**. Check the discovered detection rule and use
+app’s Intune install behavior and the **PSADT deploy mode** you will publish with, then **Run
+install** — it runs the same `Invoke-AppDeployToolkit.exe` command line Intune will, and streams
+the PSADT log live. Check the discovered detection rule and use
 **Use for publishing** to carry it into Configure for the wizard’s package. Verify **Run uninstall**
 on the test device too; test devices need WinRM and admin-share access.
 

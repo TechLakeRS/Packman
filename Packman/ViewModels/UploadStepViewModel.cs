@@ -220,10 +220,9 @@ public class UploadStepViewModel : ObservableObject
     }
 
     // ── Deploy mode ────────────────────────────────────────────────────
-    /// <summary>PSADT's own default; appends no -DeployMode switch.</summary>
-    public const string DeployModeDefault = "Auto";
+    public const string DeployModeDefault = PsadtLayout.DeployModeDefault;
 
-    public List<string> DeployModes { get; } = new() { "Auto", "Interactive", "NonInteractive", "Silent" };
+    public IReadOnlyList<string> DeployModes => PsadtLayout.DeployModes;
 
     /// <summary>Deploy mode baked into the install and uninstall command lines.</summary>
     public string SelectedDeployMode
@@ -240,20 +239,8 @@ public class UploadStepViewModel : ObservableObject
         _ => "PSADT selects the mode from the session and toolkit configuration. Use Silent for unattended Intune deployment.",
     };
 
-    public string InstallCommandPreview => WithDeployMode(_settingsService.Settings.IntuneDefaults.InstallCommand);
-    public string UninstallCommandPreview => WithDeployMode(_settingsService.Settings.IntuneDefaults.UninstallCommand);
-
-    /// <summary>
-    /// Appends -DeployMode to a command line. Auto is the PSADT default so it is left off,
-    /// and a command that already sets the switch is used as written.
-    /// </summary>
-    private string WithDeployMode(string command)
-    {
-        command = (command ?? "").Trim();
-        if (_selectedDeployMode == DeployModeDefault) return command;
-        if (command.Contains("-DeployMode", StringComparison.OrdinalIgnoreCase)) return command;
-        return $"{command} -DeployMode {_selectedDeployMode}";
-    }
+    public string InstallCommandPreview => PsadtLayout.WithDeployMode(_settingsService.Settings.IntuneDefaults.InstallCommand, _selectedDeployMode);
+    public string UninstallCommandPreview => PsadtLayout.WithDeployMode(_settingsService.Settings.IntuneDefaults.UninstallCommand, _selectedDeployMode);
 
     // ── Assignment groups ──────────────────────────────────────────────
     /// <summary>Seeded from Settings, then editable for this package.</summary>
@@ -356,7 +343,17 @@ public class UploadStepViewModel : ObservableObject
 
     public string RequirementsSummary =>
         $"Disk: {Constraint(MinFreeDiskSpaceMB, "MB")} · Memory: {Constraint(MinMemoryMB, "MB")} · " +
-        $"Processors: {Constraint(MinProcessors, "")} · CPU: {Constraint(MinCpuSpeedMHz, "MHz")}";
+        $"Processors: {Constraint(MinProcessors, "")} · CPU: {Constraint(MinCpuSpeedMHz, "MHz")}\n" +
+        $"Restart: {RestartBehaviorLabel} · Max install time: {_settingsService.Settings.IntuneDefaults.MaxRunTimeMinutes} min (Settings ▸ Intune Defaults)";
+
+    private string RestartBehaviorLabel
+    {
+        get
+        {
+            var value = _settingsService.Settings.IntuneDefaults.RestartBehavior;
+            return AppSettings.IntuneDefaultsConfig.RestartBehaviors.FirstOrDefault(o => o.Value == value)?.Label ?? value;
+        }
+    }
 
     private static string Constraint(string value, string unit) =>
         string.IsNullOrWhiteSpace(value) ? "No minimum" : $"{value} {unit}".Trim();
@@ -511,7 +508,7 @@ public class UploadStepViewModel : ObservableObject
                 appInfo.DisplayName, appInfo.InstallContext, iconPath, progress, predecessorAppId,
                 groupAssignment, requirements, returnCodes,
                 settings.IntuneDefaults.PrivacyUrl, settings.IntuneDefaults.InformationUrl,
-                assignedGroups, ct),
+                assignedGroups, settings.IntuneDefaults.RestartBehavior, settings.IntuneDefaults.MaxRunTimeMinutes, ct),
             appId => assignedGroups.Count > 0
                 ? $"Published and assigned to {assignedGroups.Count} group(s). App ID {appId}"
                 : $"Published successfully. App ID {appId}",
