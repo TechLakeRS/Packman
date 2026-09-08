@@ -43,6 +43,26 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
+                    <TextBlock Text="Device restart behavior" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox AutomationProperties.Name="Device restart behavior" Margin="0,7,0,0" Height="42" VerticalContentAlignment="Center"
+                              ItemsSource="{Binding RestartBehaviors}" DisplayMemberPath="Label" SelectedValuePath="Value"
+                              SelectedValue="{Binding DefaultRestartBehavior, Mode=TwoWay}"
+                              ToolTip="Sent as deviceRestartBehavior. PSADT packages usually map 3010 and 1641 to a soft reboot, so 'based on return codes' lets those codes decide."/>
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Maximum install time (minutes)" Style="{StaticResource FieldLabel}"/>
+                    <TextBox AutomationProperties.Name="Maximum install time (minutes)" Style="{StaticResource TextField}" Margin="0,7,0,0" local:PlaceholderText.Text="60"
+                             Text="{Binding DefaultMaxRunTimeMinutes, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Sent as maxRunTimeInMinutes, 1–1440. Intune reports the install as failed once this time is exceeded."/>
+                </StackPanel>
+            </Grid>
+            <Grid Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0">
                     <TextBlock Text="Privacy URL" Style="{StaticResource FieldLabel}"/>
                     <TextBox AutomationProperties.Name="Privacy URL" Style="{StaticResource TextField}" Margin="0,7,0,0" local:PlaceholderText.Text="https://contoso.com/privacy" Text="{Binding DefaultPrivacyUrl, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>

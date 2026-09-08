@@ -112,6 +112,9 @@ These are native Windows CI renders with sample data; they do not show a live te
   (Auto / Interactive / NonInteractive / Silent) that appends `-DeployMode` and previews the
   resulting command.
 - **Requirements** (minimum OS, disk, memory, processors, CPU speed) and **return codes**.
+- **Architecture requirement** derived from the package: an x64 package is offered to x64 and ARM64
+  devices, an x86 package to all, a package without `AppArch` to all.
+- **Device restart behavior** and **maximum install time** from Intune Defaults, sent with every app.
 - Custom **display name** per app, from a token template.
 - Privacy and information URLs for Company Portal.
 - App **icon** taken from the installer.
@@ -316,6 +319,11 @@ Defaults applied to every upload started from the **Create Package** wizard:
 ### Intune Defaults
 
 - **Install / uninstall command lines** (default `Invoke-AppDeployToolkit.exe Install` / `Uninstall`).
+- **Device restart behavior** — the Intune `deviceRestartBehavior`: *based on return codes*, *app
+  install may force a device restart* (the admin center default), *no specific action*, or *force*.
+  PSADT packages usually map `3010` / `1641` to a soft reboot, so *based on return codes* lets the
+  installer decide.
+- **Maximum install time** in minutes (`maxRunTimeInMinutes`, 1–1440, default 60).
 - **Display name template** for the app title in Intune — same `%vendor%` / `%appName%` /
   `%appVersion%` tokens, with a preview.
 - **Requirements**: minimum OS, free disk space, memory, processors, CPU speed.
@@ -705,8 +713,12 @@ Known limits, so you do not go looking:
 **Editing published apps**
 
 - On a published app you can edit **detection rules** and **assignments** only. Display name,
-  description, publisher, command lines, requirements, return codes and the icon cannot be changed
-  from Packman — publish a new version, or edit those in the Intune admin center.
+  description, publisher, command lines, requirements, return codes, restart behavior, install time
+  and the icon cannot be changed from Packman — publish a new version, or edit those in the Intune
+  admin center.
+- Restart behavior and maximum install time are tenant-wide defaults from Settings, not editable per
+  package in the wizard. The architecture requirement follows the package's `AppArch`; there is no
+  ARM64-only choice in the wizard.
 - **Republish content** rebuilds the existing source folder and replaces the content served by the same Intune app. It preserves metadata, detection, commands and assignments. For a new application version with supersedence, use **Create package → Upgrade existing**.
 - **PowerShell script** detection rules can be viewed but not edited.
 - **Delete from Intune** deletes the app in the tenant. There is no soft-retire, archive or undo. Use an Uninstall assignment to remove an installed app from devices.

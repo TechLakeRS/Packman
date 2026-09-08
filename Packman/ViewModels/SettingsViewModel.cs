@@ -280,6 +280,14 @@ public sealed class SettingsViewModel : ObservableObject
     private string _defaultUninstallCommand = AppSettings.IntuneDefaultsConfig.DefaultUninstallCommand;
     public string DefaultUninstallCommand { get => _defaultUninstallCommand; set => Set(ref _defaultUninstallCommand, value); }
 
+    public IReadOnlyList<AppSettings.RestartBehaviorOption> RestartBehaviors { get; } = AppSettings.IntuneDefaultsConfig.RestartBehaviors;
+
+    private string _defaultRestartBehavior = AppSettings.IntuneDefaultsConfig.DefaultRestartBehavior;
+    public string DefaultRestartBehavior { get => _defaultRestartBehavior; set => Set(ref _defaultRestartBehavior, value); }
+
+    private string _defaultMaxRunTimeMinutes = AppSettings.IntuneDefaultsConfig.DefaultMaxRunTimeMinutes.ToString();
+    public string DefaultMaxRunTimeMinutes { get => _defaultMaxRunTimeMinutes; set => Set(ref _defaultMaxRunTimeMinutes, value); }
+
     private string _defaultPrivacyUrl = "";
     public string DefaultPrivacyUrl { get => _defaultPrivacyUrl; set => Set(ref _defaultPrivacyUrl, value); }
 
@@ -408,6 +416,10 @@ public sealed class SettingsViewModel : ObservableObject
 
         DefaultInstallCommand = s.IntuneDefaults.InstallCommand;
         DefaultUninstallCommand = s.IntuneDefaults.UninstallCommand;
+        DefaultRestartBehavior = RestartBehaviors.Any(o => o.Value == s.IntuneDefaults.RestartBehavior)
+            ? s.IntuneDefaults.RestartBehavior
+            : AppSettings.IntuneDefaultsConfig.DefaultRestartBehavior;
+        DefaultMaxRunTimeMinutes = s.IntuneDefaults.MaxRunTimeMinutes.ToString();
         DefaultPrivacyUrl = s.IntuneDefaults.PrivacyUrl;
         DefaultInformationUrl = s.IntuneDefaults.InformationUrl;
         DisplayNameTemplate = s.IntuneDefaults.DisplayNameTemplate;
@@ -640,6 +652,12 @@ public sealed class SettingsViewModel : ObservableObject
 
         s.IntuneDefaults.InstallCommand = Fallback(DefaultInstallCommand, AppSettings.IntuneDefaultsConfig.DefaultInstallCommand);
         s.IntuneDefaults.UninstallCommand = Fallback(DefaultUninstallCommand, AppSettings.IntuneDefaultsConfig.DefaultUninstallCommand);
+        s.IntuneDefaults.RestartBehavior = DefaultRestartBehavior;
+        // Intune accepts 1–1440 minutes; anything else falls back to the portal default.
+        s.IntuneDefaults.MaxRunTimeMinutes = int.TryParse(DefaultMaxRunTimeMinutes.Trim(), out var minutes) && minutes is >= 1 and <= 1440
+            ? minutes
+            : AppSettings.IntuneDefaultsConfig.DefaultMaxRunTimeMinutes;
+        DefaultMaxRunTimeMinutes = s.IntuneDefaults.MaxRunTimeMinutes.ToString();
         s.IntuneDefaults.PrivacyUrl = DefaultPrivacyUrl.Trim();
         s.IntuneDefaults.InformationUrl = DefaultInformationUrl.Trim();
         s.IntuneDefaults.DisplayNameTemplate = Fallback(DisplayNameTemplate, AppSettings.IntuneDefaultsConfig.DefaultDisplayNameTemplate);

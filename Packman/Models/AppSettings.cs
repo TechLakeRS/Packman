@@ -87,6 +87,19 @@ public class AppSettings
         public const string DefaultUninstallCommand = "Invoke-AppDeployToolkit.exe Uninstall";
         public const string DefaultDisplayNameTemplate = "%vendor% %appName% %appVersion%";
 
+        // What the Intune admin center pre-selects for a new Win32 app.
+        public const string DefaultRestartBehavior = "allow";
+        public const int DefaultMaxRunTimeMinutes = 60;
+
+        /// <summary>Graph deviceRestartBehavior values with the admin center's wording.</summary>
+        public static readonly RestartBehaviorOption[] RestartBehaviors =
+        [
+            new("basedOnReturnCode", "Determine behavior based on return codes"),
+            new("allow", "App install may force a device restart"),
+            new("suppress", "No specific action"),
+            new("force", "Intune will force a mandatory device restart"),
+        ];
+
         // Pre-filled on the upload step.
         public RequirementInfo Requirements { get; set; } = new();
         // Sent with every uploaded Win32 app.
@@ -95,6 +108,10 @@ public class AppSettings
         // Command lines Intune runs.
         public string InstallCommand { get; set; } = DefaultInstallCommand;
         public string UninstallCommand { get; set; } = DefaultUninstallCommand;
+
+        // Install experience sent with every Win32 app: deviceRestartBehavior and maxRunTimeInMinutes.
+        public string RestartBehavior { get; set; } = DefaultRestartBehavior;
+        public int MaxRunTimeMinutes { get; set; } = DefaultMaxRunTimeMinutes;
 
         // Company Portal links; sent only when set.
         public string PrivacyUrl { get; set; } = "";
@@ -117,4 +134,6 @@ public class AppSettings
         public string GroupName { get; set; } = "";
         public AssignmentIntent Intent { get; set; } = AssignmentIntent.Required;
     }
+
+    public sealed record RestartBehaviorOption(string Value, string Label);
 }

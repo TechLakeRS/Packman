@@ -343,7 +343,17 @@ public class UploadStepViewModel : ObservableObject
 
     public string RequirementsSummary =>
         $"Disk: {Constraint(MinFreeDiskSpaceMB, "MB")} · Memory: {Constraint(MinMemoryMB, "MB")} · " +
-        $"Processors: {Constraint(MinProcessors, "")} · CPU: {Constraint(MinCpuSpeedMHz, "MHz")}";
+        $"Processors: {Constraint(MinProcessors, "")} · CPU: {Constraint(MinCpuSpeedMHz, "MHz")}\n" +
+        $"Restart: {RestartBehaviorLabel} · Max install time: {_settingsService.Settings.IntuneDefaults.MaxRunTimeMinutes} min (Settings ▸ Intune Defaults)";
+
+    private string RestartBehaviorLabel
+    {
+        get
+        {
+            var value = _settingsService.Settings.IntuneDefaults.RestartBehavior;
+            return AppSettings.IntuneDefaultsConfig.RestartBehaviors.FirstOrDefault(o => o.Value == value)?.Label ?? value;
+        }
+    }
 
     private static string Constraint(string value, string unit) =>
         string.IsNullOrWhiteSpace(value) ? "No minimum" : $"{value} {unit}".Trim();
@@ -498,7 +508,7 @@ public class UploadStepViewModel : ObservableObject
                 appInfo.DisplayName, appInfo.InstallContext, iconPath, progress, predecessorAppId,
                 groupAssignment, requirements, returnCodes,
                 settings.IntuneDefaults.PrivacyUrl, settings.IntuneDefaults.InformationUrl,
-                assignedGroups, ct),
+                assignedGroups, settings.IntuneDefaults.RestartBehavior, settings.IntuneDefaults.MaxRunTimeMinutes, ct),
             appId => assignedGroups.Count > 0
                 ? $"Published and assigned to {assignedGroups.Count} group(s). App ID {appId}"
                 : $"Published successfully. App ID {appId}",
